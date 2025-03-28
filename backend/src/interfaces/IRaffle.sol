@@ -24,12 +24,7 @@ interface IRaffle {
      */
     function enterRaffle() external;
 
-    /**
-     * @dev Chainlink VRFからの乱数を受け取るためのコールバック関数
-     * @param requestId VRFのリクエストID
-     * @param randomWords 生成された乱数配列
-     */
-    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) external;
+
 
     /**
      * @dev Chainlink Automationで呼び出される関数

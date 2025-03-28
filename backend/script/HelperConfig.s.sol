@@ -65,8 +65,8 @@ contract HelperConfig is Script {
             keyHash: 0x4b09e658ed251bcafeebbc69400383d49f344ace09b9576fe248bb02c003fe9f,
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
-            usdcAddress: 0xe11A86849d99F524cAc3E7A0Ec1241828e332C62, // Mumbai USDC
-            ccipRouter: 0x70499c328e1E2a3c41108bd3730F6670a44595d1 // Mumbai CCIP Router
+            usdcAddress: 0xe11A86849d99F524cAC3E7A0Ec1241828e332C62, // Mumbai USDC
+            ccipRouter: 0x70499c328e1E2a3c41108bd3730F6670a44595D1 // Mumbai CCIP Router
         });
     }
 
@@ -75,9 +75,9 @@ contract HelperConfig is Script {
      */
     function getArbitrumSepoliaConfig() public pure returns (NetworkConfig memory) {
         return NetworkConfig({
-            vrfCoordinatorV2: 0x50d47e4142598E3411aA864e08a44284e471AC6b,
+            vrfCoordinatorV2: 0x50D47e4142598e3411AA864E08a44284E471ac6B,
             subscriptionId: 0,  // 適切なIDに置き換える必要あり
-            keyHash: 0x027f94ff1465b3525f9fc03e7775f2e5fdecb70rarb974f61ffce645b6f115ae,
+            keyHash: 0x027f94ff1465b3525f9fc03e7775f2e5fdecb70a974f61ffce645b6f115ae0f9,
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d, // Arbitrum Sepolia USDC
@@ -90,7 +90,7 @@ contract HelperConfig is Script {
      */
     function getOptimismGoerliConfig() public pure returns (NetworkConfig memory) {
         return NetworkConfig({
-            vrfCoordinatorV2: 0xB9c51146a152648195F5e2C0A2CDA6B8e306138B,
+            vrfCoordinatorV2: 0xb9c51146A152648195f5E2c0a2cDA6b8e306138b,
             subscriptionId: 0,  // 適切なIDに置き換える必要あり
             keyHash: 0x252bc3f4ba2089c44a7789fd17f30e0c4aab9c2798271a1dca379f0a8b5048ce,
             callbackGasLimit: 500000,
@@ -105,7 +105,7 @@ contract HelperConfig is Script {
      */
     function getBaseSepoliaConfig() public pure returns (NetworkConfig memory) {
         return NetworkConfig({
-            vrfCoordinatorV2: 0xeb3F5079798A346F91F429d23D9aceb22Fc2F369, // Base Sepolia
+            vrfCoordinatorV2: 0xEb3f5079798A346f91f429D23d9aceB22Fc2F369, // Base Sepolia
             subscriptionId: 0,  // 適切なIDに置き換える必要あり
             keyHash: 0x8c7bdabb86a2870d9f72517b1c861c05e5afda42e51e5fed9a53bd33c0f0a84c,
             callbackGasLimit: 500000,

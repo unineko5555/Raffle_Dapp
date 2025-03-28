@@ -18,7 +18,8 @@ import "./interfaces/IUUPSUpgradeable.sol";
 contract RaffleImplementation is 
     IRaffle, 
     VRFConsumerBaseV2, 
-    AutomationCompatibleInterface
+    AutomationCompatibleInterface,
+    IUUPSUpgradeable
 {
     /* 状態変数 */
     // Chainklink VRF用の変数
@@ -115,13 +116,13 @@ contract RaffleImplementation is
     /**
      * @notice ラッフルの状態を確認する関数
      * @dev ChainlinkのAutomationで定期的に呼び出される
-     * @param performData 将来的な拡張用（現在は使用されていない）
      * @return upkeepNeeded 抽選を実行する必要があるかどうか
-     * @return performData 実行に必要なデータ
+     * @return bytes 実行に必要なデータ
      */
     function checkUpkeep(bytes memory /* performData */) 
         public 
-        override 
+        view
+        override(AutomationCompatibleInterface, IRaffle) 
         returns (bool upkeepNeeded, bytes memory /* performData */) 
     {
         bool isOpen = s_raffleState == RaffleState.OPEN;
@@ -139,9 +140,8 @@ contract RaffleImplementation is
     /**
      * @notice 抽選の実行を行う関数
      * @dev Automationによって自動的に呼び出される
-     * @param /* performData */ 未使用
      */
-    function performUpkeep(bytes calldata /* performData */) external override {
+    function performUpkeep(bytes calldata /* performData */) external override(AutomationCompatibleInterface, IRaffle) {
         (bool upkeepNeeded, ) = checkUpkeep("");
         require(upkeepNeeded, "Upkeep not needed");
 
@@ -164,10 +164,9 @@ contract RaffleImplementation is
     /**
      * @notice VRFからの乱数を受け取るコールバック関数
      * @dev Chainlink VRFノードによって呼び出される
-     * @param /* requestId */ VRFリクエストID
      * @param randomWords 生成された乱数配列
      */
-    function fulfillRandomWords(uint256 /* requestId */, uint256[] memory randomWords) internal override {
+    function fulfillRandomWords(uint256 /* requestId */, uint256[] memory randomWords) internal override(VRFConsumerBaseV2) {
         // 参加者の中から当選者を選ぶ
         uint256 winnerIndex = randomWords[0] % s_players.length;
         address winner = s_players[winnerIndex];
@@ -177,8 +176,14 @@ contract RaffleImplementation is
         uint256 prize = (i_entranceFee * s_players.length) * 90 / 100; // 参加料の90%が賞金
         s_recentPrize = prize;
 
-        // ジャックポット当選判定
-        bool isJackpotWinner = RaffleLib.isWinner(randomWords[1], RaffleLib.getJackpotProbability());
+        // 修正: ジャックポット当選判定 - 配列の長さをチェック
+        bool isJackpotWinner = false;
+        if (randomWords.length > 1) {
+            isJackpotWinner = RaffleLib.isWinner(randomWords[1], RaffleLib.getJackpotProbability());
+        } else {
+            // 配列の要素が足りない場合は、最初の乱数を使用
+            isJackpotWinner = RaffleLib.isWinner(randomWords[0], RaffleLib.getJackpotProbability());
+        }
         s_recentJackpotWon = isJackpotWinner;
         
         // ジャックポットを当選した場合は、ジャックポット額も賞金に上乗せ
@@ -280,6 +285,45 @@ contract RaffleImplementation is
         require(msg.sender == s_owner, "Only owner can change owner");
         require(newOwner != address(0), "New owner cannot be zero address");
         s_owner = newOwner;
+    }
+    
+    /**
+     * @dev UUPSアップグレード用の関数
+     * @param newImplementation 新しい実装コントラクトのアドレス
+     */
+    function upgradeTo(address newImplementation) external override {
+        require(msg.sender == s_owner, "Only owner can upgrade");
+        _authorizeUpgrade(newImplementation);
+        // コードスロットに新しい実装を書き込む
+        assembly {
+            sstore(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc, newImplementation)
+        }
+    }
+
+    /**
+     * @dev UUPSアップグレードと初期化用の関数
+     * @param newImplementation 新しい実装コントラクトのアドレス
+     * @param data 初期化データ
+     */
+    function upgradeToAndCall(address newImplementation, bytes memory data) external payable override {
+        require(msg.sender == s_owner, "Only owner can upgrade");
+        _authorizeUpgrade(newImplementation);
+        // コードスロットに新しい実装を書き込む
+        assembly {
+            sstore(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc, newImplementation)
+        }
+        // 初期化関数を呼び出す
+        (bool success, ) = newImplementation.delegatecall(data);
+        require(success, "Call failed");
+    }
+
+    /**
+     * @notice UUPSアップグレードの承認
+     * @dev オーナーのみがアップグレードを承認できる
+     * @param newImplementation 新しい実装コントラクトのアドレス
+     */
+    function _authorizeUpgrade(address newImplementation) internal override {
+        require(msg.sender == s_owner, "Only owner can upgrade");
     }
 
     /* View / Pure functions */
