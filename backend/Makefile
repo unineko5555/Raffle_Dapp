@@ -1,6 +1,6 @@
 -include .env
 
-.PHONY: all test clean deploy-sepolia deploy-mumbai deploy-arbitrum deploy-optimism deploy-base help check-env format anvil install
+.PHONY: all test clean deploy-sepolia deploy-base-sepolia deploy-arb-sepolia help check-env format anvil install
 
 help:
 	@echo "Usage:"
@@ -12,11 +12,11 @@ help:
 	@echo "  make anvil               - Run Anvil local chain"
 	@echo "  make deploy-anvil        - Deploy to Anvil local chain"
 	@echo "  make deploy-sepolia      - Deploy to Ethereum Sepolia testnet"
-	@echo "  make deploy-mumbai       - Deploy to Polygon Mumbai testnet"
-	@echo "  make deploy-arbitrum     - Deploy to Arbitrum Sepolia testnet"
-	@echo "  make deploy-optimism     - Deploy to Optimism Goerli testnet"
-	@echo "  make deploy-base         - Deploy to Base Sepolia testnet"
+	@echo "  make deploy-base-sepolia - Deploy to Base Sepolia testnet"
+	@echo "  make deploy-arb-sepolia  - Deploy to Arbitrum Sepolia testnet"
 	@echo "  make verify-sepolia      - Verify contracts on Ethereum Sepolia"
+	@echo "  make verify-base-sepolia - Verify contracts on Base Sepolia"
+	@echo "  make verify-arb-sepolia  - Verify contracts on Arbitrum Sepolia"
 	@echo "  make format              - Format code with forge fmt"
 	@echo "  make clean               - Clean build artifacts"
 
@@ -72,7 +72,7 @@ anvil:
 
 deploy-anvil:
 	@echo "Deploying to Anvil local chain..."
-	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url http://localhost:8545 --broadcast
+	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
 # ==============================================================================
 # Testnet Deployments
@@ -83,23 +83,15 @@ check-env:
 
 deploy-sepolia: check-env
 	@echo "Deploying to Ethereum Sepolia testnet..."
-	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(SEPOLIA_RPC_URL) --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY)
+	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY)
 
-deploy-mumbai: check-env
-	@echo "Deploying to Polygon Mumbai testnet..."
-	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(MUMBAI_RPC_URL) --broadcast --verify --etherscan-api-key $(POLYGONSCAN_API_KEY)
-
-deploy-arbitrum: check-env
-	@echo "Deploying to Arbitrum Sepolia testnet..."
-	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --broadcast --verify --etherscan-api-key $(ARBISCAN_API_KEY)
-
-deploy-optimism: check-env
-	@echo "Deploying to Optimism Goerli testnet..."
-	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(OPTIMISM_GOERLI_RPC_URL) --broadcast --verify --etherscan-api-key $(OPTIMISM_API_KEY)
-
-deploy-base: check-env
+deploy-base-sepolia: check-env
 	@echo "Deploying to Base Sepolia testnet..."
-	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(BASE_SEPOLIA_RPC_URL) --broadcast --verify --etherscan-api-key $(BASE_API_KEY)
+	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(BASE_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(BASE_API_KEY)
+
+deploy-arb-sepolia: check-env
+	@echo "Deploying to Arbitrum Sepolia testnet..."
+	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ARBISCAN_API_KEY)
 
 # ==============================================================================
 # Contract Verification
@@ -109,3 +101,13 @@ verify-sepolia:
 	@echo "Verifying contracts on Ethereum Sepolia..."
 	forge verify-contract $(RAFFLE_IMPLEMENTATION_ADDRESS) src/RaffleImplementation.sol:RaffleImplementation --chain sepolia --etherscan-api-key $(ETHERSCAN_API_KEY)
 	forge verify-contract $(RAFFLE_PROXY_ADDRESS) src/RaffleProxy.sol:RaffleProxy --chain sepolia --etherscan-api-key $(ETHERSCAN_API_KEY)
+
+verify-base-sepolia:
+	@echo "Verifying contracts on Base Sepolia..."
+	forge verify-contract $(RAFFLE_IMPLEMENTATION_ADDRESS_BASE) src/RaffleImplementation.sol:RaffleImplementation --chain base-sepolia --etherscan-api-key $(BASE_API_KEY)
+	forge verify-contract $(RAFFLE_PROXY_ADDRESS_BASE) src/RaffleProxy.sol:RaffleProxy --chain base-sepolia --etherscan-api-key $(BASE_API_KEY)
+
+verify-arb-sepolia:
+	@echo "Verifying contracts on Arbitrum Sepolia..."
+	forge verify-contract $(RAFFLE_IMPLEMENTATION_ADDRESS_ARB) src/RaffleImplementation.sol:RaffleImplementation --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
+	forge verify-contract $(RAFFLE_PROXY_ADDRESS_ARB) src/RaffleProxy.sol:RaffleProxy --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)

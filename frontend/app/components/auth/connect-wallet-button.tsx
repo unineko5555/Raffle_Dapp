@@ -1,30 +1,50 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Wallet, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { socialLoginProviders } from "@/app/lib/web3-config"
+import { useAccount, useConnect, useDisconnect } from "wagmi"
+import { injected, metaMask, walletConnect } from "wagmi/connectors"
 import Image from "next/image"
 
 export function ConnectWalletButton() {
-  const [isConnected, setIsConnected] = useState(false)
+  const { address, isConnected } = useAccount()
+  const { connect } = useConnect()
+  const { disconnect } = useDisconnect()
   const [activeTab, setActiveTab] = useState("wallet")
   const [open, setOpen] = useState(false)
-  const [userAddress, setUserAddress] = useState("")
+  const [displayAddress, setDisplayAddress] = useState("")
 
-  // 実際のアプリケーションではwagmiのuseAccountやuseConnectなどを使用します
-  const handleConnect = (method: string, id?: string) => {
-    // ここでは簡易的な実装
-    setIsConnected(true)
-    setUserAddress("0x7a2345...9f21")
-    setOpen(false)
+  useEffect(() => {
+    if (address) {
+      setDisplayAddress(address.slice(0, 6) + '...' + address.slice(-4))
+    }
+  }, [address])
+
+  const handleConnect = async (method: string, id?: string) => {
+    try {
+      if (method === "metamask") {
+        connect({ connector: metaMask() })
+      } else if (method === "walletconnect") {
+        const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "demo";
+        connect({ connector: walletConnect({ projectId: walletConnectProjectId }) })
+      } else if (method === "injected") {
+        connect({ connector: injected() })
+      } else if (method === "social") {
+        // ソーシャルログイン処理（実際のプロジェクトではSocial ConnectやMagic Linkなどのライブラリを統合）
+        console.log(`Social login with: ${id}`)
+      }
+      setOpen(false)
+    } catch (error) {
+      console.error("Connection error:", error)
+    }
   }
 
   const handleDisconnect = () => {
-    setIsConnected(false)
-    setUserAddress("")
+    disconnect()
   }
 
   return (
@@ -40,6 +60,9 @@ export function ConnectWalletButton() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="text-center text-2xl font-bold">アカウント接続</DialogTitle>
+              <DialogDescription className="text-center text-sm text-slate-500">
+                以下の方法でウォレットを接続してください
+              </DialogDescription>
             </DialogHeader>
             <Tabs defaultValue="wallet" className="w-full" onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2 mb-4">
@@ -54,7 +77,7 @@ export function ConnectWalletButton() {
                     onClick={() => handleConnect("metamask")}
                   >
                     <div className="flex items-center gap-3">
-                      <Image src="/icons/metamask.png" alt="MetaMask" width={32} height={32} className="rounded-full" />
+                      <Image src="/icons/metamask.svg" alt="MetaMask" width={32} height={32} style={{ width: '32px', height: '32px' }} className="rounded-full" />
                       <span className="font-medium">MetaMask</span>
                     </div>
                     <span className="text-xs text-slate-500">人気</span>
@@ -66,10 +89,11 @@ export function ConnectWalletButton() {
                   >
                     <div className="flex items-center gap-3">
                       <Image
-                        src="/icons/walletconnect.png"
+                        src="/icons/walletconnect.svg"
                         alt="WalletConnect"
                         width={32}
                         height={32}
+                        style={{ width: '32px', height: '32px' }}
                         className="rounded-full"
                       />
                       <span className="font-medium">WalletConnect</span>
@@ -79,10 +103,10 @@ export function ConnectWalletButton() {
                   <Button
                     variant="outline"
                     className="flex justify-between items-center h-14 px-4 border-2 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-                    onClick={() => handleConnect("coinbase")}
+                    onClick={() => handleConnect("injected")}
                   >
                     <div className="flex items-center gap-3">
-                      <Image src="/icons/coinbase.png" alt="Coinbase" width={32} height={32} className="rounded-full" />
+                      <Image src="/icons/coinbase.svg" alt="Coinbase" width={32} height={32} style={{ width: '32px', height: '32px' }} className="rounded-full" />
                       <span className="font-medium">Coinbase Wallet</span>
                     </div>
                   </Button>
@@ -126,7 +150,7 @@ export function ConnectWalletButton() {
         <div className="relative group">
           <Button className="flex items-center gap-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 font-medium py-2.5 px-5 rounded-full transition-all duration-300">
             <div className="w-6 h-6 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600"></div>
-            <span className="font-mono text-sm">{userAddress}</span>
+            <span className="font-mono text-sm">{displayAddress}</span>
             <ChevronDown className="w-4 h-4 ml-1" />
           </Button>
           <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
@@ -144,4 +168,3 @@ export function ConnectWalletButton() {
     </>
   )
 }
-

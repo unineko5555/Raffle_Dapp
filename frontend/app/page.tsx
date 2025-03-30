@@ -1,24 +1,93 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Trophy, Users, CheckCircle2, X, Zap, Sparkles, ArrowRight, Shield } from "lucide-react"
+import { Trophy, Users, CheckCircle2, X, Zap, Sparkles, ArrowRight, Shield, Wallet } from "lucide-react"
 import Image from "next/image"
 import { ConnectWalletButton } from "./components/auth/connect-wallet-button"
-import { supportedChains } from "./lib/web3-config"
+import { supportedChains, getContractConfig } from "./lib/web3-config"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { enterRaffle } from "./actions/enter-raffle"
+import { useAccount, useChainId, useSwitchChain } from "wagmi"
+import { useRaffleContract } from "@/hooks/use-raffle-contract"
+import { formatAddress } from "./utils/format-address"
 
 export default function RaffleDapp() {
-  const [showNotification, setShowNotification] = useState(true)
+  const chainId = useChainId()
+  const { switchChain } = useSwitchChain()
+  const { address, isConnected } = useAccount()
+  const [showNotification, setShowNotification] = useState(false)
   const [minutes, setMinutes] = useState(0)
   const [seconds, setSeconds] = useState(42)
   const [progress, setProgress] = useState(75)
   const [activeChain, setActiveChain] = useState(supportedChains[0])
-  const [isEntering, setIsEntering] = useState(false)
   const [txHash, setTxHash] = useState("")
+  const [isProcessing, setIsProcessing] = useState(false)
 
+  // useRaffleContractフックから実際のコントラクトデータを取得
+  const { raffleData, isLoading, error, handleEnterRaffle } = useRaffleContract()
+
+  // ラッフルボタンレンダリング
+  const renderRaffleButton = () => {
+    // データローディングのタイムアウト対策
+    if (isLoading || isProcessing) {
+      return (
+        <button
+          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+          disabled
+        >
+          <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+          しばらくお待ちください...
+        </button>
+      );
+    }
+    
+    // ウォレット未接続
+    if (!isConnected) {
+      return (
+        <div className="w-full text-center">
+          <p className="text-amber-500 mb-2">ラッフルに参加するには、まずウォレットを接続してください。</p>
+          <ConnectWalletButton />
+        </div>
+      );
+    }
+    
+    // チェーンが異なる場合
+    if (chainId !== activeChain.id) {
+      return (
+        <button
+          className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+          onClick={() => switchChain({ chainId: activeChain.id })}
+        >
+          <Zap className="w-5 h-5" />
+          {activeChain.name}に切り替える
+        </button>
+      );
+    }
+    
+    // 標準状態
+    return (
+      <button
+        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+        onClick={onEnterRaffle}
+      >
+        <Zap className="w-5 h-5" />
+        ラッフルに参加する ({raffleData.entranceFee || "10"} USDC)
+      </button>
+    );
+  };
+
+  // チェーンが変更されたときにアクティブチェーンを更新
+  useEffect(() => {
+    if (chainId) {
+      const newActiveChain = supportedChains.find(c => c.id === chainId)
+      if (newActiveChain) {
+        setActiveChain(newActiveChain)
+      }
+    }
+  }, [chainId])
+
+  // カウントダウンタイマー
   useEffect(() => {
     const timer = setInterval(() => {
       if (seconds > 0) {
@@ -34,18 +103,69 @@ export default function RaffleDapp() {
     return () => clearInterval(timer)
   }, [minutes, seconds])
 
-  const handleEnterRaffle = async () => {
+  // ラッフル参加処理
+  const onEnterRaffle = async () => {
     try {
-      setIsEntering(true)
-      const result = await enterRaffle(activeChain.id, "0xRaffleContractAddress")
-      if (result.success) {
-        setTxHash(result.txHash)
-        setShowNotification(true)
+      // ウォレット接続チェック
+      if (!isConnected || !address) {
+        alert('ウォレットが接続されていません。ウォレットを接続してください。');
+        return;
+      }
+      
+      // チェーンを切り替え
+      if (chainId !== activeChain.id) {
+        try {
+          await switchChain({ chainId: activeChain.id });
+          // チェーン切り替え後、少し待つ
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          alert('ネットワークが切り替わりました。ラッフルに参加するにはもう一度ボタンをクリックしてください。');
+          return;
+        } catch (error) {
+          console.error('チェーン切り替えエラー:', error);
+          alert('ネットワークの切り替えに失敗しました。MetaMaskで手動で切り替えてください。');
+          return;
+        }
+      }
+
+      // ラッフルに参加する前に、アラートでユーザーに確認する
+      if (!confirm(`${raffleData.entranceFee || "10"} USDCを使ってラッフルに参加しますか？`)) {
+        return;
+      }
+
+      // ローディング表示
+      setIsProcessing(true);
+
+      // ラッフルに参加
+      try {
+        const result = await handleEnterRaffle();
+        
+        if (result?.success) {
+          setTxHash(result.txHash);
+          setShowNotification(true);
+        } else {
+          console.error('ラッフル参加エラー:', result?.error);
+          alert(`ラッフル参加エラー: ${result?.error || 'ウォレットが接続されていないか、MetaMaskの状態を確認してください'}`);
+        }
+      } catch (error) {
+        console.error("ラッフル参加エラー:", error instanceof Error ? error.message : error);
+        alert(`ラッフル参加エラー: ${error instanceof Error ? error.message : 'ウォレットが接続されていないか、MetaMaskの状態を確認してください'}`);
+      } finally {
+        setIsProcessing(false);
       }
     } catch (error) {
-      console.error("Error entering raffle:", error)
-    } finally {
-      setIsEntering(false)
+      console.error("処理中にエラーが発生しました:", error instanceof Error ? error.message : error);
+      alert(`エラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+      setIsProcessing(false);
+    }
+  }
+
+  // チェーン切り替え処理
+  const handleChainChange = async (newChain) => {
+    setActiveChain(newChain)
+    try {
+      await switchChain({ chainId: newChain.id })
+    } catch (error) {
+      console.error('チェーン切り替えエラー:', error);
     }
   }
 
@@ -105,15 +225,23 @@ export default function RaffleDapp() {
                 <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <Sparkles className="w-6 h-6 mx-auto mb-2 text-white/80" />
                 <h3 className="text-lg font-medium opacity-90 mb-2">当選賞金</h3>
-                <div className="text-3xl font-bold">27 USDC</div>
-                <div className="mt-2 text-xs text-white/70">≈ 4,050円</div>
+                <div className="text-3xl font-bold">
+                  {isLoading ? "読み込み中..." : `${Number(raffleData.numberOfPlayers || 0) * 9} USDC`}
+                </div>
+                <div className="mt-2 text-xs text-white/70">
+                  ≈ {isLoading ? "..." : `${Number(raffleData.numberOfPlayers || 0) * 9 * 150}円`}
+                </div>
               </div>
               <div className="bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-6 text-white text-center transform transition-transform hover:scale-[1.02] relative overflow-hidden group">
                 <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <Trophy className="w-6 h-6 mx-auto mb-2 text-white/80" />
                 <h3 className="text-lg font-medium opacity-90 mb-2">ジャックポット</h3>
-                <div className="text-3xl font-bold">120 USDC</div>
-                <div className="mt-2 text-xs text-white/70">≈ 18,000円</div>
+                <div className="text-3xl font-bold">
+                  {isLoading ? "読み込み中..." : `${raffleData.jackpotAmount || 0} USDC`}
+                </div>
+                <div className="mt-2 text-xs text-white/70">
+                  ≈ {isLoading ? "..." : `${Number(raffleData.jackpotAmount || 0) * 150}円`}
+                </div>
               </div>
             </div>
 
@@ -131,39 +259,29 @@ export default function RaffleDapp() {
                   <Users className="w-5 h-5 text-indigo-500" />
                   <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">参加者 (3/3必要)</h3>
                 </div>
-                <span className="text-sm text-slate-500">現在の参加者: 3人</span>
+                <span className="text-sm text-slate-500">
+                  現在の参加者: {isLoading ? "読み込み中..." : raffleData.numberOfPlayers}人
+                </span>
               </div>
               <div className="flex flex-wrap gap-2 mb-6">
-                {["0x7a23...9f21", "0x3b45...c72e", "0x9d12...4e5f"].map((address, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 px-4 py-2 rounded-full"
-                  >
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600"></div>
-                    <span className="text-sm font-medium">{address}</span>
-                  </div>
-                ))}
+                {isLoading ? (
+                  <div className="text-sm text-slate-500">プレイヤー情報を読み込み中...</div>
+                ) : (
+                  raffleData.players?.map((player, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 px-4 py-2 rounded-full"
+                    >
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600"></div>
+                      <span className="text-sm font-medium">{formatAddress(player)}</span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
             <div className="relative">
-              <button
-                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
-                onClick={handleEnterRaffle}
-                disabled={isEntering}
-              >
-                {isEntering ? (
-                  <>
-                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
-                    処理中...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="w-5 h-5" />
-                    ラッフルに参加する (10 USDC)
-                  </>
-                )}
-              </button>
+              {renderRaffleButton()}
               <div className="absolute -top-2 right-2">
                 <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">ガス代無料</Badge>
               </div>
@@ -173,7 +291,11 @@ export default function RaffleDapp() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">
             <h3 className="text-xl font-bold mb-4">ユーザー情報</h3>
             <div className="bg-slate-100 dark:bg-slate-700 p-3 rounded-xl font-mono text-sm mb-6 break-all flex items-center justify-between">
-              <span>0x7a2345...9f21</span>
+              {isConnected ? (
+                <span>{formatAddress(address)}</span>
+              ) : (
+                <span className="text-slate-400">未接続</span>
+              )}
               <Badge
                 variant="outline"
                 className="ml-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
@@ -212,7 +334,7 @@ export default function RaffleDapp() {
                         ? "border-2 border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
                         : "border-2 border-transparent bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600"
                     }`}
-                    onClick={() => setActiveChain(chain)}
+                    onClick={() => handleChainChange(chain)}
                   >
                     <Image
                       src={chain.icon || "/placeholder.svg"}
@@ -309,7 +431,7 @@ export default function RaffleDapp() {
                       <td className="py-4 px-4 text-slate-500">{row.time}</td>
                       <td className="py-4 pl-4">
                         <a
-                          href={`https://etherscan.io/tx/${row.tx}`}
+                          href={`https://sepolia-explorer.arbitrum.io/tx/${row.tx}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 underline text-sm"
@@ -348,4 +470,3 @@ export default function RaffleDapp() {
     </div>
   )
 }
-

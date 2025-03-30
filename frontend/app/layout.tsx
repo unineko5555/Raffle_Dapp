@@ -3,13 +3,14 @@ import "./globals.css"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
+import { WagmiProviderWrapper } from "./providers/wagmi-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Raffle Dapp",
   description: "A modern raffle application on the blockchain",
-    generator: 'v0.dev'
+  generator: 'v0.dev'
 }
 
 export default function RootLayout({
@@ -21,13 +22,11 @@ export default function RootLayout({
     <html lang="ja" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          {children}
+          <WagmiProviderWrapper>
+            {children}
+          </WagmiProviderWrapper>
         </ThemeProvider>
       </body>
     </html>
   )
 }
-
-
-
-import './globals.css'

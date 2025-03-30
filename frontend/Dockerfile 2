@@ -1,0 +1,60 @@
+# フロントエンド用Dockerfile
+FROM node:18-alpine AS base
+
+# インストール先の作業ディレクトリを作成
+WORKDIR /app
+
+# 開発時に使用する依存関係を最初にインストール
+FROM base AS deps
+COPY package.json package-lock.json* pnpm-lock.yaml* ./
+RUN \
+  if [ -f pnpm-lock.yaml ]; then npm install -g pnpm && pnpm i && pnpm add -D @tailwindcss/postcss; \
+  elif [ -f package-lock.json ]; then npm ci && npm install -D @tailwindcss/postcss; \
+  else npm install && npm install -D @tailwindcss/postcss; \
+  fi
+
+# 開発サーバー用のステージ
+FROM base AS dev
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# postcss.config.js/mjs ファイルを更新
+RUN if [ -f postcss.config.js ]; then \
+      sed -i 's/tailwindcss/@tailwindcss\/postcss/g' postcss.config.js; \
+    fi && \
+    if [ -f postcss.config.mjs ]; then \
+      sed -i 's/tailwindcss/@tailwindcss\/postcss/g' postcss.config.mjs; \
+    fi
+
+# 開発サーバーを起動
+CMD ["npm", "run", "dev"]
+
+# ビルド用のステージ（本番デプロイ時）
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# postcss.config.js/mjs ファイルを更新
+RUN if [ -f postcss.config.js ]; then \
+      sed -i 's/tailwindcss/@tailwindcss\/postcss/g' postcss.config.js; \
+    fi && \
+    if [ -f postcss.config.mjs ]; then \
+      sed -i 's/tailwindcss/@tailwindcss\/postcss/g' postcss.config.mjs; \
+    fi
+
+RUN npm run build
+
+# 本番用ステージ
+FROM base AS prod
+WORKDIR /app
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+EXPOSE 3000
+ENV PORT 3000
+ENV NODE_ENV production
+
+CMD ["node", "server.js"]

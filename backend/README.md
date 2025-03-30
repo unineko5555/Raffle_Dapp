@@ -13,10 +13,8 @@
 - **コントラクト設計**: UUPSプロキシパターン (アップグレード可能)
 - **対応チェーン**:
   - Ethereum Sepolia
-  - Polygon Mumbai
-  - Arbitrum Sepolia
-  - Optimism Goerli
   - Base Sepolia
+  - Arbitrum Sepolia
 
 ## アーキテクチャ
 
@@ -48,17 +46,11 @@
     |                    |          |                 |
     | Ethereum Sepolia   +<-------->+                 +<--------->  +-------------------+
     |                    |          |                 |             |                   |
-    +--------------------+          |                 |             | Polygon Mumbai    |
+    +--------------------+          |                 |             | Base Sepolia      |
                                     |   Chainlink     |             |                   |
     +--------------------+          |   CCIP          |             +-------------------+
     |                    |          |   (クロスチェーン|
-    | Base Sepolia       +<-------->+   通信)         +<--------->  +-------------------+
-    |                    |          |                 |             |                   |
-    +--------------------+          |                 |             | Arbitrum Sepolia  |
-                                    |                 |             |                   |
-    +--------------------+          |                 |             +-------------------+
-    |                    |          |                 |
-    | Optimism Goerli    +<-------->+                 |
+    | Arbitrum Sepolia   +<-------->+   通信)         |
     |                    |          |                 |
     +--------------------+          +-----------------+
 ```
@@ -132,7 +124,7 @@
 
 4. **クロスチェーン通信**
    - 異なるチェーン間でのラッフル結果の共有
-   - 対応チェーン: テストネット（Sepolia、Mumbai、Arbitrum Sepolia、Optimism Goerli、Base Sepolia）
+   - 対応チェーン: テストネット（Sepolia、Base Sepolia、Arbitrum Sepolia）
 
 5. **アップグレード可能**
    - UUPSプロキシパターンによるアップグレード可能なコントラクト
@@ -165,19 +157,33 @@ forge test
 ```bash
 export PRIVATE_KEY=your_private_key
 export SEPOLIA_RPC_URL=your_sepolia_rpc_url
+export BASE_SEPOLIA_RPC_URL=your_base_sepolia_rpc_url
+export ARBITRUM_SEPOLIA_RPC_URL=your_arbitrum_sepolia_rpc_url
 export ETHERSCAN_API_KEY=your_etherscan_api_key
+export BASE_API_KEY=your_base_api_key
+export ARBISCAN_API_KEY=your_arbiscan_api_key
 ```
 
 2. デプロイ:
 
 ```bash
-forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $SEPOLIA_RPC_URL --broadcast --verify
+# Ethereum Sepoliaにデプロイ
+make deploy-sepolia
+
+# 他のチェーンにデプロイ
+make deploy-base-sepolia
+make deploy-arb-sepolia
 ```
 
 ### 検証
 
 ```bash
-forge verify-contract <DEPLOYED_ADDRESS> src/RaffleImplementation.sol:RaffleImplementation --chain sepolia --etherscan-api-key $ETHERSCAN_API_KEY
+# Ethereum Sepolia上のコントラクトを検証
+make verify-sepolia
+
+# 他のチェーン上のコントラクトを検証
+make verify-base-sepolia
+make verify-arb-sepolia
 ```
 
 ## ライセンス
