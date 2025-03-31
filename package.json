@@ -1,0 +1,10 @@
+{
+  "name": "raffle-dapp",
+  "version": "1.0.0",
+  "description": "Cross-chain Raffle DApp with Chainlink VRF, Automation, and CCIP",
+  "scripts": {
+    "update-contracts": "node scripts/update-contracts.js"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

@@ -1,24 +1,30 @@
 -include .env
 
-.PHONY: all test clean deploy-sepolia deploy-base-sepolia deploy-arb-sepolia help check-env format anvil install
+.PHONY: all test clean deploy-sepolia deploy-base-sepolia deploy-arb-sepolia deploy-sepolia-with-update deploy-base-sepolia-with-update deploy-arb-sepolia-with-update deploy-all deploy-all-with-update update-frontend help check-env format anvil install
 
 help:
 	@echo "Usage:"
-	@echo "  make install             - Install dependencies"
-	@echo "  make build               - Build the project"
-	@echo "  make test                - Run all tests"
-	@echo "  make test-unit           - Run unit tests only"
-	@echo "  make test-integration    - Run integration tests only"
-	@echo "  make anvil               - Run Anvil local chain"
-	@echo "  make deploy-anvil        - Deploy to Anvil local chain"
-	@echo "  make deploy-sepolia      - Deploy to Ethereum Sepolia testnet"
-	@echo "  make deploy-base-sepolia - Deploy to Base Sepolia testnet"
-	@echo "  make deploy-arb-sepolia  - Deploy to Arbitrum Sepolia testnet"
-	@echo "  make verify-sepolia      - Verify contracts on Ethereum Sepolia"
-	@echo "  make verify-base-sepolia - Verify contracts on Base Sepolia"
-	@echo "  make verify-arb-sepolia  - Verify contracts on Arbitrum Sepolia"
-	@echo "  make format              - Format code with forge fmt"
-	@echo "  make clean               - Clean build artifacts"
+	@echo "  make install                      - Install dependencies"
+	@echo "  make build                        - Build the project"
+	@echo "  make test                         - Run all tests"
+	@echo "  make test-unit                    - Run unit tests only"
+	@echo "  make test-integration             - Run integration tests only"
+	@echo "  make anvil                        - Run Anvil local chain"
+	@echo "  make deploy-anvil                 - Deploy to Anvil local chain"
+	@echo "  make deploy-sepolia               - Deploy to Ethereum Sepolia testnet"
+	@echo "  make deploy-base-sepolia          - Deploy to Base Sepolia testnet"
+	@echo "  make deploy-arb-sepolia           - Deploy to Arbitrum Sepolia testnet"
+	@echo "  make deploy-sepolia-with-update   - Deploy to Sepolia and update frontend config"
+	@echo "  make deploy-base-sepolia-with-update - Deploy to Base Sepolia and update frontend config"
+	@echo "  make deploy-arb-sepolia-with-update  - Deploy to Arbitrum Sepolia and update frontend config"
+	@echo "  make deploy-all                   - Deploy to all testnets"
+	@echo "  make deploy-all-with-update       - Deploy to all testnets and update frontend config"
+	@echo "  make update-frontend              - Update frontend contract configuration"
+	@echo "  make verify-sepolia               - Verify contracts on Ethereum Sepolia"
+	@echo "  make verify-base-sepolia          - Verify contracts on Base Sepolia"
+	@echo "  make verify-arb-sepolia           - Verify contracts on Arbitrum Sepolia"
+	@echo "  make format                       - Format code with forge fmt"
+	@echo "  make clean                        - Clean build artifacts"
 
 all: clean install build test
 
@@ -81,17 +87,31 @@ deploy-anvil:
 check-env:
 	@if [ -z "$(PRIVATE_KEY)" ]; then echo "PRIVATE_KEY is not set"; exit 1; fi
 
+update-frontend:
+	@echo "Updating frontend contract configuration..."
+	cd .. && npm run update-contracts
+
 deploy-sepolia: check-env
 	@echo "Deploying to Ethereum Sepolia testnet..."
 	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY)
+
+deploy-sepolia-with-update: deploy-sepolia update-frontend
 
 deploy-base-sepolia: check-env
 	@echo "Deploying to Base Sepolia testnet..."
 	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(BASE_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(BASE_API_KEY)
 
+deploy-base-sepolia-with-update: deploy-base-sepolia update-frontend
+
 deploy-arb-sepolia: check-env
 	@echo "Deploying to Arbitrum Sepolia testnet..."
 	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ARBISCAN_API_KEY)
+
+deploy-arb-sepolia-with-update: deploy-arb-sepolia update-frontend
+
+deploy-all: deploy-sepolia deploy-base-sepolia deploy-arb-sepolia
+
+deploy-all-with-update: deploy-all update-frontend
 
 # ==============================================================================
 # Contract Verification
