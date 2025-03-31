@@ -71,6 +71,7 @@ contract RaffleImplementation is
      * @param entranceFee ラッフル参加料
      * @param usdcAddress USDCトークンのアドレス
      * @param ccipRouter CCIPルーターのアドレス
+     * @param addMockPlayers テスト用にモックプレイヤーを追加するかどうか
      */
     function initialize(
         address vrfCoordinatorV2,
@@ -79,7 +80,8 @@ contract RaffleImplementation is
         uint32 callbackGasLimit,
         uint256 entranceFee,
         address usdcAddress,
-        address ccipRouter
+        address ccipRouter,
+        bool addMockPlayers
     ) external {
         // 初期化は一度だけ
         require(!s_initialized, "Already initialized");
@@ -98,6 +100,31 @@ contract RaffleImplementation is
         s_minTimeAfterMinPlayers = 1 minutes;
         s_raffleState = RaffleState.OPEN;
         s_owner = msg.sender;
+        
+        // テスト環境用にモックプレイヤーを追加
+        if (addMockPlayers) {
+            // 2つのモックアドレスを生成して追加
+            address mockPlayer1 = address(uint160(uint256(keccak256(abi.encodePacked("mockPlayer1", block.timestamp)))));
+            address mockPlayer2 = address(uint160(uint256(keccak256(abi.encodePacked("mockPlayer2", block.timestamp)))));
+            
+            s_players.push(mockPlayer1);
+            s_players.push(mockPlayer2);
+            
+            // ジャックポットへの寄与を追加 (2人分の10%)
+            s_jackpotAmount += (entranceFee / 10) * 2;
+            
+            // イベントを発行
+            emit RaffleEnter(mockPlayer1, entranceFee);
+            emit RaffleEnter(mockPlayer2, entranceFee);
+            
+            // 最小プレイヤー数に達した場合のタイムスタンプを設定
+            if (s_players.length >= s_minimumPlayers) {
+                s_minPlayersReachedTime = block.timestamp;
+            }
+            
+            // ログ記録
+            emit RaffleStateChanged(s_raffleState);
+        }
         
         // 初期化完了をマーク
         s_initialized = true;

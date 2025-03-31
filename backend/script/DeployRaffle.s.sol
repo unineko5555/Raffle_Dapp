@@ -38,7 +38,8 @@ contract DeployRaffle is Script {
             callbackGasLimit,
             entranceFee,
             usdcAddress,
-            ccipRouter
+            ccipRouter,
+            true  // addMockPlayers: テスト用にモックプレイヤーを2人追加
         );
 
         // プロキシコントラクトのデプロイ
