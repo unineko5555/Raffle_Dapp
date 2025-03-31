@@ -10,7 +10,7 @@ import {Script} from "forge-std/Script.sol";
 contract HelperConfig is Script {
     struct NetworkConfig {
         address vrfCoordinatorV2;
-        uint64 subscriptionId;
+        uint256 subscriptionId;
         bytes32 keyHash;
         uint32 callbackGasLimit;
         uint256 entranceFee;
@@ -27,12 +27,8 @@ contract HelperConfig is Script {
     constructor() {
         if (block.chainid == 11155111) {
             activeNetworkConfig = getSepoliaConfig();
-        } else if (block.chainid == 80001) {
-            activeNetworkConfig = getPolygonMumbaiConfig();
         } else if (block.chainid == 421613) {
             activeNetworkConfig = getArbitrumSepoliaConfig();
-        } else if (block.chainid == 420) {
-            activeNetworkConfig = getOptimismGoerliConfig();
         } else if (block.chainid == 84531) {
             activeNetworkConfig = getBaseSepoliaConfig();
         } else {
@@ -46,27 +42,12 @@ contract HelperConfig is Script {
     function getSepoliaConfig() public pure returns (NetworkConfig memory) {
         return NetworkConfig({
             vrfCoordinatorV2: 0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625,
-            subscriptionId: 0,  // 適切なIDに置き換える必要あり
-            keyHash: 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c,
+            subscriptionId: 35215710747108285885424679702400045098207236400821432776421763953481952749017,  // 適切なIDに置き換える必要あり
+            keyHash: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
-            usdcAddress: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238, // Sepolia USDC
+            usdcAddress: 0x74ce1e12998fB861A612CD6C65244f8620e2937A, // Sepolia USDC
             ccipRouter: 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59 // Sepolia CCIP Router
-        });
-    }
-
-    /**
-     * @notice Polygon Mumbai設定を取得する関数
-     */
-    function getPolygonMumbaiConfig() public pure returns (NetworkConfig memory) {
-        return NetworkConfig({
-            vrfCoordinatorV2: 0x7a1BaC17Ccc5b313516C5E16fb24f7659aA5ebed,
-            subscriptionId: 0,  // 適切なIDに置き換える必要あり
-            keyHash: 0x4b09e658ed251bcafeebbc69400383d49f344ace09b9576fe248bb02c003fe9f,
-            callbackGasLimit: 500000,
-            entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
-            usdcAddress: 0xe11A86849d99F524cAC3E7A0Ec1241828e332C62, // Mumbai USDC
-            ccipRouter: 0x70499c328e1E2a3c41108bd3730F6670a44595D1 // Mumbai CCIP Router
         });
     }
 
@@ -75,8 +56,8 @@ contract HelperConfig is Script {
      */
     function getArbitrumSepoliaConfig() public pure returns (NetworkConfig memory) {
         return NetworkConfig({
-            vrfCoordinatorV2: 0x50D47e4142598e3411AA864E08a44284E471ac6B,
-            subscriptionId: 0,  // 適切なIDに置き換える必要あり
+            vrfCoordinatorV2: 0x5CE8D5A2BC84beb22a398CCA51996F7930313D61,
+            subscriptionId: 0x1770bdc7eec7771f7ba4ffd640f34260d7f095b79c92d34a5b2551d6f6cfd2be,  // 適切なIDに置き換える必要あり
             keyHash: 0x027f94ff1465b3525f9fc03e7775f2e5fdecb70a974f61ffce645b6f115ae0f9,
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
@@ -86,32 +67,17 @@ contract HelperConfig is Script {
     }
 
     /**
-     * @notice Optimism Goerli設定を取得する関数
-     */
-    function getOptimismGoerliConfig() public pure returns (NetworkConfig memory) {
-        return NetworkConfig({
-            vrfCoordinatorV2: 0xb9c51146A152648195f5E2c0a2cDA6b8e306138b,
-            subscriptionId: 0,  // 適切なIDに置き換える必要あり
-            keyHash: 0x252bc3f4ba2089c44a7789fd17f30e0c4aab9c2798271a1dca379f0a8b5048ce,
-            callbackGasLimit: 500000,
-            entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
-            usdcAddress: 0x7E07E15D2a87A24492740D16f5bdF58c16db0c4E, // Optimism Goerli USDC
-            ccipRouter: 0xEB52E9Ae4A9Fb37172978642d4C141ef53876f26 // Optimism Goerli CCIP Router
-        });
-    }
-
-    /**
      * @notice Base Sepolia設定を取得する関数
      */
     function getBaseSepoliaConfig() public pure returns (NetworkConfig memory) {
         return NetworkConfig({
-            vrfCoordinatorV2: 0xEb3f5079798A346f91f429D23d9aceB22Fc2F369, // Base Sepolia
-            subscriptionId: 0,  // 適切なIDに置き換える必要あり
-            keyHash: 0x8c7bdabb86a2870d9f72517b1c861c05e5afda42e51e5fed9a53bd33c0f0a84c,
+            vrfCoordinatorV2: 0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE, // Base Sepolia
+            subscriptionId: 69214466476307774934285782495489026734162460308852284514466869696940284487610,  // 適切なIDに置き換える必要あり
+            keyHash: 0x9e1344a1247c8a1785d0a4681a27152bffdb43666ae5bf7d14d24a5efd44bf71,
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
-            usdcAddress: 0xF175520C52418dfE19C8098071a252da48Cd1C19, // Base Sepolia USDC
-            ccipRouter: 0xA8C0c11bf64AF62CDCA6f93D3769B88BdD7cb93D // Base Sepolia CCIP Router
+            usdcAddress: 0x036CbD53842c5426634e7929541eC2318f3dCF7e, // Base Sepolia USDC
+            ccipRouter: 0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93 // Base Sepolia CCIP Router
         });
     }
 
@@ -165,14 +131,14 @@ contract MockVRFCoordinatorV2 {
     uint96 public GAS_PRICE_LINK = 1e9; // 1 gwei LINK
 
     mapping(uint256 => address) public s_requests;
-    mapping(uint64 => address) public s_subscriptions;
-    uint64 private s_currentSubId;
+    mapping(uint256 => address) public s_subscriptions;
+    uint256 private s_currentSubId;
 
     event RandomWordsRequested(
         bytes32 indexed keyHash,
         uint256 requestId,
         uint256 preSeed,
-        uint64 indexed subId,
+        uint256 indexed subId,
         uint16 minimumRequestConfirmations,
         uint32 callbackGasLimit,
         uint32 numWords,
@@ -185,27 +151,27 @@ contract MockVRFCoordinatorV2 {
         uint256 payment
     );
 
-    event SubscriptionCreated(uint64 indexed subId, address owner);
-    event SubscriptionFunded(uint64 indexed subId, uint256 oldBalance, uint256 newBalance);
+    event SubscriptionCreated(uint256 indexed subId, address owner);
+    event SubscriptionFunded(uint256 indexed subId, uint256 oldBalance, uint256 newBalance);
     
     function createSubscription() external returns (uint64) {
         s_currentSubId++;
         s_subscriptions[s_currentSubId] = msg.sender;
         emit SubscriptionCreated(s_currentSubId, msg.sender);
-        return s_currentSubId;
+        return uint64(s_currentSubId);
     }
 
-    function addConsumer(uint64 subId, address consumer) external {
+    function addConsumer(uint256 subId, address consumer) external {
         // 簡略化のため実装を省略
     }
 
-    function removeConsumer(uint64 subId, address consumer) external {
+    function removeConsumer(uint256 subId, address consumer) external {
         // 簡略化のため実装を省略
     }
 
     function requestRandomWords(
         bytes32 keyHash,
-        uint64 subId,
+        uint256 subId,
         uint16 minimumRequestConfirmations,
         uint32 callbackGasLimit,
         uint32 numWords
@@ -316,7 +282,7 @@ contract MockCCIPRouter {
 
     event MessageSent(
         bytes32 indexed messageId,
-        uint64 indexed destinationChainSelector,
+        uint256 indexed destinationChainSelector,
         address sender,
         bytes receiver,
         bytes data
@@ -326,7 +292,7 @@ contract MockCCIPRouter {
     uint256 private messageIdCounter;
 
     function getFee(
-        uint64 destinationChainSelector,
+        uint256 destinationChainSelector,
         EVM2AnyMessage memory message
     ) external view returns (uint256) {
         // 簡略化のためハードコードした手数料を返す
@@ -334,7 +300,7 @@ contract MockCCIPRouter {
     }
 
     function ccipSend(
-        uint64 destinationChainSelector,
+        uint256 destinationChainSelector,
         EVM2AnyMessage calldata message
     ) external payable returns (bytes32) {
         // メッセージIDを生成

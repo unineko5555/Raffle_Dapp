@@ -15,7 +15,7 @@ contract DeployRaffle is Script {
         HelperConfig helperConfig = new HelperConfig();
         (
             address vrfCoordinatorV2,
-            uint64 subscriptionId,
+            uint256 subscriptionId,
             bytes32 keyHash,
             uint32 callbackGasLimit,
             uint256 entranceFee,
@@ -27,7 +27,11 @@ contract DeployRaffle is Script {
         vm.startBroadcast();
 
         // 実装コントラクトのデプロイ
-        RaffleImplementation implementation = new RaffleImplementation(
+        RaffleImplementation implementation = new RaffleImplementation();
+
+        // 初期化データの準備
+        bytes memory initData = abi.encodeWithSelector(
+            RaffleImplementation.initialize.selector,
             vrfCoordinatorV2,
             subscriptionId,
             keyHash,
@@ -36,9 +40,6 @@ contract DeployRaffle is Script {
             usdcAddress,
             ccipRouter
         );
-
-        // 初期化データの準備（必要に応じて）
-        bytes memory initData = new bytes(0);
 
         // プロキシコントラクトのデプロイ
         RaffleProxy proxy = new RaffleProxy(

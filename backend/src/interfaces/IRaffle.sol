@@ -78,7 +78,7 @@ interface IRaffle {
      * @param isJackpot ジャックポット当選かどうか
      */
     function sendCrossChainMessage(
-        uint64 destinationChainSelector,
+        uint256 destinationChainSelector,
         address winner,
         uint256 prize,
         bool isJackpot
@@ -111,5 +111,5 @@ interface IRaffle {
      * @param destinationChainSelector 送信先チェーンのセレクタ
      * @param messageId CCIPのメッセージID
      */
-    event CrossChainMessageSent(uint64 indexed destinationChainSelector, bytes32 indexed messageId);
+    event CrossChainMessageSent(uint256 indexed destinationChainSelector, bytes32 indexed messageId);
 }

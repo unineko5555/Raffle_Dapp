@@ -18,14 +18,14 @@ contract RaffleTest is Test {
     event RaffleEnter(address indexed player, uint256 entranceFee);
     event WinnerPicked(address indexed winner, uint256 prize, bool isJackpot);
     event RaffleStateChanged(IRaffle.RaffleState newState);
-    event CrossChainMessageSent(uint64 indexed destinationChainSelector, bytes32 indexed messageId);
+    event CrossChainMessageSent(uint256 indexed destinationChainSelector, bytes32 indexed messageId);
 
     // テスト用変数
     RaffleImplementation public raffleImplementation;
     RaffleProxy public raffleProxy;
     HelperConfig public helperConfig;
     address public vrfCoordinatorV2;
-    uint64 public subscriptionId;
+    uint256 public subscriptionId;
     bytes32 public keyHash;
     uint32 public callbackGasLimit;
     uint256 public entranceFee;
@@ -300,7 +300,7 @@ contract RaffleTest is Test {
         RaffleImplementation raffle = RaffleImplementation(payable(address(raffleProxy)));
         
         // オーナーとしてメッセージを送信
-        uint64 destinationChainSelector = 1234;
+        uint256 destinationChainSelector = 1234;
         address winner = USER;
         uint256 prize = 100 * 1e6; // 100 USDC
         bool isJackpot = false;
@@ -349,15 +349,7 @@ contract RaffleTest is Test {
     function testProxyUpgrade() public {
         // 新しい実装コントラクトをデプロイ
         vm.startBroadcast();
-        RaffleImplementation newImplementation = new RaffleImplementation(
-            vrfCoordinatorV2,
-            subscriptionId,
-            keyHash,
-            callbackGasLimit,
-            entranceFee,
-            usdcAddress,
-            ccipRouter
-        );
+        RaffleImplementation newImplementation = new RaffleImplementation();
         vm.stopBroadcast();
         
         // 現在の実装を取得

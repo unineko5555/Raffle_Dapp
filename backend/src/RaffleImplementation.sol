@@ -23,19 +23,19 @@ contract RaffleImplementation is
 {
     /* 状態変数 */
     // Chainklink VRF用の変数
-    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
-    uint64 private immutable i_subscriptionId;
-    bytes32 private immutable i_keyHash;
+    VRFCoordinatorV2Interface private s_vrfCoordinator;
+    uint256 private s_subscriptionId;
+    bytes32 private s_keyHash;
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
-    uint32 private immutable i_callbackGasLimit;
+    uint32 private s_callbackGasLimit;
     uint32 private constant NUM_WORDS = 2;
     uint256 private s_lastRequestId;
 
     // ラッフル設定
-    uint256 private immutable i_entranceFee;
-    uint256 private immutable i_minimumPlayers;
-    uint256 private immutable i_minTimeAfterMinPlayers;
-    address private immutable i_usdcAddress;
+    uint256 private s_entranceFee;
+    uint256 private s_minimumPlayers;
+    uint256 private s_minTimeAfterMinPlayers;
+    address private s_usdcAddress;
     uint256 private s_jackpotAmount;
     
     // ラッフル状態管理
@@ -48,13 +48,22 @@ contract RaffleImplementation is
     uint256 private s_minPlayersReachedTime;
 
     // Chainlink CCIP用の変数
-    CCIPInterface private immutable i_ccipRouter;
+    CCIPInterface private s_ccipRouter;
+
+    // 初期化状態管理
+    bool private s_initialized;
 
     // オーナー管理
     address private s_owner;
 
-    // コンストラクタ
+    // コンストラクタ - シンプルな実装
+    constructor() VRFConsumerBaseV2(address(0)) {
+        // コンストラクタはそのまま使用されない
+        // プロキシパターンでは初期化関数を使用する
+    }
+
     /**
+     * @notice 初期化関数 - プロキシパターンで使用される
      * @param vrfCoordinatorV2 VRFコーディネーターアドレス
      * @param subscriptionId VRFサブスクリプションID
      * @param keyHash VRFキーハッシュ
@@ -63,26 +72,35 @@ contract RaffleImplementation is
      * @param usdcAddress USDCトークンのアドレス
      * @param ccipRouter CCIPルーターのアドレス
      */
-    constructor(
+    function initialize(
         address vrfCoordinatorV2,
-        uint64 subscriptionId,
+        uint256 subscriptionId,
         bytes32 keyHash,
         uint32 callbackGasLimit,
         uint256 entranceFee,
         address usdcAddress,
         address ccipRouter
-    ) VRFConsumerBaseV2(vrfCoordinatorV2) {
-        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
-        i_subscriptionId = subscriptionId;
-        i_keyHash = keyHash;
-        i_callbackGasLimit = callbackGasLimit;
-        i_entranceFee = entranceFee;
-        i_usdcAddress = usdcAddress;
-        i_ccipRouter = CCIPInterface(ccipRouter);
-        i_minimumPlayers = 3;
-        i_minTimeAfterMinPlayers = 1 minutes;
+    ) external {
+        // 初期化は一度だけ
+        require(!s_initialized, "Already initialized");
+        
+        // VRFコーディネーターを設定
+        s_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
+        s_subscriptionId = subscriptionId;
+        s_keyHash = keyHash;
+        s_callbackGasLimit = callbackGasLimit;
+        
+        // ラッフル設定
+        s_entranceFee = entranceFee;
+        s_usdcAddress = usdcAddress;
+        s_ccipRouter = CCIPInterface(ccipRouter);
+        s_minimumPlayers = 3;
+        s_minTimeAfterMinPlayers = 1 minutes;
         s_raffleState = RaffleState.OPEN;
         s_owner = msg.sender;
+        
+        // 初期化完了をマーク
+        s_initialized = true;
     }
 
     /**
@@ -94,23 +112,23 @@ contract RaffleImplementation is
         require(s_raffleState == RaffleState.OPEN, "Raffle is not open");
 
         // 参加料の転送
-        IERC20 usdc = IERC20(i_usdcAddress);
-        require(usdc.transferFrom(msg.sender, address(this), i_entranceFee), "USDC transfer failed");
+        IERC20 usdc = IERC20(s_usdcAddress);
+        require(usdc.transferFrom(msg.sender, address(this), s_entranceFee), "USDC transfer failed");
 
         // ジャックポットに10%を追加
-        uint256 jackpotContribution = i_entranceFee / 10;
+        uint256 jackpotContribution = s_entranceFee / 10;
         s_jackpotAmount += jackpotContribution;
 
         // プレイヤーを追加
         s_players.push(msg.sender);
 
         // 最小プレイヤー数に達したかチェック
-        if (s_players.length == i_minimumPlayers) {
+        if (s_players.length == s_minimumPlayers) {
             s_minPlayersReachedTime = block.timestamp;
         }
 
         // イベント発火
-        emit RaffleEnter(msg.sender, i_entranceFee);
+        emit RaffleEnter(msg.sender, s_entranceFee);
     }
 
     /**
@@ -126,11 +144,11 @@ contract RaffleImplementation is
         returns (bool upkeepNeeded, bytes memory /* performData */) 
     {
         bool isOpen = s_raffleState == RaffleState.OPEN;
-        bool hasPlayers = s_players.length >= i_minimumPlayers;
+        bool hasPlayers = s_players.length >= s_minimumPlayers;
         bool hasTimePassed = false;
         
         if (hasPlayers) {
-            hasTimePassed = (block.timestamp - s_minPlayersReachedTime) > i_minTimeAfterMinPlayers;
+            hasTimePassed = (block.timestamp - s_minPlayersReachedTime) > s_minTimeAfterMinPlayers;
         }
         
         upkeepNeeded = (isOpen && hasPlayers && hasTimePassed);
@@ -150,11 +168,11 @@ contract RaffleImplementation is
         emit RaffleStateChanged(s_raffleState);
 
         // Chainlink VRFに乱数生成をリクエスト
-        uint256 requestId = i_vrfCoordinator.requestRandomWords(
-            i_keyHash,
-            i_subscriptionId,
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+            s_keyHash,
+            uint64(s_subscriptionId),
             REQUEST_CONFIRMATIONS,
-            i_callbackGasLimit,
+            s_callbackGasLimit,
             NUM_WORDS
         );
 
@@ -173,7 +191,7 @@ contract RaffleImplementation is
         s_recentWinner = winner;
 
         // 賞金額を計算
-        uint256 prize = (i_entranceFee * s_players.length) * 90 / 100; // 参加料の90%が賞金
+        uint256 prize = (s_entranceFee * s_players.length) * 90 / 100; // 参加料の90%が賞金
         s_recentPrize = prize;
 
         // 修正: ジャックポット当選判定 - 配列の長さをチェック
@@ -193,7 +211,7 @@ contract RaffleImplementation is
         }
 
         // 当選者に賞金を送金
-        IERC20 usdc = IERC20(i_usdcAddress);
+        IERC20 usdc = IERC20(s_usdcAddress);
         require(usdc.transfer(winner, prize), "Prize transfer failed");
 
         // ラッフルをリセット
@@ -216,7 +234,7 @@ contract RaffleImplementation is
      * @param isJackpot ジャックポット当選かどうか
      */
     function sendCrossChainMessage(
-        uint64 destinationChainSelector,
+        uint256 destinationChainSelector,
         address winner,
         uint256 prize,
         bool isJackpot
@@ -241,11 +259,11 @@ contract RaffleImplementation is
         });
 
         // メッセージ送信の手数料を計算
-        uint256 fee = i_ccipRouter.getFee(destinationChainSelector, message);
+        uint256 fee = s_ccipRouter.getFee(destinationChainSelector, message);
         require(address(this).balance >= fee, "Insufficient balance for fee");
 
         // メッセージを送信
-        bytes32 messageId = i_ccipRouter.ccipSend{value: fee}(destinationChainSelector, message);
+        bytes32 messageId = s_ccipRouter.ccipSend{value: fee}(destinationChainSelector, message);
 
         // イベント発行
         emit CrossChainMessageSent(destinationChainSelector, messageId);
@@ -269,7 +287,7 @@ contract RaffleImplementation is
             uint256 balance = erc20.balanceOf(address(this));
             
             // ジャックポット分を除く残高のみ引き出し可能
-            if (token == i_usdcAddress) {
+            if (token == s_usdcAddress) {
                 balance -= s_jackpotAmount;
             }
             
@@ -345,7 +363,7 @@ contract RaffleImplementation is
     }
 
     function getEntranceFee() external view override returns (uint256) {
-        return i_entranceFee;
+        return s_entranceFee;
     }
 
     function getPlayer(uint256 index) external view returns (address) {
@@ -361,7 +379,7 @@ contract RaffleImplementation is
     }
 
     function getMinimumPlayers() external view returns (uint256) {
-        return i_minimumPlayers;
+        return s_minimumPlayers;
     }
 
     function getOwner() external view returns (address) {

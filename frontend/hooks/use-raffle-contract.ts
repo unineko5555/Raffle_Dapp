@@ -39,6 +39,122 @@ export function useRaffleContract() {
   const contractAddress = contractConfig[currentChainId]?.raffleProxy || "";
   const erc20Address = contractConfig[currentChainId]?.erc20Address || "";
 
+  // コントラクトの設定を確認する関数
+  const checkContractSettings = async () => {
+    if (!isConnected || !contractAddress || !publicClient) return;
+    
+    try {
+      console.log('プロキシ設定確認開始:');
+      
+      // コントラクトコードの確認
+      const code = await publicClient.getBytecode({ address: contractAddress as `0x${string}` });
+      console.log('- コントラクトコード長:', code ? code.length : 0);
+      
+      // エントランス料金の取得
+      try {
+        const entranceFee = await publicClient.readContract({
+          address: contractAddress as `0x${string}`,
+          abi: RaffleABI,
+          functionName: "getEntranceFee",
+        });
+        console.log('- エントランス料金:', entranceFee);
+      } catch (error) {
+        console.error('エントランス料金取得エラー:', error);
+      }
+
+      // enterRaffle関数のデバッグ実行
+      try {
+        console.log('enterRaffle関数のデバッグ実行:');
+        await publicClient.simulateContract({
+          address: contractAddress as `0x${string}`,
+          abi: RaffleABI,
+          functionName: "enterRaffle",
+          account: address
+        }).catch(error => {
+          console.log('シミュレーションエラー詳細:', error);
+          // 残高不足エラーから情報を抽出
+          const errorMessage = error.message || '';
+          if (errorMessage.includes('transfer amount exceeds balance')) {
+            // エラー内容を詳細に分析
+            console.log('エラーデータ詳細分析:');
+            console.log('- メッセージ:', errorMessage);
+            console.log('- エラーオブジェクト:', error);
+            
+            // コントラクトの実行データを探索
+            if (error.cause) {
+              console.log('- 原因情報:', error.cause);
+            }
+          }
+          throw error;
+        });
+      } catch (error) {
+        // ここでエラーを飲み込み
+        console.log('シミュレーションエラーを飲み込みました');
+      }
+      
+      // その他のデバッグ情報表示
+      console.log('プロキシ設定確認完了');
+    } catch (error) {
+      console.error('コントラクト設定確認エラー:', error);
+    }
+  };
+
+  // トークン残高チェック用関数
+  const checkTokenBalance = async () => {
+    if (!isConnected || !address || !erc20Address || !publicClient) return false;
+    
+    try {
+      const balance = await publicClient.readContract({
+        address: erc20Address as `0x${string}`,
+        abi: ERC20ABI,
+        functionName: "balanceOf",
+        args: [address]
+      });
+      
+      const minRequired = entranceFeeData || BigInt(10000000);
+      console.log('トークン残高チェック:', {
+        balance,
+        minRequired,
+        hasEnough: balance >= minRequired
+      });
+      
+      if (balance < minRequired) {
+        setError(`トークン残高が不足しています (${formatUnits(balance, 6)} / 必要額: ${formatUnits(minRequired, 6)} USDC)`);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error("トークン残高チェックエラー:", error);
+      return false;
+    }
+  };
+  
+  // 承認状態チェック用関数
+  const checkAllowance = async () => {
+    if (!isConnected || !address || !erc20Address || !contractAddress || !publicClient) return false;
+    
+    try {
+      const allowance = await publicClient.readContract({
+        address: erc20Address as `0x${string}`,
+        abi: ERC20ABI,
+        functionName: "allowance",
+        args: [address, contractAddress as `0x${string}`]
+      });
+      
+      const minRequired = entranceFeeData || BigInt(10000000);
+      console.log('承認状態チェック:', {
+        allowance,
+        minRequired,
+        hasEnough: allowance >= minRequired
+      });
+      
+      return allowance >= minRequired;
+    } catch (error) {
+      console.error("承認状態チェックエラー:", error);
+      return false;
+    }
+  };
+
   // エントランス料金を取得
   const { data: entranceFeeData, isLoading: isEntranceFeeLoading, isError: isEntranceFeeError, error: entranceFeeError } = useReadContract({
     address: contractAddress as `0x${string}`,
@@ -113,6 +229,11 @@ export function useRaffleContract() {
               const code = await publicClient.getBytecode({ address: contractAddress as `0x${string}` });
               if (code && code.length > 2) {  // 0x以上の値があれば有効
                 console.log('コントラクトは有効です');
+                
+                // デバッグ用のコントラクト設定確認関数を呼び出す
+                if (isConnected && address) {
+                  await checkContractSettings();
+                }
               } else {
                 console.error('コントラクトが見つかりませんでした。アドレスを確認してください:', contractAddress);
               }
@@ -223,6 +344,12 @@ export function useRaffleContract() {
       console.log('- アドレス:', address);
       
       // トークン残高チェック
+      const hasEnoughBalance = await checkTokenBalance();
+      if (!hasEnoughBalance) {
+        throw new Error(error || "トークン残高が不足しています。テストネットUSDCを取得してください。");
+      }
+      
+      // トークン残高のバックアップチェック
       try {
         const balance = await publicClient.readContract({
           address: erc20Address as `0x${string}`,
@@ -234,7 +361,7 @@ export function useRaffleContract() {
         
         // 残高が不足している場合のエラー処理
         if (entranceFeeData && balance < entranceFeeData) {
-          throw new Error(`トークン残高が不足しています。必要金額: ${entranceFeeData} / 現在残高: ${balance}`);
+          throw new Error(`トークン残高が不足しています。必要金額: ${formatUnits(entranceFeeData, 6)} USDC / 現在残高: ${formatUnits(balance, 6)} USDC`);
         }
       } catch (error) {
         console.error('残高確認エラー:', error);
@@ -321,24 +448,10 @@ export function useRaffleContract() {
       }
 
       // 既存の承認状態をチェック
-      try {
-        console.log('既存の承認状態を確認中...');
-        const allowance = await publicClient.readContract({
-          address: erc20Address as `0x${string}`,
-          abi: ERC20ABI,
-          functionName: "allowance",
-          args: [address, contractAddress as `0x${string}`]
-        });
-        console.log('現在の承認額:', allowance);
-        
-        // 既に十分な承認があれば、新たに承認しない
-        if (allowance >= fee) {
-          console.log('すでに十分な承認があります。スキップします。');
-          return;
-        }
-      } catch (error) {
-        console.error('承認状態確認エラー:', error);
-        // エラーが発生しても承認処理を継続
+      const hasAllowance = await checkAllowance();
+      if (hasAllowance) {
+        console.log('すでに十分な承認があります。スキップします。');
+        return "Allowance already sufficient";
       }
       
       // writeContract関数が利用可能か確認
@@ -347,19 +460,40 @@ export function useRaffleContract() {
         throw new Error("コントラクト書き込み機能が利用できません。ウォレット接続を確認してください");
       }
       
-      // 承認処理を直接実行
-      console.log('新しい承認トランザクションを開始します...');
-      const approveTx = await writeContract({
+      // ApproveをSimulateする
+      const { request } = await publicClient.simulateContract({
         address: erc20Address as `0x${string}`,
         abi: ERC20ABI,
         functionName: "approve",
-        args: [contractAddress as `0x${string}`, BigInt("100000000000000")] // 大きめの値で承認
+        args: [contractAddress as `0x${string}`, BigInt("100000000000000")], // 大きめの値で承認
+        account: address
+      }).catch(error => {
+        console.error('承認シミュレーション失敗:', error);
+        throw new Error(`承認シミュレーションに失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
       });
+      
+      if (!request) {
+        throw new Error("承認リクエストの準備に失敗しました");
+      }
+      
+      // 承認処理を直接実行
+      console.log('新しい承認トランザクションを開始します...');
+      const approveTx = await writeContract(request);
+      
+      if (!approveTx) {
+        throw new Error("承認トランザクションの送信に失敗しました");
+      }
       
       console.log('承認トランザクションハッシュ:', approveTx);
       
-      // トランザクション完了を待機する（短いタイムアウト）
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // トランザクション完了を待機する
+      try {
+        await publicClient.waitForTransactionReceipt({ hash: approveTx });
+        console.log('承認トランザクションが完了しました');
+      } catch (error) {
+        console.error('承認トランザクション確認エラー:', error);
+        // エラーが発生しても処理を続行
+      }
       
       return approveTx;
     } catch (error) {
@@ -371,21 +505,39 @@ export function useRaffleContract() {
       // エントランス料金を使用してトークン承認
       console.log("承認処理を開始します");
       try {
-        await approveErc20Transaction();
+        const approveResult = await approveErc20Transaction();
         
         // 承認が完了したら継続する
+        console.log("承認結果:", approveResult);
         console.log("承認後、ラッフル参加処理を開始します");
         
-        // 少し待つ
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // 承認後、承認状態を再確認
+        const allowanceAfterApprove = await checkAllowance();
+        if (!allowanceAfterApprove) {
+          throw new Error("承認処理は正常に完了しましたが、承認状態が正しく反映されていません。少し時間をおいてから再試行してください。");
+        }
+        
+        console.log("承認状態の確認が完了しました。ラッフル参加処理を続行します。");
       } catch (error) {
         console.error('トークン承認エラー:', error);
-        // 承認は失敗したが、既に十分な承認がある可能性もあるため継続する
+        throw error;
       }
       
       console.log("ラッフルに参加します");
       
       try {
+        // 再度残高チェック
+        const hasEnoughBalance = await checkTokenBalance();
+        if (!hasEnoughBalance) {
+          throw new Error("残高が不足しています。残高を確認してください。");
+        }
+        
+        // 再度承認状態チェック
+        const hasAllowance = await checkAllowance();
+        if (!hasAllowance) {
+          throw new Error("承認が不足しています。承認処理を再度行ってください。");
+        }
+        
         // enterRaffleのシミュレーションを再実行
         const { request } = await publicClient.simulateContract({
           address: contractAddress as `0x${string}`,

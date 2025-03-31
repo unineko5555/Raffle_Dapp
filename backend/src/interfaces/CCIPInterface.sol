@@ -13,7 +13,7 @@ interface CCIPInterface {
 
     struct Any2EVMMessage {
         bytes32 messageId; // メッセージID
-        uint64 sourceChainSelector; // ソースチェーンセレクタ
+        uint256 sourceChainSelector; // ソースチェーンセレクタ
         bytes sender; // 送信者
         bytes data; // 任意のデータ
         EVMTokenAmount[] tokenAmounts; // トークンの詳細
@@ -34,7 +34,7 @@ interface CCIPInterface {
      * @return fee 必要な手数料
      */
     function getFee(
-        uint64 destinationChainSelector,
+        uint256 destinationChainSelector,
         EVM2AnyMessage memory message
     ) external view returns (uint256 fee);
 
@@ -45,7 +45,7 @@ interface CCIPInterface {
      * @return messageId 作成されたメッセージID
      */
     function ccipSend(
-        uint64 destinationChainSelector,
+        uint256 destinationChainSelector,
         EVM2AnyMessage calldata message
     ) external payable returns (bytes32 messageId);
 }

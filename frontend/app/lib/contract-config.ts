@@ -3,72 +3,36 @@ export const contractConfig = {
   // Ethereum Sepolia
   11155111: {
     name: "Ethereum Sepolia",
-    raffleProxy: "0xd046d3280454fd2079e88569c2be016a476331d3", // Sepoliaにデプロイしたプロキシアドレス
-    erc20Address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", // SepoliaのUSDC (またはモックトークン) アドレス
+    raffleProxy: "0x718e5a8a3ee3b4a5784d2db604b42456b47ccc90", // Sepoliaにデプロイしたプロキシアドレス
+    erc20Address: "0x74ce1e12998fB861A612CD6C65244f8620e2937A", // SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59", // SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia.etherscan.io",
-    rpcUrl: "wss://sepolia.gateway.tenderly.co",
+    rpcUrl: "${NEXT_PUBLIC_SEPOLIA_RPC_URL}",
   },
   // Base Sepolia
   84532: {
     name: "Base Sepolia",
-    raffleProxy: "0x2f6768b0585754642b32704fd1ee98b47b8f60a9", // Base Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "0x852903bd6480ecf71bddc0d057ac0a82476647e5", // Base Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93", // Base SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia.basescan.org",
-    rpcUrl: "https://base-sepolia.gateway.tenderly.co",
+    rpcUrl: "${NEXT_PUBLIC_BASE_RPC_URL}",
   },
   // Arbitrum Sepolia
   421614: {
     name: "Arbitrum Sepolia",
-    raffleProxy: "0xf3d402c2c1b90104a0832a7330437ebb208c77b4", // Arbitrum Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "0x7cfeafac834d50d341bd0aadef7c904de654607c", // Arbitrum Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d", // Arbitrum SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165", // Arbitrum SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia-explorer.arbitrum.io",
-    rpcUrl: "wss://arbitrum-sepolia-rpc.publicnode.com",
+    rpcUrl: "${NEXT_PUBLIC_ARBITRUM_RPC_URL}",
   },
 };
 
 // スマートコントラクトのABI（out/RaffleImplementation.solから）
 export const RaffleABI = [
   {
-      "inputs": [
-          {
-              "internalType": "address",
-              "name": "vrfCoordinatorV2",
-              "type": "address"
-          },
-          {
-              "internalType": "uint64",
-              "name": "subscriptionId",
-              "type": "uint64"
-          },
-          {
-              "internalType": "bytes32",
-              "name": "keyHash",
-              "type": "bytes32"
-          },
-          {
-              "internalType": "uint32",
-              "name": "callbackGasLimit",
-              "type": "uint32"
-          },
-          {
-              "internalType": "uint256",
-              "name": "entranceFee",
-              "type": "uint256"
-          },
-          {
-              "internalType": "address",
-              "name": "usdcAddress",
-              "type": "address"
-          },
-          {
-              "internalType": "address",
-              "name": "ccipRouter",
-              "type": "address"
-          }
-      ],
+      "inputs": [],
       "stateMutability": "nonpayable",
       "type": "constructor"
   },
@@ -246,6 +210,49 @@ export const RaffleABI = [
   {
       "inputs": [
           {
+              "internalType": "address",
+              "name": "vrfCoordinatorV2",
+              "type": "address"
+          },
+          {
+              "internalType": "uint256",
+              "name": "subscriptionId",
+              "type": "uint256"
+          },
+          {
+              "internalType": "bytes32",
+              "name": "keyHash",
+              "type": "bytes32"
+          },
+          {
+              "internalType": "uint32",
+              "name": "callbackGasLimit",
+              "type": "uint32"
+          },
+          {
+              "internalType": "uint256",
+              "name": "entranceFee",
+              "type": "uint256"
+          },
+          {
+              "internalType": "address",
+              "name": "usdcAddress",
+              "type": "address"
+          },
+          {
+              "internalType": "address",
+              "name": "ccipRouter",
+              "type": "address"
+          }
+      ],
+      "name": "initialize",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+  },
+  {
+      "inputs": [
+          {
               "internalType": "bytes",
               "name": "",
               "type": "bytes"
@@ -277,9 +284,9 @@ export const RaffleABI = [
   {
       "inputs": [
           {
-              "internalType": "uint64",
+              "internalType": "uint256",
               "name": "destinationChainSelector",
-              "type": "uint64"
+              "type": "uint256"
           },
           {
               "internalType": "address",
@@ -364,9 +371,9 @@ export const RaffleABI = [
       "inputs": [
           {
               "indexed": true,
-              "internalType": "uint64",
+              "internalType": "uint256",
               "name": "destinationChainSelector",
-              "type": "uint64"
+              "type": "uint256"
           },
           {
               "indexed": true,
@@ -526,5 +533,51 @@ export const ERC20ABI = [
       ],
       "stateMutability": "view",
       "type": "function"
-    }
+    },
+  {
+    "type": "function",
+    "name": "transfer",
+    "inputs": [
+      {
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferFrom",
+    "inputs": [
+      {
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  }
   ];
