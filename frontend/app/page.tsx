@@ -14,11 +14,13 @@ import { Progress } from "@/components/ui/progress"
 import { useAccount, useChainId, useSwitchChain } from "wagmi"
 import { useRaffleContract } from "@/hooks/use-raffle-contract"
 import { formatAddress } from "./utils/format-address"
+import { useWeb3Auth } from "@/hooks/use-web3auth"; // Web3Authフックを追加
 
 export default function RaffleDapp() {
   const chainId = useChainId()
   const { switchChain } = useSwitchChain()
   const { address, isConnected } = useAccount()
+  const { user, provider } = useWeb3Auth(); // Web3Authの状態を取得
   const [showNotification, setShowNotification] = useState(false)
   const [minutes, setMinutes] = useState(0)
   const [seconds, setSeconds] = useState(42)
@@ -126,8 +128,8 @@ export default function RaffleDapp() {
       );
     }
     
-    // ウォレット未接続
-    if (!isConnected) {
+    // ウォレット未接続 (WagmiとWeb3Authの両方をチェック)
+    if (!isConnected && !(user || provider)) {
       return (
         <div className="w-full text-center">
           <p className="text-amber-500 mb-2">ラッフルに参加するには、まずウォレットを接続してください。</p>
@@ -234,7 +236,7 @@ export default function RaffleDapp() {
         const result = await handleEnterRaffle();
         
         if (result?.success) {
-          setTxHash(result.txHash);
+          setTxHash(result.txHash || "");
           setShowNotification(true);
         } else {
           console.error('ラッフル参加エラー:', result?.error);
@@ -254,7 +256,7 @@ export default function RaffleDapp() {
   }
 
   // チェーン切り替え処理
-  const handleChainChange = async (newChain) => {
+  const handleChainChange = async (newChain: (typeof supportedChains)[0]) => {
     setActiveChain(newChain)
     try {
       await switchChain({ chainId: newChain.id })
@@ -411,8 +413,8 @@ export default function RaffleDapp() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">
             <h3 className="text-xl font-bold mb-4">ユーザー情報</h3>
             <div className="bg-slate-100 dark:bg-slate-700 p-3 rounded-xl font-mono text-sm mb-6 break-all flex items-center justify-between">
-              {isConnected ? (
-                <span>{formatAddress(address)}</span>
+              {isConnected || user || provider ? ( // Web3Authの状態も考慮
+                <span>{formatAddress(address || user?.email || "N/A")}</span> // アドレスまたはユーザー情報を表示
               ) : (
                 <span className="text-slate-400">未接続</span>
               )}
@@ -478,14 +480,18 @@ export default function RaffleDapp() {
             {/* 管理者パネルを追加 */}
             {isConnected && address && raffleData.owner && (
               <div className="mt-8">
-                <OwnerAdminPanel 
+                <OwnerAdminPanel
                   isOwner={address.toLowerCase() === (raffleData.owner || "").toLowerCase()}
-                  contractAddress={contractAddress}
-                  balance={0.015} // ETH残高
-                  usdcBalance={Number(raffleData.numberOfPlayers || 0) * 10} // USDC残高
-                  jackpotAmount={Number(raffleData.jackpotAmount || 0)} // ジャックポット額
+                  contractAddress={contractAddress || ""}
+                  balance={0.015}
+                  usdcBalance={Number(raffleData.numberOfPlayers || 0) * 10}
+                  jackpotAmount={Number(raffleData.jackpotAmount || 0)}
                   ownerAddress={raffleData.owner}
                   supportedChains={supportedChains}
+                  onWithdraw={() => {}}
+                  onChangeOwner={() => {}}
+                  onSendCrossChain={() => {}}
+                  onUpgradeContract={() => {}}
                   onManualPerformUpkeep={manualPerformUpkeepAsOwner}
                   isLoading={isLoading || isProcessing}
                 />

@@ -44,21 +44,49 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-const OwnerAdminPanel = ({
-  isOwner = false, // オーナーかどうか
-  contractAddress = "0x...", // コントラクトアドレス
-  balance = 0, // コントラクト残高 (ETH)
-  usdcBalance = 0, // コントラクトUSDC残高
-  jackpotAmount = 0, // ジャックポット額
-  ownerAddress = "0x...", // 現在のオーナーアドレス
-  supportedChains = [], // サポートされているチェーン
-  onWithdraw = (token) => {}, // 引き出し関数
-  onChangeOwner = (newOwner) => {}, // オーナー変更関数
-  onSendCrossChain = (chainId, winner, prize, isJackpot) => {}, // クロスチェーンメッセージ送信関数
-  onUpgradeContract = (newImplementation, initData) => {}, // コントラクトアップグレード関数
-  onManualPerformUpkeep = () => {}, // 手動ラッフル実行関数
-  isLoading = false, // 処理中かどうか
-}) => {
+interface OwnerAdminPanelProps {
+  isOwner: boolean;
+  contractAddress: string;
+  balance: number;
+  usdcBalance: number;
+  jackpotAmount: number;
+  ownerAddress: string;
+  supportedChains: {
+    id: number;
+    name: string;
+    icon: string;
+    color: string;
+    textColor: string;
+    borderColor: string;
+    currency: {
+      name: string;
+      symbol: string;
+      decimals: number;
+    };
+  }[];
+  onWithdraw: (token: any) => void;
+  onChangeOwner: (newOwner: any) => void;
+  onSendCrossChain: (chainId: any, winner: any, prize: any, isJackpot: any) => void;
+  onUpgradeContract: (newImplementation: any, initData: any) => void;
+  onManualPerformUpkeep: () => void;
+  isLoading: boolean;
+}
+
+const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
+  isOwner,
+  contractAddress,
+  balance,
+  usdcBalance,
+  jackpotAmount,
+  ownerAddress,
+  supportedChains,
+  onWithdraw,
+  onChangeOwner,
+  onSendCrossChain,
+  onUpgradeContract,
+  onManualPerformUpkeep,
+  isLoading,
+}: OwnerAdminPanelProps) => {
   const [copied, setCopied] = useState(false);
   const [selectedChain, setSelectedChain] = useState(supportedChains.length > 0 ? supportedChains[0].id : "");
   const [newOwnerAddress, setNewOwnerAddress] = useState("");
@@ -66,7 +94,7 @@ const OwnerAdminPanel = ({
   const [upgradeInitData, setUpgradeInitData] = useState("");
   
   // USDCの6桁小数点を考慮してフォーマット
-  const formatUSDC = (amount) => {
+  const formatUSDC = (amount: number) => {
     return (amount / 1e6).toLocaleString('ja-JP', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
@@ -74,14 +102,14 @@ const OwnerAdminPanel = ({
   };
   
   // アドレスをコピーする関数
-  const copyToClipboard = (text) => {
+  const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
   
   // アドレスを短縮して表示する関数
-  const shortenAddress = (address) => {
+  const shortenAddress = (address: string) => {
     if (!address || address.length < 10) return address;
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   };
@@ -312,7 +340,7 @@ const OwnerAdminPanel = ({
           <TabsContent value="crosschain" className="space-y-6">
             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-md">
               <Label className="text-sm">送信先チェーン</Label>
-              <Select value={selectedChain} onValueChange={setSelectedChain}>
+              <Select value={selectedChain as string} onValueChange={setSelectedChain}>
                 <SelectTrigger className="mt-2">
                   <SelectValue placeholder="チェーンを選択" />
                 </SelectTrigger>
@@ -365,7 +393,7 @@ const OwnerAdminPanel = ({
                 <DialogFooter>
                   <Button variant="outline" className="w-full sm:w-auto">キャンセル</Button>
                   <Button 
-                    onClick={() => onSendCrossChain(parseInt(selectedChain), null, 0, false)}
+                    onClick={() => onSendCrossChain(parseInt(selectedChain as string, 10), null, 0, false)}
                     className="w-full sm:w-auto"
                     disabled={isLoading}
                   >

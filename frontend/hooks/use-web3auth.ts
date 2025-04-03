@@ -31,6 +31,7 @@ export function useWeb3Auth() {
 
   // ソーシャルログイン
   const login = async (loginProvider: string) => {
+    
     if (!web3auth) {
       setError("Web3Auth not initialized");
       return null;
@@ -40,6 +41,18 @@ export function useWeb3Auth() {
     setError(null);
 
     try {
+      // 既に接続されているか確認
+      if (web3auth.status === 'connected') {
+        console.log("Already connected, using existing provider.");
+        // 既存のプロバイダーを返すか、ユーザー情報を再取得するなど
+        // ここでは既存のプロバイダーを返すことにします
+        setProvider(web3auth.provider);
+        const userInfo = await web3auth.getUserInfo();
+        setUser(userInfo);
+        setIsLoading(false);
+        return web3auth.provider;
+      }
+
       // loginProviderはgoogleまたはtwitter
       const provider = await web3auth.connectTo(WALLET_ADAPTERS.OPENLOGIN, {
         loginProvider,
@@ -53,6 +66,7 @@ export function useWeb3Auth() {
       return provider;
     } catch (err: any) {
       console.error("Error during login:", err);
+      console.log(err); // エラーオブジェクトの内容を出力
       setError(err.message || "Failed to login");
       setIsLoading(false);
       return null;
@@ -79,21 +93,25 @@ export function useWeb3Auth() {
 
   // アドレスの取得
   const getAddress = async () => {
-    if (!provider) return null;
+    // provider ステートがなくても、web3auth が接続済みなら web3auth.provider を使う
+    const currentProvider = provider || (web3auth?.status === 'connected' ? web3auth.provider : null);
+    if (!currentProvider) return null;
 
     try {
       // カスタムクライアントの作成
       const publicClient = createPublicClient({
         chain: sepolia,
-        transport: custom(provider),
+        transport: custom(currentProvider),
       });
+// アカウントの取得
+const accounts = (await publicClient.request({
+  method: "eth_accounts",
+} as any)) as string[];
 
-      // アカウントの取得
-      const accounts = await publicClient.request({
-        method: "eth_accounts",
-      });
-
-      return accounts[0] as `0x${string}` | null;
+if (!accounts || accounts.length === 0) {
+  return null;
+}
+      return accounts[0] as `0x${string}`;
     } catch (err) {
       console.error("Error getting address:", err);
       return null;
@@ -113,7 +131,7 @@ export function useWeb3Auth() {
       const hash = await publicClient.request({
         method: "eth_sendTransaction",
         params: [params],
-      });
+      } as any) as string;
 
       return hash;
     } catch (err) {
@@ -137,8 +155,8 @@ export function useWeb3Auth() {
 
       const signature = await publicClient.request({
         method: "personal_sign",
-        params: [message, address],
-      });
+        params: [address, message],
+      } as any) as string;
 
       return signature;
     } catch (err) {

@@ -6,8 +6,18 @@ import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
 
 // ローカル開発用のクライアントIDを設定
 // 注意：実際の運用ではプロジェクト専用のクライアントIDが必要です
-export const WEB3AUTH_CLIENT_ID = process.env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID || 
-  "BJ38Nnj8g7-R9Z6vFGGF_RzVbGmB9lYiXnBQtJ3vgDOILPTPzQBY2HYF2Pp8Rr45R66HQlCvOeImxnCmB-BzRiU";
+export const WEB3AUTH_CLIENT_ID = process.env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID;
+if (!WEB3AUTH_CLIENT_ID) {
+  // アプリケーションの起動を止めるか、エラー処理を行う
+  console.error("FATAL ERROR: NEXT_PUBLIC_WEB3AUTH_CLIENT_ID environment variable is not set.");
+  throw new Error("Web3Auth Client ID is missing in environment variables.");
+}
+
+const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+if (!googleClientId) {
+  console.error("FATAL ERROR: NEXT_PUBLIC_GOOGLE_CLIENT_ID environment variable is not set.");
+  throw new Error("Google Client ID is missing in environment variables.");
+}
 
 // チェーン設定
 export const getChainConfig = (chainId: number): CustomChainConfig | undefined => {
@@ -16,7 +26,7 @@ export const getChainConfig = (chainId: number): CustomChainConfig | undefined =
     return {
       chainNamespace: CHAIN_NAMESPACES.EIP155,
       chainId: "0xaa36a7",
-      rpcTarget: `https://eth-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "demo"}`,
+      rpcTarget: `https://eth-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`,
       displayName: "Ethereum Sepolia",
       blockExplorerUrl: "https://sepolia.etherscan.io",
       ticker: "ETH",
@@ -68,8 +78,8 @@ export async function initializeWeb3Auth(chainId: number) {
   // Web3Authクライアントの初期化
   const web3auth = new Web3AuthNoModal({
     clientId: WEB3AUTH_CLIENT_ID,
-    web3AuthNetwork: "sapphire_devnet", // 開発環境用
-    chainConfig,
+    web3AuthNetwork: process.env.NEXT_PUBLIC_WEB3AUTH_NETWORK,
+    chainConfig: chainConfig,
   });
 
   // OpenLoginアダプターの設定
@@ -80,15 +90,16 @@ export async function initializeWeb3Auth(chainId: number) {
       loginConfig: {
         google: {
           name: "Google",
-          verifier: "google",
+          verifier: "Raffle_Dapp",
           typeOfLogin: "google",
-          clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
+          clientId: googleClientId,
         },
         // メール認証の設定
         email_passwordless: {
           name: "Email",
-          verifier: "web3auth-email",
-          typeOfLogin: "email_password",
+          verifier: "Raffle_Dapp2",
+          typeOfLogin: "email_passwordless",
+          clientId: process.env.NEXT_PUBLIC_WEB3AUTH_EMAIL_CLIENT_ID,
         },
       },
     },

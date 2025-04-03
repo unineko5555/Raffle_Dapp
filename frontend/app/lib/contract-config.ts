@@ -3,7 +3,7 @@ export const contractConfig = {
   // Ethereum Sepolia
   11155111: {
     name: "Ethereum Sepolia",
-    raffleProxy: "0x9fa0aacd441bb12cb5d879352c2c90b7b5265ebc", // Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "0x65b8bf0adcf48b5966ce9cc7a73ac10581a13d3d", // Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x74ce1e12998fB861A612CD6C65244f8620e2937A", // SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59", // SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia.etherscan.io",
@@ -12,7 +12,7 @@ export const contractConfig = {
   // Base Sepolia
   84532: {
     name: "Base Sepolia",
-    raffleProxy: "0x8cf44c98db297071fafc4cc8550be8c1265df566", // Base Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "0x43507caa921b687cf9f75b3984e60ade6ed2870b", // Base Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93", // Base SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia.basescan.org",
@@ -21,7 +21,7 @@ export const contractConfig = {
   // Arbitrum Sepolia
   421614: {
     name: "Arbitrum Sepolia",
-    raffleProxy: "0xc9280ac579881e099e801afa0285a10c1d881bce", // Arbitrum Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "0xf63101c3c12b45f45700d958a349c64ddeb45aaf", // Arbitrum Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d", // Arbitrum SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165", // Arbitrum SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia-explorer.arbitrum.io",
@@ -32,481 +32,507 @@ export const contractConfig = {
 // スマートコントラクトのABI（out/RaffleImplementation.solから）
 export const RaffleABI = [
   {
+    "type": "constructor",
     "inputs": [],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
+    "stateMutability": "nonpayable"
   },
   {
-    "stateMutability": "payable",
-    "type": "receive"
+    "type": "receive",
+    "stateMutability": "payable"
   },
   {
-    "inputs": [
-      {
-        "internalType": "bytes",
-        "name": "",
-        "type": "bytes"
-      }
-    ],
+    "type": "function",
+    "name": "cancelEntry",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "checkUpkeep",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
     "outputs": [
       {
-        "internalType": "bool",
         "name": "upkeepNeeded",
-        "type": "bool"
+        "type": "bool",
+        "internalType": "bool"
       },
       {
-        "internalType": "bytes",
         "name": "",
-        "type": "bytes"
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "checkUpkeepDebug",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "bool",
         "name": "isOpen",
-        "type": "bool"
+        "type": "bool",
+        "internalType": "bool"
       },
       {
-        "internalType": "bool",
         "name": "hasPlayers",
-        "type": "bool"
+        "type": "bool",
+        "internalType": "bool"
       },
       {
-        "internalType": "bool",
         "name": "hasTimePassed",
-        "type": "bool"
+        "type": "bool",
+        "internalType": "bool"
       },
       {
-        "internalType": "uint256",
         "name": "timeSinceMinPlayers",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
-        "internalType": "uint256",
         "name": "requiredTime",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
-        "internalType": "uint256",
         "name": "playerCount",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "enterRaffle",
+    "inputs": [],
     "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    "stateMutability": "nonpayable"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "getEntranceFee",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "getJackpotAmount",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "getLastRaffleTime",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "getMinPlayersReachedTime",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "getMinimumPlayers",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "getNumberOfPlayers",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "getOwner",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "address",
         "name": "",
-        "type": "address"
+        "type": "address",
+        "internalType": "address"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "index",
-        "type": "uint256"
-      }
-    ],
+    "type": "function",
     "name": "getPlayer",
-    "outputs": [
+    "inputs": [
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "getRaffleState",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "enum IRaffle.RaffleState",
         "name": "",
-        "type": "uint8"
+        "type": "uint8",
+        "internalType": "enum IRaffle.RaffleState"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "getRecentWinner",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "address",
         "name": "",
-        "type": "address"
+        "type": "address",
+        "internalType": "address"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "vrfCoordinatorV2",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "subscriptionId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "keyHash",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "uint32",
-        "name": "callbackGasLimit",
-        "type": "uint32"
-      },
-      {
-        "internalType": "uint256",
-        "name": "entranceFee",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "usdcAddress",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "ccipRouter",
-        "type": "address"
-      },
-      {
-        "internalType": "bool",
-        "name": "addMockPlayers",
-        "type": "bool"
-      }
-    ],
+    "type": "function",
     "name": "initialize",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "manualPerformUpkeep",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
-        "internalType": "bytes",
-        "name": "",
-        "type": "bytes"
-      }
-    ],
-    "name": "performUpkeep",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "requestId",
-        "type": "uint256"
+        "name": "vrfCoordinatorV2",
+        "type": "address",
+        "internalType": "address"
       },
       {
-        "internalType": "uint256[]",
-        "name": "randomWords",
-        "type": "uint256[]"
-      }
-    ],
-    "name": "rawFulfillRandomWords",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "destinationChainSelector",
-        "type": "uint256"
+        "name": "subscriptionId",
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
-        "internalType": "address",
-        "name": "winner",
-        "type": "address"
+        "name": "keyHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
       },
       {
-        "internalType": "uint256",
-        "name": "prize",
-        "type": "uint256"
+        "name": "callbackGasLimit",
+        "type": "uint32",
+        "internalType": "uint32"
       },
       {
-        "internalType": "bool",
-        "name": "isJackpot",
-        "type": "bool"
-      }
-    ],
-    "name": "sendCrossChainMessage",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "newOwner",
-        "type": "address"
-      }
-    ],
-    "name": "setOwner",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "newImplementation",
-        "type": "address"
-      }
-    ],
-    "name": "upgradeTo",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "newImplementation",
-        "type": "address"
-      },
-      {
-        "internalType": "bytes",
-        "name": "data",
-        "type": "bytes"
-      }
-    ],
-    "name": "upgradeToAndCall",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "token",
-        "type": "address"
-      }
-    ],
-    "name": "withdraw",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "destinationChainSelector",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "bytes32",
-        "name": "messageId",
-        "type": "bytes32"
-      }
-    ],
-    "name": "CrossChainMessageSent",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "player",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
         "name": "entranceFee",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "usdcAddress",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "ccipRouter",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "addMockPlayers",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
-    "name": "RaffleEnter",
-    "type": "event"
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    "anonymous": false,
+    "type": "function",
+    "name": "manualPerformUpkeep",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "performUpkeep",
     "inputs": [
       {
-        "indexed": false,
-        "internalType": "enum IRaffle.RaffleState",
-        "name": "newState",
-        "type": "uint8"
+        "name": "",
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
-    "name": "RaffleStateChanged",
-    "type": "event"
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    "anonymous": false,
+    "type": "function",
+    "name": "rawFulfillRandomWords",
     "inputs": [
       {
-        "indexed": true,
-        "internalType": "address",
+        "name": "requestId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "randomWords",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "sendCrossChainMessage",
+    "inputs": [
+      {
+        "name": "destinationChainSelector",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
         "name": "winner",
-        "type": "address"
+        "type": "address",
+        "internalType": "address"
       },
       {
-        "indexed": false,
-        "internalType": "uint256",
         "name": "prize",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
-        "indexed": false,
-        "internalType": "bool",
         "name": "isJackpot",
-        "type": "bool"
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
-    "name": "WinnerPicked",
-    "type": "event"
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
+    "type": "function",
+    "name": "setOwner",
     "inputs": [
       {
-        "internalType": "address",
-        "name": "have",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "want",
-        "type": "address"
+        "name": "newOwner",
+        "type": "address",
+        "internalType": "address"
       }
     ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "upgradeTo",
+    "inputs": [
+      {
+        "name": "newImplementation",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "upgradeToAndCall",
+    "inputs": [
+      {
+        "name": "newImplementation",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "data",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "withdraw",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "CrossChainMessageSent",
+    "inputs": [
+      {
+        "name": "destinationChainSelector",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "messageId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RaffleEnter",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "entranceFee",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RaffleExit",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "refundAmount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RaffleStateChanged",
+    "inputs": [
+      {
+        "name": "newState",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum IRaffle.RaffleState"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "WinnerPicked",
+    "inputs": [
+      {
+        "name": "winner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "prize",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "isJackpot",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
     "name": "OnlyCoordinatorCanFulfill",
-    "type": "error"
+    "inputs": [
+      {
+        "name": "have",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "want",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
   }
 ];
 

@@ -19,6 +19,7 @@ export function ConnectWalletButton() {
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("wallet")
   const [open, setOpen] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // ログイン状態を管理する新しいstate
   const [displayAddress, setDisplayAddress] = useState("")
   const [socialConnecting, setSocialConnecting] = useState(false)
   
@@ -34,16 +35,39 @@ export function ConnectWalletButton() {
     getAddress: getWeb3AuthAddress
   } = useWeb3Auth()
 
-  // 初期化時の処理
+  // 接続状態と表示アドレスを更新するuseEffect
   useEffect(() => {
-    // 初期タブをウォレットに設定
-    setActiveTab("wallet");
-    
-    // アドレスがあれば表示用にフォーマット
-    if (address) {
-      setDisplayAddress(address.slice(0, 6) + '...' + address.slice(-4))
-    }
-  }, [address])
+    const checkLoginStatus = async () => {
+      const wagmiConnected = isConnected && address;
+      // web3auth.statusも確認する方がより確実
+      const web3authConnected = web3auth?.status === 'connected' && (!!provider || !!user);
+
+      if (wagmiConnected) {
+        setIsLoggedIn(true);
+        setDisplayAddress(address.slice(0, 6) + '...' + address.slice(-4));
+      } else if (web3authConnected) {
+        setIsLoggedIn(true);
+        // Web3Auth接続済みの場合、アドレスを取得して表示
+        // ローディング中に表示するアドレスを設定することも可能
+        setDisplayAddress("読み込み中...");
+        const socialAddress = await getWeb3AuthAddress();
+        if (socialAddress) {
+          setDisplayAddress(socialAddress.slice(0, 6) + '...' + socialAddress.slice(-4));
+        } else {
+          // アドレス取得失敗時の表示
+          setDisplayAddress("アドレス取得失敗");
+          // 必要であればログアウト処理やエラー表示を行う
+          // setIsLoggedIn(false); // ログイン失敗とみなす場合
+        }
+      } else {
+        setIsLoggedIn(false);
+        setDisplayAddress("");
+      }
+    };
+
+    checkLoginStatus();
+    // 依存配列に web3auth, provider, user, getWeb3AuthAddress を追加
+  }, [isConnected, address, web3auth, provider, user, getWeb3AuthAddress]);
   
   // Web3Authエラーメッセージをトーストで通知
   useEffect(() => {
@@ -80,24 +104,38 @@ export function ConnectWalletButton() {
       // アドレスを取得
       const socialAddress = await getWeb3AuthAddress();
       
+      // アドレス取得と表示はuseEffectに任せるため、ここでは成功通知とダイアログを閉じる処理のみ
       if (socialAddress) {
-        setDisplayAddress(socialAddress.slice(0, 6) + '...' + socialAddress.slice(-4));
-        // ダイアログを閉じる
-        setOpen(false);
-        
+        setOpen(false); // ダイアログを閉じる
         toast({
           title: "ログイン成功",
-          description: `${providerId} で正常にログインしました。`,
+          description: `${providerId} で正常にログインしました。アドレス情報を更新中です...`, // 少しメッセージ変更
           variant: "default",
+        });
+      } else if (provider) { // providerはあるがアドレス取得に失敗した場合
+        // アドレス取得失敗のトーストを出すか、useEffect側で処理するか検討
+        setOpen(false); // とりあえずダイアログは閉じる
+        toast({
+          title: "ログイン成功（アドレス取得失敗）",
+          description: "ログインには成功しましたが、アドレスの取得に失敗しました。",
         });
       } else {
         throw new Error("アドレスの取得に失敗しました");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("ソーシャルログインエラー:", error);
+      // エラーオブジェクトの詳細をコンソールに出力
+      console.error("Error object:", error);
+      // ユーザーがポップアップを閉じた場合のエラーメッセージを改善
+      const errorMessage = error instanceof Error && error.message === "login popup has been closed by the user"
+        ? "ログインポップアップが閉じられました。もう一度お試しください。"
+        : error instanceof Error
+          ? error.message
+          : "ログインに失敗しました。";
+
       toast({
         title: "ログインエラー",
-        description: error instanceof Error ? error.message : "ログインに失敗しました。",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -131,19 +169,37 @@ export function ConnectWalletButton() {
     }
   }
 
-  // 切断処理
-  const handleDisconnect = () => {
-    // Web3Authの切断も試みる
-    if (provider) {
-      web3AuthLogout().catch(console.error);
+  // 切断処理 (asyncに変更し、両方の切断を試みる)
+  const handleDisconnect = async () => {
+    setIsLoggedIn(false); // UIを即時更新
+    setDisplayAddress("");
+
+    let web3AuthErrorOccurred = false;
+    // Web3Authの切断
+    if (web3auth && web3auth.status === 'connected') {
+      try {
+        await web3AuthLogout();
+      } catch (error) {
+        web3AuthErrorOccurred = true;
+        console.error("Web3Auth logout error:", error);
+        toast({ title: "ログアウトエラー", description: "Web3Authからのログアウトに失敗しました。", variant: "destructive" });
+      }
     }
-    // Wagmiの切断
-    disconnect();
+
+    // Wagmiの切断 (Web3Authのエラーに関わらず実行)
+    if (isConnected) {
+      disconnect();
+    }
+    
+    // Web3Authのログアウトが成功した場合のみ成功トーストを表示（任意）
+    if (!web3AuthErrorOccurred && (web3auth?.status === 'connected' || isConnected)) {
+         toast({ title: "切断完了", description: "正常に切断されました。", variant: "default" });
+    }
   }
 
   return (
     <>
-      {!isConnected ? (
+      {!isLoggedIn ? ( // isConnected の代わりに isLoggedIn を使用
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button className="flex items-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium py-2.5 px-5 rounded-full transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5">

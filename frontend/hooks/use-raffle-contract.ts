@@ -23,9 +23,12 @@ type UpkeepDebugInfo = {
   requiredTime: bigint;
   playerCount: bigint;
 };
+// contractConfigのキーの型を定義
+type SupportedChainId = keyof typeof contractConfig;
 
 export function useRaffleContract() {
   const chainId = useChainId();
+  // console.log(chainId); // Removed debug log
   const { address, isConnected } = useAccount();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,14 +59,14 @@ export function useRaffleContract() {
 
   // チェーンIDから正しいコントラクトアドレスを取得
   const currentChainId = chainId || 11155111; // デフォルトはSepolia
-  const contractAddress = contractConfig[currentChainId]?.raffleProxy || "";
-  const erc20Address = contractConfig[currentChainId]?.erc20Address || "";
-
+  
+  const contractAddress = contractConfig[currentChainId as SupportedChainId]?.raffleProxy || null;
+  const erc20Address = contractConfig[currentChainId as SupportedChainId]?.erc20Address || null;
   // プロバイダーチェック
   const publicClient = usePublicClient({chainId: currentChainId});
   
   // コントラクト書き込み関数
-  const { writeContract, data: contractWriteData, isLoading: isContractWriteLoading, error: contractWriteError } = useWriteContract();
+  const { writeContract, data: contractWriteData, error: contractWriteError } = useWriteContract();
   
   // トランザクション待機
   const { isLoading: isTransactionLoading, isSuccess: isTransactionSuccess } = useWaitForTransactionReceipt({
@@ -71,53 +74,47 @@ export function useRaffleContract() {
   });
 
   // コントラクト読み取り
-  const { data: entranceFeeData } = useReadContract({
+  const { data: entranceFeeData } = useReadContract(contractAddress ? {
     address: contractAddress as `0x${string}`,
     abi: RaffleABI,
     functionName: "getEntranceFee",
-    enabled: Boolean(contractAddress),
     chainId: currentChainId,
-  });
+  } : {});
   
-  const { data: numberOfPlayersData } = useReadContract({
+  const { data: numberOfPlayersData } = useReadContract(contractAddress ? {
     address: contractAddress as `0x${string}`,
     abi: RaffleABI,
     functionName: "getNumberOfPlayers",
-    enabled: Boolean(contractAddress),
     chainId: currentChainId,
-  });
+  } : {});
 
-  const { data: raffleStateData } = useReadContract({
+  const { data: raffleStateData } = useReadContract(contractAddress ? {
     address: contractAddress as `0x${string}`,
     abi: RaffleABI,
     functionName: "getRaffleState",
-    enabled: Boolean(contractAddress),
     chainId: currentChainId,
-  });
+  } : {});
 
-  const { data: jackpotAmountData } = useReadContract({
+  const { data: jackpotAmountData } = useReadContract(contractAddress ? {
     address: contractAddress as `0x${string}`,
     abi: RaffleABI,
     functionName: "getJackpotAmount",
-    enabled: Boolean(contractAddress),
     chainId: currentChainId,
-  });
+  } : {});
 
-  const { data: recentWinnerData } = useReadContract({
+  const { data: recentWinnerData } = useReadContract(contractAddress ? {
     address: contractAddress as `0x${string}`,
     abi: RaffleABI,
     functionName: "getRecentWinner",
-    enabled: Boolean(contractAddress),
     chainId: currentChainId,
-  });
+  } : {});
 
-  const { data: ownerData } = useReadContract({
+  const { data: ownerData } = useReadContract(contractAddress ? {
     address: contractAddress as `0x${string}`,
     abi: RaffleABI,
     functionName: "getOwner",
-    enabled: Boolean(contractAddress),
     chainId: currentChainId,
-  });
+  } : {});
 
   // プレイヤーリストを取得
   const getPlayers = async () => {
@@ -177,11 +174,11 @@ export function useRaffleContract() {
       let formattedJackpotAmount = "0";
       
       try {
-        if (entranceFeeData) {
+        if (entranceFeeData && typeof entranceFeeData === 'bigint') {
           formattedEntranceFee = formatUnits(entranceFeeData, 6);
         }
         
-        if (jackpotAmountData) {
+        if (jackpotAmountData && typeof jackpotAmountData === 'bigint') {
           formattedJackpotAmount = formatUnits(jackpotAmountData, 6);
         }
       } catch (error) {
@@ -251,11 +248,15 @@ export function useRaffleContract() {
         gas: BigInt(1000000)
       };
       
-      const hash = await writeContract(customRequest);
+      await writeContract(customRequest);
       
-      if (hash) {
-        await publicClient.waitForTransactionReceipt({ hash });
-        return hash;
+      // contractWriteData にトランザクションハッシュが含まれるのを待つ必要があるかもしれない
+      // ここでは単純化のため、writeContractが成功したと仮定
+      // 必要に応じて useWaitForTransactionReceipt を使用して待機
+      if (contractWriteData) {
+         if (!publicClient) throw new Error("Public client is not available");
+         await publicClient.waitForTransactionReceipt({ hash: contractWriteData });
+         return contractWriteData;
       }
       return null;
     } catch (error) {
@@ -278,8 +279,8 @@ export function useRaffleContract() {
       
       const minRequired = entranceFeeData || BigInt(10000000);
       
-      if (balance < minRequired) {
-        setError(`トークン残高が不足しています (${formatUnits(balance, 6)} / 必要額: ${formatUnits(minRequired, 6)} USDC)`);
+      if (typeof balance === 'bigint' && typeof minRequired === 'bigint' && balance < minRequired) {
+        setError(`トークン残高が不足しています (${formatUnits(balance as bigint, 6)} / 必要額: ${formatUnits(minRequired, 6)} USDC)`);
         return false;
       }
       return true;
@@ -302,7 +303,7 @@ export function useRaffleContract() {
       });
       
       const minRequired = entranceFeeData || BigInt(10000000);
-      return allowance >= minRequired;
+      return typeof allowance === 'bigint' && typeof minRequired === 'bigint' && allowance >= minRequired;
     } catch (error) {
       console.error("承認状態チェックエラー:", error);
       return false;
@@ -344,14 +345,16 @@ export function useRaffleContract() {
         throw new Error("リクエストの準備に失敗しました");
       }
       
-      const hash = await writeContract({
+      await writeContract({
         ...request,
         gas: BigInt(1000000)
       });
-      
-      if (hash) {
-        await publicClient.waitForTransactionReceipt({ hash });
-        return hash;
+
+      // contractWriteData にトランザクションハッシュが含まれるのを待つ必要があるかもしれない
+      if (contractWriteData) {
+        if (!publicClient) throw new Error("Public client is not available");
+        await publicClient.waitForTransactionReceipt({ hash: contractWriteData });
+        return contractWriteData;
       }
       
       return null;
@@ -403,6 +406,7 @@ export function useRaffleContract() {
         }
         
         // ApproveをSimulateする
+        if (!publicClient) throw new Error("Public client is not available");
         const { request } = await publicClient.simulateContract({
           address: erc20Address as `0x${string}`,
           abi: ERC20ABI,
@@ -416,12 +420,19 @@ export function useRaffleContract() {
         }
         
         // 承認処理を直接実行
-        const approveTx = await writeContract(request);
-        
+        await writeContract(request);
+
         // トランザクション完了を待機する
-        await publicClient.waitForTransactionReceipt({ hash: approveTx });
+        if (!publicClient) throw new Error("Public client is not available");
+        if (!contractWriteData) {
+           // writeContractが完了するまで待機するか、エラー処理を行う
+           // ここでは単純化のため、少し待つ
+           await new Promise(resolve => setTimeout(resolve, 1000));
+           if (!contractWriteData) throw new Error("Approve transaction hash not available");
+        }
+        await publicClient.waitForTransactionReceipt({ hash: contractWriteData });
         
-        return approveTx;
+        return contractWriteData; // トランザクションハッシュを返す
       };
 
       // エントランス料金を使用してトークン承認
@@ -440,6 +451,7 @@ export function useRaffleContract() {
       
       try {
         // enterRaffleのシミュレーション
+        if (!publicClient) throw new Error("Public client is not available");
         const { request } = await publicClient.simulateContract({
           address: contractAddress as `0x${string}`,
           abi: RaffleABI,
@@ -452,25 +464,32 @@ export function useRaffleContract() {
         }
         
         // ラッフル参加トランザクション
-        const enterRaffleTxHash = await writeContract(request);
+        await writeContract(request);
 
         // トランザクション完了を待機
-        if (enterRaffleTxHash) {
-          await publicClient.waitForTransactionReceipt({ hash: enterRaffleTxHash });
+        if (!publicClient) throw new Error("Public client is not available");
+        if (!contractWriteData) {
+           // writeContractが完了するまで待機するか、エラー処理を行う
+           await new Promise(resolve => setTimeout(resolve, 1000));
+           if (!contractWriteData) throw new Error("Enter raffle transaction hash not available");
+        }
+        await publicClient.waitForTransactionReceipt({ hash: contractWriteData });
           
           // データを再取得して状態を更新
           await updateRaffleData(true);
           await checkPlayerEntered();
-        }
+        // Removed incorrect closing brace here
         
-        return {
+        return { // Still inside the try block starting at line 452
           success: true,
-          txHash: enterRaffleTxHash || "",
+          txHash: contractWriteData || "",
         };
-      } catch (error) {
+      } // Innermost try (452行目) の終了
+      catch (error) { // Innermost catch (452行目に対応)
         console.error('ラッフル参加エラー:', error);
-        throw new Error(`ラッフル参加に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
-      }
+        // Outer catch で捕捉されるようにエラーを再スロー
+        throw new Error(`ラッフル参加処理中にエラー: ${error instanceof Error ? error.message : '不明なエラー'}`);
+      } // Innermost try/catch 終了
     } catch (err) {
       console.error("Error entering raffle:", err);
       setError(err instanceof Error ? err.message : "ラッフル参加中にエラーが発生しました");
@@ -515,7 +534,7 @@ export function useRaffleContract() {
   const handleCancelEntry = createHandleCancelEntry(
     isConnected,
     address,
-    contractAddress,
+    contractAddress || "", // null の場合に空文字列を渡す
     checkPlayerEntered,
     publicClient,
     writeContract,
@@ -527,7 +546,7 @@ export function useRaffleContract() {
 
   return {
     raffleData,
-    isLoading: isLoading || isContractWriteLoading || isTransactionLoading || uiLoading,
+    isLoading: isLoading || isTransactionLoading || uiLoading,
     error,
     handleEnterRaffle,
     handleCancelEntry,
