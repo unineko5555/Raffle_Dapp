@@ -112,4 +112,11 @@ interface IRaffle {
      * @param messageId CCIPのメッセージID
      */
     event CrossChainMessageSent(uint256 indexed destinationChainSelector, bytes32 indexed messageId);
+
+    /**
+     * @dev ラッフルから参加を取り消した時に発火するイベント
+     * @param player 参加を取り消したプレイヤーのアドレス
+     * @param refundAmount 返金額
+     */
+    event RaffleExit(address indexed player, uint256 refundAmount);
 }

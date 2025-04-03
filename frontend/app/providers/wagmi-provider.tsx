@@ -26,11 +26,10 @@ export function WagmiProviderWrapper({ children }: WagmiProviderProps) {
       [arbitrumSepolia.id]: http(`https://arb-sepolia.g.alchemy.com/v2/${alchemyApiKey}`),
     },
     connectors: [
-      injected(),
+      injected({ target: 'metaMask' }),
       metaMask(),
       walletConnect({ projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "961e384786ed6449576cd6ad8a368588" })
     ],
-
   });
 
   return (

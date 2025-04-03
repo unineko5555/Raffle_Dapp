@@ -3,7 +3,10 @@
 import { useState, useEffect } from "react"
 import { Trophy, Users, CheckCircle2, X, Zap, Sparkles, ArrowRight, Shield, Wallet } from "lucide-react"
 import Image from "next/image"
+
 import { ConnectWalletButton } from "./components/auth/connect-wallet-button"
+import OwnerAdminPanel from "./components/admin/owner-admin-panel"
+import RaffleEntryStatus from "./components/raffle/raffle-entry-status"
 import { supportedChains, getContractConfig } from "./lib/web3-config"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
@@ -25,7 +28,88 @@ export default function RaffleDapp() {
   const [isProcessing, setIsProcessing] = useState(false)
 
   // useRaffleContractフックから実際のコントラクトデータを取得
-  const { raffleData, isLoading, error, handleEnterRaffle } = useRaffleContract()
+  const raffleContract = useRaffleContract()
+  const { 
+    raffleData, 
+    isLoading, 
+    error, 
+    handleEnterRaffle, 
+    manualPerformUpkeepAsOwner,
+    contractAddress,
+    isPlayerEntered 
+  } = raffleContract
+  
+  // 手動でラッフルを開始する
+  const startRaffle = async () => {
+    try {
+      // ローディング表示
+      setIsProcessing(true);
+      
+      // 確認メッセージ
+      if (!confirm('ラッフルを開始しますか？この操作は元に戻せません。\n\n参加者の中からランダムに当選者が選ばれます。')) {
+        setIsProcessing(false);
+        return;
+      }
+
+      // プレイヤー数の確認
+      if (raffleData.numberOfPlayers < 3) {
+        alert('ラッフルを開始するには少なくとも3人の参加者が必要です。\n現在の参加者数: ' + raffleData.numberOfPlayers);
+        setIsProcessing(false);
+        return;
+      }
+      
+      console.log('ラッフル開始実行: 手動Upkeepを開始します');
+      
+      // 手動Upkeepを実行
+      try {
+        const upkeepResult = await raffleContract.performManualUpkeep();
+        
+        console.log('Upkeep結果:', upkeepResult);
+        
+        if (upkeepResult) {
+          setTxHash(upkeepResult);
+          setShowNotification(true);
+          alert('ラッフルが開始されました！トランザクション: ' + upkeepResult);
+        } else {
+          alert('ラッフル開始トランザクションが生成されましたが、結果が不明です。\n後ほど確認してください。');
+        }
+      } catch (upkeepError) {
+        console.error('手動Upkeep実行エラー:', upkeepError);
+        const errorMessage = upkeepError instanceof Error ? upkeepError.message : '不明なエラー';
+        alert(`ラッフル開始中にエラーが発生しました: ${errorMessage}\n\nブロックチェーンが混雑しているか、ガス代が不足している可能性があります。`);
+      }
+    } catch (error) {
+      console.error('ラッフル開始エラー:', error);
+      const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+      alert(`エラーが発生しました: ${errorMessage}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+  
+  // デバッグ用：グローバルにデバッグ関数を公開
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // @ts-ignore - デバッグ用のグローバル変数
+      window.debugRaffle = {
+        checkAutomation: raffleContract.checkAutomationStatus,
+        manualUpkeep: raffleContract.performManualUpkeep
+      };
+      
+      // コンソールにデバッグ使用方法を表示
+      console.log('===== ラッフルデバッグ機能 =====');
+      console.log('Automation状態を確認: window.debugRaffle.checkAutomation()');
+      console.log('手動でUpkeepを実行: window.debugRaffle.manualUpkeep()');
+      console.log('============================');
+    }
+  }, [])
+  
+  // ページ読み込み時にプレイヤーの参加状態を確認
+  useEffect(() => {
+    if (isConnected && address) {
+      raffleContract.checkPlayerEntered();
+    }
+  }, [isConnected, address, raffleContract.checkPlayerEntered])
 
   // ラッフルボタンレンダリング
   const renderRaffleButton = () => {
@@ -62,6 +146,16 @@ export default function RaffleDapp() {
           <Zap className="w-5 h-5" />
           {activeChain.name}に切り替える
         </button>
+      );
+    }
+    
+    // すでに参加済みの場合
+    if (isPlayerEntered) {
+      return (
+        <div className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-2">
+          <CheckCircle2 className="w-5 h-5" />
+          すでにラッフルに参加済みです
+        </div>
       );
     }
     
@@ -281,11 +375,37 @@ export default function RaffleDapp() {
             </div>
 
             <div className="relative">
+              <RaffleEntryStatus />
               {renderRaffleButton()}
               <div className="absolute -top-2 right-2">
                 <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">ガス代無料</Badge>
               </div>
             </div>
+            
+            {isConnected && raffleData.numberOfPlayers >= 3 && (
+              <div className="mt-4">
+                <button
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                  onClick={startRaffle}
+                  disabled={isProcessing || isLoading}
+                >
+                  {isProcessing ? (
+                    <>
+                      <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                      処理中...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-5 h-5" />
+                      ラッフルを開始する (手動Upkeep)
+                    </>
+                  )}
+                </button>
+                <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 text-center">
+                  (テスト用: プレイヤーが3人以上の場合にラッフルを開始できます)
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">
@@ -354,6 +474,23 @@ export default function RaffleDapp() {
                 </div>
               </div>
             </div>
+            
+            {/* 管理者パネルを追加 */}
+            {isConnected && address && raffleData.owner && (
+              <div className="mt-8">
+                <OwnerAdminPanel 
+                  isOwner={address.toLowerCase() === (raffleData.owner || "").toLowerCase()}
+                  contractAddress={contractAddress}
+                  balance={0.015} // ETH残高
+                  usdcBalance={Number(raffleData.numberOfPlayers || 0) * 10} // USDC残高
+                  jackpotAmount={Number(raffleData.jackpotAmount || 0)} // ジャックポット額
+                  ownerAddress={raffleData.owner}
+                  supportedChains={supportedChains}
+                  onManualPerformUpkeep={manualPerformUpkeepAsOwner}
+                  isLoading={isLoading || isProcessing}
+                />
+              </div>
+            )}
           </div>
 
           <div className="lg:col-span-3 bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">

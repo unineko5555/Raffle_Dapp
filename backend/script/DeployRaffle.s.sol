@@ -2,6 +2,7 @@
 pragma solidity ^0.8.18;
 
 import {Script} from "forge-std/Script.sol";
+import {console} from "forge-std/console.sol";
 import {RaffleImplementation} from "../src/RaffleImplementation.sol";
 import {RaffleProxy} from "../src/RaffleProxy.sol";
 import {HelperConfig} from "./HelperConfig.s.sol";
@@ -23,11 +24,20 @@ contract DeployRaffle is Script {
             address ccipRouter
         ) = helperConfig.activeNetworkConfig();
 
+        console.log("VRF Coordinator: ", vrfCoordinatorV2);
+        console.log("Subscription ID: ", subscriptionId);
+        // console.log("Key Hash: ", keyHas); // keyHashはbytes32型なのでconsole.logで出力できない
+        console.log("Callback Gas Limit: ", callbackGasLimit);
+        console.log("Entrance Fee: ", entranceFee);
+        console.log("USDC Address: ", usdcAddress);
+        console.log("CCIP Router: ", ccipRouter);
+
         // デプロイトランザクションの開始
         vm.startBroadcast();
 
         // 実装コントラクトのデプロイ
         RaffleImplementation implementation = new RaffleImplementation();
+        console.log("Implementation deployed at: ", address(implementation));
 
         // 初期化データの準備
         bytes memory initData = abi.encodeWithSelector(
@@ -47,6 +57,7 @@ contract DeployRaffle is Script {
             address(implementation),
             initData
         );
+        console.log("Proxy deployed at: ", address(proxy));
 
         vm.stopBroadcast();
 

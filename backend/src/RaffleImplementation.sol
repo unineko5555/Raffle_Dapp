@@ -2,8 +2,8 @@
 pragma solidity ^0.8.18;
 
 import "./interfaces/IRaffle.sol";
-import "./interfaces/VRFCoordinatorV2Interface.sol";
-import "./interfaces/VRFConsumerBaseV2.sol";
+import "./interfaces/VRFCoordinatorV2_5Interface.sol";
+import "./interfaces/VRFConsumerBaseV2_5.sol";
 import "./interfaces/AutomationCompatibleInterface.sol";
 import "./interfaces/CCIPInterface.sol";
 import "./interfaces/IERC20.sol";
@@ -13,18 +13,18 @@ import "./interfaces/IUUPSUpgradeable.sol";
 /**
  * @title RaffleImplementation
  * @notice クロスチェーン対応のラッフルアプリケーション実装
- * @dev Chainlink VRF、Automation、CCIPを使用して、複数チェーン間で動作するラッフルを実装
+ * @dev Chainlink VRF 2.5、Automation、CCIPを使用して、複数チェーン間で動作するラッフルを実装
  */
 contract RaffleImplementation is 
     IRaffle, 
-    VRFConsumerBaseV2, 
+    VRFConsumerBaseV2_5, 
     AutomationCompatibleInterface,
     IUUPSUpgradeable
 {
     /* 状態変数 */
     // Chainklink VRF用の変数
-    VRFCoordinatorV2Interface private s_vrfCoordinator;
-    uint256 private s_subscriptionId;
+    VRFCoordinatorV2_5Interface private s_vrfCoordinator;
+    uint64 private s_subscriptionId;
     bytes32 private s_keyHash;
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private s_callbackGasLimit;
@@ -57,7 +57,7 @@ contract RaffleImplementation is
     address private s_owner;
 
     // コンストラクタ - シンプルな実装
-    constructor() VRFConsumerBaseV2(address(0)) {
+    constructor() VRFConsumerBaseV2_5(address(0)) {
         // コンストラクタはそのまま使用されない
         // プロキシパターンでは初期化関数を使用する
     }
@@ -87,8 +87,8 @@ contract RaffleImplementation is
         require(!s_initialized, "Already initialized");
         
         // VRFコーディネーターを設定
-        s_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
-        s_subscriptionId = subscriptionId;
+        s_vrfCoordinator = VRFCoordinatorV2_5Interface(vrfCoordinatorV2);
+        s_subscriptionId = uint64(subscriptionId);
         s_keyHash = keyHash;
         s_callbackGasLimit = callbackGasLimit;
         
@@ -137,6 +137,11 @@ contract RaffleImplementation is
     function enterRaffle() external override {
         // ラッフルがオープン状態であることを確認
         require(s_raffleState == RaffleState.OPEN, "Raffle is not open");
+        
+        // 同じアドレスからの複数参加を防止
+        for (uint256 i = 0; i < s_players.length; i++) {
+            require(s_players[i] != msg.sender, "Player already entered");
+        }
 
         // 参加料の転送
         IERC20 usdc = IERC20(s_usdcAddress);
@@ -156,6 +161,46 @@ contract RaffleImplementation is
 
         // イベント発火
         emit RaffleEnter(msg.sender, s_entranceFee);
+    }
+
+    /**
+     * @notice ラッフルへの参加を取り消す関数
+     * @dev 参加者のみが自分の参加を取り消せる
+     */
+    function cancelEntry() external {
+        // ラッフルがオープン状態であることを確認
+        require(s_raffleState == RaffleState.OPEN, "Raffle is not open");
+        
+        // プレイヤーが参加しているか確認
+        bool found = false;
+        uint256 playerIndex;
+        
+        for (uint256 i = 0; i < s_players.length; i++) {
+            if (s_players[i] == msg.sender) {
+                found = true;
+                playerIndex = i;
+                break;
+            }
+        }
+        
+        require(found, "Player not found");
+        
+        // 参加料の90%を返金（10%はジャックポットとして保持）
+        uint256 refundAmount = (s_entranceFee * 90) / 100;
+        IERC20 usdc = IERC20(s_usdcAddress);
+        require(usdc.transfer(msg.sender, refundAmount), "USDC refund failed");
+        
+        // プレイヤーをリストから削除（最後のプレイヤーと入れ替えて削除）
+        s_players[playerIndex] = s_players[s_players.length - 1];
+        s_players.pop();
+        
+        // 最小プレイヤー数を下回った場合、タイマーをリセット
+        if (s_players.length < s_minimumPlayers) {
+            s_minPlayersReachedTime = 0;
+        }
+        
+        // イベント発火
+        emit RaffleExit(msg.sender, refundAmount);
     }
 
     /**
@@ -197,7 +242,7 @@ contract RaffleImplementation is
         // Chainlink VRFに乱数生成をリクエスト
         uint256 requestId = s_vrfCoordinator.requestRandomWords(
             s_keyHash,
-            uint64(s_subscriptionId),
+            s_subscriptionId,
             REQUEST_CONFIRMATIONS,
             s_callbackGasLimit,
             NUM_WORDS
@@ -211,7 +256,7 @@ contract RaffleImplementation is
      * @dev Chainlink VRFノードによって呼び出される
      * @param randomWords 生成された乱数配列
      */
-    function fulfillRandomWords(uint256 /* requestId */, uint256[] memory randomWords) internal override(VRFConsumerBaseV2) {
+    function fulfillRandomWords(uint256 /* requestId */, uint256[] memory randomWords) internal override {
         // 参加者の中から当選者を選ぶ
         uint256 winnerIndex = randomWords[0] % s_players.length;
         address winner = s_players[winnerIndex];
@@ -369,6 +414,59 @@ contract RaffleImplementation is
      */
     function _authorizeUpgrade(address newImplementation) internal override {
         require(msg.sender == s_owner, "Only owner can upgrade");
+    }
+
+    /**
+     * @notice 管理者用のラッフル手動実行関数
+     * @dev オーナーのみが呼び出せる特別な関数
+     */
+    function manualPerformUpkeep() external {
+        // オーナーのみが呼び出せるように制限
+        require(msg.sender == s_owner, "Only owner can manual perform upkeep");
+        
+        // ラッフルを開始するための最小条件を確認
+        bool isOpen = s_raffleState == RaffleState.OPEN;
+        bool hasPlayers = s_players.length >= s_minimumPlayers;
+        
+        require(isOpen, "Raffle is not open");
+        require(hasPlayers, "Not enough players");
+        
+        // ラッフル状態を更新
+        s_raffleState = RaffleState.CALCULATING_WINNER;
+        emit RaffleStateChanged(s_raffleState);
+
+        // Chainlink VRFに乱数生成をリクエスト
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+            s_keyHash,
+            s_subscriptionId,
+            REQUEST_CONFIRMATIONS,
+            s_callbackGasLimit,
+            NUM_WORDS
+        );
+
+        s_lastRequestId = requestId;
+    }
+
+    /**
+     * @notice デバッグ用のアップキープ状態確認関数
+     * @dev 現在のアップキープ条件の状態を詳細に返す
+     */
+    function checkUpkeepDebug() external view returns (
+        bool isOpen,
+        bool hasPlayers,
+        bool hasTimePassed,
+        uint256 timeSinceMinPlayers,
+        uint256 requiredTime,
+        uint256 playerCount
+    ) {
+        isOpen = s_raffleState == RaffleState.OPEN;
+        hasPlayers = s_players.length >= s_minimumPlayers;
+        timeSinceMinPlayers = s_minPlayersReachedTime > 0 ? block.timestamp - s_minPlayersReachedTime : 0;
+        requiredTime = s_minTimeAfterMinPlayers;
+        hasTimePassed = hasPlayers && timeSinceMinPlayers > requiredTime;
+        playerCount = s_players.length;
+        
+        return (isOpen, hasPlayers, hasTimePassed, timeSinceMinPlayers, requiredTime, playerCount);
     }
 
     /* View / Pure functions */

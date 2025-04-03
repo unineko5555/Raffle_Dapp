@@ -23,7 +23,9 @@ import {
   Copy,
   CheckCircle,
   LinkIcon,
-  History
+  History,
+  Play,
+  AlertTriangle
 } from "lucide-react";
 import {
   Select,
@@ -54,6 +56,7 @@ const OwnerAdminPanel = ({
   onChangeOwner = (newOwner) => {}, // オーナー変更関数
   onSendCrossChain = (chainId, winner, prize, isJackpot) => {}, // クロスチェーンメッセージ送信関数
   onUpgradeContract = (newImplementation, initData) => {}, // コントラクトアップグレード関数
+  onManualPerformUpkeep = () => {}, // 手動ラッフル実行関数
   isLoading = false, // 処理中かどうか
 }) => {
   const [copied, setCopied] = useState(false);
@@ -97,17 +100,21 @@ const OwnerAdminPanel = ({
         </CardDescription>
       </CardHeader>
       
-      <CardContent className="p-4">
-        <Tabs defaultValue="overview">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">概要</TabsTrigger>
-            <TabsTrigger value="finance">資金管理</TabsTrigger>
-            <TabsTrigger value="crosschain">クロスチェーン</TabsTrigger>
-            <TabsTrigger value="upgrade">アップグレード</TabsTrigger>
+      <CardContent className="p-4 flex flex-col gap-6">
+        <Tabs defaultValue="overview" className="flex flex-col gap-6">
+          <TabsList className="grid grid-cols-3 gap-2">
+            <TabsTrigger value="overview" className="text-sm py-2">概要</TabsTrigger>
+            <TabsTrigger value="finance" className="text-sm py-2">資金管理</TabsTrigger>
+            <TabsTrigger value="manual" className="text-sm py-2">手動実行</TabsTrigger>
+          </TabsList>
+          
+          <TabsList className="grid grid-cols-2 gap-2">
+            <TabsTrigger value="crosschain" className="text-sm py-2">クロスチェーン</TabsTrigger>
+            <TabsTrigger value="upgrade" className="text-sm py-2">アップグレード</TabsTrigger>
           </TabsList>
           
           {/* 概要タブ */}
-          <TabsContent value="overview" className="space-y-4 mt-4">
+          <TabsContent value="overview" className="space-y-6">
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-md">
                 <div className="flex items-center gap-2">
@@ -168,7 +175,7 @@ const OwnerAdminPanel = ({
           </TabsContent>
           
           {/* 資金管理タブ */}
-          <TabsContent value="finance" className="space-y-4 mt-4">
+          <TabsContent value="finance" className="space-y-6">
             <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-md">
               <div className="flex items-center gap-2">
                 <Wallet className="w-4 h-4 text-slate-500" />
@@ -226,8 +233,83 @@ const OwnerAdminPanel = ({
             </div>
           </TabsContent>
           
+          {/* 手動実行タブ */}
+          <TabsContent value="manual" className="space-y-6">
+            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-md text-amber-600 dark:text-amber-400 text-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4" />
+                <span className="font-semibold">注意：管理者用手動実行機能</span>
+              </div>
+              <p>この機能はオートメーションの問題や特定の状況でラッフルを手動で進行させるためのものです。</p>
+              <p className="mt-2">以下の条件が揃っている場合のみ使用してください：</p>
+              <ul className="list-disc list-inside mt-1 ml-2">
+                <li>プレイヤー数が最小人数（通常3人）以上</li>
+                <li>ラッフルがOPEN状態であること</li>
+              </ul>
+            </div>
+            
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-md">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    className="w-full"
+                    variant="default"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Play className="w-4 h-4 mr-2" />
+                    )}
+                    ラッフルを手動で実行する
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>ラッフルの手動実行の確認</DialogTitle>
+                    <DialogDescription>
+                      この操作は手動でラッフルの抽選プロセスを開始します。必要な条件が揃っている場合のみ実行してください。
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="space-y-3 py-4">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-600 dark:text-slate-400">コントラクトアドレス</span>
+                      <code className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
+                        {shortenAddress(contractAddress)}
+                      </code>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-600 dark:text-slate-400">操作</span>
+                      <span className="font-medium text-amber-600">手動ラッフル実行</span>
+                    </div>
+                  </div>
+                  
+                  <DialogFooter>
+                    <Button variant="outline" className="w-full sm:w-auto">キャンセル</Button>
+                    <Button 
+                      onClick={() => onManualPerformUpkeep()}
+                      className="w-full sm:w-auto"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        "実行する"
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+            
+            <div className="text-xs text-slate-500 mt-2">
+              ※この機能はChainlink AutomationやKeepersが正常に動作しない場合のバックアップです
+            </div>
+          </TabsContent>
+          
           {/* クロスチェーンタブ */}
-          <TabsContent value="crosschain" className="space-y-4 mt-4">
+          <TabsContent value="crosschain" className="space-y-6">
             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-md">
               <Label className="text-sm">送信先チェーン</Label>
               <Select value={selectedChain} onValueChange={setSelectedChain}>
@@ -303,7 +385,7 @@ const OwnerAdminPanel = ({
           </TabsContent>
           
           {/* アップグレードタブ */}
-          <TabsContent value="upgrade" className="space-y-4 mt-4">
+          <TabsContent value="upgrade" className="space-y-6">
             <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-md text-amber-600 dark:text-amber-400 text-sm">
               ⚠️ コントラクトのアップグレードは高度な操作です。正しく実装されたコントラクトのみをデプロイしてください。
             </div>

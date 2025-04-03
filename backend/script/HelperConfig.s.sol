@@ -27,9 +27,9 @@ contract HelperConfig is Script {
     constructor() {
         if (block.chainid == 11155111) {
             activeNetworkConfig = getSepoliaConfig();
-        } else if (block.chainid == 421613) {
+        } else if (block.chainid == 421614) {
             activeNetworkConfig = getArbitrumSepoliaConfig();
-        } else if (block.chainid == 84531) {
+        } else if (block.chainid == 84532) {
             activeNetworkConfig = getBaseSepoliaConfig();
         } else {
             activeNetworkConfig = getOrCreateAnvilEthConfig();
@@ -41,8 +41,8 @@ contract HelperConfig is Script {
      */
     function getSepoliaConfig() public pure returns (NetworkConfig memory) {
         return NetworkConfig({
-            vrfCoordinatorV2: 0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625,
-            subscriptionId: 35215710747108285885424679702400045098207236400821432776421763953481952749017,  // 適切なIDに置き換える必要あり
+            vrfCoordinatorV2: 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B, // VRF 2.5のコーディネーターアドレス
+            subscriptionId: 35215710747108285885424679702400045098207236400821432776421763953481952749017,
             keyHash: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
@@ -56,9 +56,9 @@ contract HelperConfig is Script {
      */
     function getArbitrumSepoliaConfig() public pure returns (NetworkConfig memory) {
         return NetworkConfig({
-            vrfCoordinatorV2: 0x5CE8D5A2BC84beb22a398CCA51996F7930313D61,
-            subscriptionId: 0x1770bdc7eec7771f7ba4ffd640f34260d7f095b79c92d34a5b2551d6f6cfd2be,  // 適切なIDに置き換える必要あり
-            keyHash: 0x027f94ff1465b3525f9fc03e7775f2e5fdecb70a974f61ffce645b6f115ae0f9,
+            vrfCoordinatorV2: 0x5CE8D5A2BC84beb22a398CCA51996F7930313D61, // Arbitrum Sepolia VRF 2.5
+            subscriptionId: 101240342784025722467677436226156457361476948824878688464903340927284469428368, // 実際のサブスクリプションIDに更新する必要あり
+            keyHash: 0x1770bdc7eec7771f7ba4ffd640f34260d7f095b79c92d34a5b2551d6f6cfd2be,
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d, // Arbitrum Sepolia USDC
@@ -71,8 +71,8 @@ contract HelperConfig is Script {
      */
     function getBaseSepoliaConfig() public pure returns (NetworkConfig memory) {
         return NetworkConfig({
-            vrfCoordinatorV2: 0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE, // Base Sepolia
-            subscriptionId: 69214466476307774934285782495489026734162460308852284514466869696940284487610,  // 適切なIDに置き換える必要あり
+            vrfCoordinatorV2: 0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE, // Base Sepolia VRF 2.5
+            subscriptionId: 33458206399445572067715640330168096614526430692290839248425322519759385655642, // 実際のサブスクリプションIDに更新する必要あり
             keyHash: 0x9e1344a1247c8a1785d0a4681a27152bffdb43666ae5bf7d14d24a5efd44bf71,
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
@@ -94,7 +94,7 @@ contract HelperConfig is Script {
         vm.startBroadcast();
 
         // 仮のVRFコーディネーターをデプロイ
-        MockVRFCoordinatorV2 vrfCoordinatorV2Mock = new MockVRFCoordinatorV2();
+        MockVRFCoordinatorV2_5 vrfCoordinatorV2Mock = new MockVRFCoordinatorV2_5();
         
         // 仮のUSDCトークンをデプロイ
         MockERC20 mockUsdc = new MockERC20("USD Coin", "USDC", 6);
@@ -123,22 +123,22 @@ contract HelperConfig is Script {
 }
 
 /**
- * @title MockVRFCoordinatorV2
- * @notice テスト用のVRFコーディネーターモック
+ * @title MockVRFCoordinatorV2_5
+ * @notice テスト用のVRFコーディネーターモック (VRF 2.5対応)
  */
-contract MockVRFCoordinatorV2 {
+contract MockVRFCoordinatorV2_5 {
     uint96 public BASE_FEE = 0.25 ether; // 0.25 LINK
     uint96 public GAS_PRICE_LINK = 1e9; // 1 gwei LINK
 
     mapping(uint256 => address) public s_requests;
-    mapping(uint256 => address) public s_subscriptions;
-    uint256 private s_currentSubId;
+    mapping(uint64 => address) public s_subscriptions;
+    uint64 private s_currentSubId;
 
     event RandomWordsRequested(
         bytes32 indexed keyHash,
         uint256 requestId,
         uint256 preSeed,
-        uint256 indexed subId,
+        uint64 indexed subId,
         uint16 minimumRequestConfirmations,
         uint32 callbackGasLimit,
         uint32 numWords,
@@ -151,27 +151,27 @@ contract MockVRFCoordinatorV2 {
         uint256 payment
     );
 
-    event SubscriptionCreated(uint256 indexed subId, address owner);
-    event SubscriptionFunded(uint256 indexed subId, uint256 oldBalance, uint256 newBalance);
+    event SubscriptionCreated(uint64 indexed subId, address owner);
+    event SubscriptionFunded(uint64 indexed subId, uint256 oldBalance, uint256 newBalance);
     
     function createSubscription() external returns (uint64) {
         s_currentSubId++;
         s_subscriptions[s_currentSubId] = msg.sender;
         emit SubscriptionCreated(s_currentSubId, msg.sender);
-        return uint64(s_currentSubId);
+        return s_currentSubId;
     }
 
-    function addConsumer(uint256 subId, address consumer) external {
+    function addConsumer(uint64 subId, address consumer) external {
         // 簡略化のため実装を省略
     }
 
-    function removeConsumer(uint256 subId, address consumer) external {
+    function removeConsumer(uint64 subId, address consumer) external {
         // 簡略化のため実装を省略
     }
 
     function requestRandomWords(
         bytes32 keyHash,
-        uint256 subId,
+        uint64 subId,
         uint16 minimumRequestConfirmations,
         uint32 callbackGasLimit,
         uint32 numWords
@@ -195,10 +195,15 @@ contract MockVRFCoordinatorV2 {
 
     // テスト用のランダムワード生成
     function fulfillRandomWords(uint256 requestId, address callback) external {
-        uint256[] memory randomWords = new uint256[](1);
+        // 2つのランダムワードを生成（ジャックポット判定用に2つ必要）
+        uint256[] memory randomWords = new uint256[](2);
         randomWords[0] = uint256(keccak256(abi.encode(requestId, block.timestamp)));
+        randomWords[1] = uint256(keccak256(abi.encode(requestId, block.timestamp, blockhash(block.number))));
         
-        (bool success, ) = callback.call(abi.encodeWithSignature("rawFulfillRandomWords(uint256,uint256[])", requestId, randomWords));
+        // rawFulfillRandomWords関数を呼び出す
+        (bool success, ) = callback.call(
+            abi.encodeWithSignature("rawFulfillRandomWords(uint256,uint256[])", requestId, randomWords)
+        );
         require(success, "Callback failed");
         
         emit RandomWordsFulfilled(requestId, randomWords, 0);

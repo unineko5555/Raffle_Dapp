@@ -65,8 +65,8 @@ export const socialLoginProviders = [
     icon: "/icons/google.svg",
   },
   {
-    id: "x",
-    name: "X",
-    icon: "/icons/x.svg",
+    id: "email_passwordless",
+    name: "メール",
+    icon: "/icons/email.svg",
   },
 ];
