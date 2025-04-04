@@ -109,8 +109,8 @@ export async function initializeWeb3Auth(chainId: number) {
         email_passwordless: {
           name: "Email",
           verifier: "Raffle-Dapp-Email", 
-          typeOfLogin: "email_passwordless", // "email_password" から元に戻す
-          clientId: WEB3AUTH_CLIENT_ID!, // Non-null assertion を追加
+          typeOfLogin: "email_passwordless", 
+          clientId: WEB3AUTH_CLIENT_ID, 
         },
       },
     },

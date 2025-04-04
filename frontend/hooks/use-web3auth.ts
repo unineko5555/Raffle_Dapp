@@ -14,6 +14,7 @@ export function useWeb3Auth() {
   const [isLoading, setIsLoading] = useState<boolean>(true); // 初期化開始時にローディング開始
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState<boolean>(false); // 初期化完了状態
+  
   // Web3Authの初期化
   useEffect(() => {
     const init = async () => {
@@ -151,7 +152,7 @@ export function useWeb3Auth() {
   };
 
   // ログアウト
-  const logout = async () => {
+  const logout = async () => { 
     if (!web3auth) {
       return;
     }
