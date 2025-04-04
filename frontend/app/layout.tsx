@@ -5,6 +5,7 @@ import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { WagmiProviderWrapper } from "./providers/wagmi-provider"
 import { ToastContainer } from "@/components/ui/toast"
+import { SidebarLoginButton } from "./components/wallet/sidebar-login-button"
 
 const inter = Inter({ subsets: ["latin"] })
 

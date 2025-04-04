@@ -59,14 +59,15 @@ export function getContractConfig(chainId: number) {
 
 // ソーシャルログイン用の設定
 export const socialLoginProviders = [
-  {
-    id: "google",
-    name: "Google",
-    icon: "/icons/google.svg",
-  },
+  // テスト用にメールログインを先に表示
   {
     id: "email_passwordless",
     name: "メール",
     icon: "/icons/email.svg",
   },
+  {
+    id: "google",
+    name: "Google",
+    icon: "/icons/google.svg",
+  }
 ];

@@ -20,7 +20,8 @@ export default function RaffleDapp() {
   const chainId = useChainId()
   const { switchChain } = useSwitchChain()
   const { address, isConnected } = useAccount()
-  const { user, provider } = useWeb3Auth(); // Web3Authの状態を取得
+  const { user, provider, getAddress, getSavedSmartAccountInfo, web3auth } = useWeb3Auth(); // Web3Authの状態を取得
+  const [smartAccountAddress, setSmartAccountAddress] = useState<string | null>(null);
   const [showNotification, setShowNotification] = useState(false)
   const [minutes, setMinutes] = useState(0)
   const [seconds, setSeconds] = useState(42)
@@ -38,7 +39,10 @@ export default function RaffleDapp() {
     handleEnterRaffle, 
     manualPerformUpkeepAsOwner,
     contractAddress,
-    isPlayerEntered 
+    isPlayerEntered,
+    checkPlayerEntered,
+    performManualUpkeep,
+    checkAutomationStatus
   } = raffleContract
   
   // 手動でラッフルを開始する
@@ -64,7 +68,7 @@ export default function RaffleDapp() {
       
       // 手動Upkeepを実行
       try {
-        const upkeepResult = await raffleContract.performManualUpkeep();
+        const upkeepResult = await performManualUpkeep();
         
         console.log('Upkeep結果:', upkeepResult);
         
@@ -94,24 +98,86 @@ export default function RaffleDapp() {
     if (typeof window !== 'undefined') {
       // @ts-ignore - デバッグ用のグローバル変数
       window.debugRaffle = {
-        checkAutomation: raffleContract.checkAutomationStatus,
-        manualUpkeep: raffleContract.performManualUpkeep
+        checkAutomation: checkAutomationStatus,
+        manualUpkeep: performManualUpkeep
       };
       
-      // コンソールにデバッグ使用方法を表示
-      console.log('===== ラッフルデバッグ機能 =====');
-      console.log('Automation状態を確認: window.debugRaffle.checkAutomation()');
-      console.log('手動でUpkeepを実行: window.debugRaffle.manualUpkeep()');
-      console.log('============================');
+      // 初回のみデバッグ情報を表示
+      if (!window.debugRaffleInitialized) {
+        console.log('===== ラッフルデバッグ機能 =====');
+        console.log('Automation状態を確認: window.debugRaffle.checkAutomation()');
+        console.log('手動でUpkeepを実行: window.debugRaffle.manualUpkeep()');
+        console.log('============================');
+        // @ts-ignore
+        window.debugRaffleInitialized = true;
+      }
     }
-  }, [])
+  }, [checkAutomationStatus, performManualUpkeep])
   
-  // ページ読み込み時にプレイヤーの参加状態を確認
+  // 接続状態確認とローカルストレージからの復元
+  useEffect(() => {
+    // 1. 最初にローカルストレージからの情報を確認
+    try {
+      const savedData = localStorage.getItem('web3auth_account');
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        if (parsedData.address) {
+          setSmartAccountAddress(parsedData.address);
+          console.log('Restored smart account from localStorage:', parsedData.address);
+        }
+      }
+    } catch (err) {
+      console.error('Error reading from localStorage:', err);
+    }
+  }, []);
+  
+  // Wagmiの接続状態監視
   useEffect(() => {
     if (isConnected && address) {
-      raffleContract.checkPlayerEntered();
+      checkPlayerEntered();
     }
-  }, [isConnected, address, raffleContract.checkPlayerEntered])
+  }, [isConnected, address, checkPlayerEntered])
+  
+  // Web3Authの接続状態監視
+  useEffect(() => {
+    let mounted = true;
+    
+    const checkWeb3AuthStatus = async () => {
+      // Web3Authが接続されているか確認 - 状態のみをチェック
+      const isWeb3AuthConnected = web3auth?.status === 'connected';
+      
+      // 状態のログ出力を減らす
+      // console.log('Web3Auth connection status:', isWeb3AuthConnected);
+      
+      if ((isWeb3AuthConnected || !!provider) && typeof getAddress === 'function') {
+        try {
+          // スマートアカウントアドレスを取得
+          const smartAddress = await getAddress();
+          if (smartAddress && mounted) {
+            setSmartAccountAddress(smartAddress);
+            // スマートアカウントアドレスの更新ログを非表示にする
+            // console.log('Updated smart account address:', smartAddress);
+          }
+        } catch (err) {
+          console.error('Error getting web3auth address:', err);
+        }
+      }
+    };
+    
+    checkWeb3AuthStatus();
+    
+    return () => {
+      mounted = false;
+    };
+  }, [web3auth?.status, provider, user, getAddress]);
+  
+  // スマートアカウント状態変更監視
+  // スマートアカウントの状態変更監視
+  // useEffect(() => {
+  //   if (smartAccountAddress) {
+  //     console.log('Smart account is active:', smartAccountAddress);
+  //   }
+  // }, [smartAccountAddress]);
 
   // ラッフルボタンレンダリング
   const renderRaffleButton = () => {
@@ -129,11 +195,10 @@ export default function RaffleDapp() {
     }
     
     // ウォレット未接続 (WagmiとWeb3Authの両方をチェック)
-    if (!isConnected && !(user || provider)) {
+    if (!isConnected && !smartAccountAddress) {
       return (
         <div className="w-full text-center">
           <p className="text-amber-500 mb-2">ラッフルに参加するには、まずウォレットを接続してください。</p>
-          <ConnectWalletButton />
         </div>
       );
     }
@@ -202,8 +267,8 @@ export default function RaffleDapp() {
   // ラッフル参加処理
   const onEnterRaffle = async () => {
     try {
-      // ウォレット接続チェック
-      if (!isConnected || !address) {
+      // 接続確認（通常のウォレットまたはスマートアカウント）
+      if (!isConnected && !smartAccountAddress) {
         alert('ウォレットが接続されていません。ウォレットを接続してください。');
         return;
       }
@@ -231,9 +296,11 @@ export default function RaffleDapp() {
       // ローディング表示
       setIsProcessing(true);
 
-      // ラッフルに参加
+      // ラッフルに参加（Web3Authスマートアカウントの場合も考慮）
       try {
-        const result = await handleEnterRaffle();
+        const result = smartAccountAddress 
+          ? await handleEnterRaffle(smartAccountAddress) // スマートアカウント
+          : await handleEnterRaffle(); // 通常のEOA
         
         if (result?.success) {
           setTxHash(result.txHash || "");
@@ -413,17 +480,34 @@ export default function RaffleDapp() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">
             <h3 className="text-xl font-bold mb-4">ユーザー情報</h3>
             <div className="bg-slate-100 dark:bg-slate-700 p-3 rounded-xl font-mono text-sm mb-6 break-all flex items-center justify-between">
-              {isConnected || user || provider ? ( // Web3Authの状態も考慮
-                <span>{formatAddress(address || user?.email || "N/A")}</span> // アドレスまたはユーザー情報を表示
+              {isConnected || smartAccountAddress ? (
+                <span>{formatAddress(address || smartAccountAddress || user?.email || "N/A")}</span> // スマートアカウントアドレスを優先表示
               ) : (
                 <span className="text-slate-400">未接続</span>
               )}
-              <Badge
-                variant="outline"
-                className="ml-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
-              >
-                スマートアカウント
-              </Badge>
+              {smartAccountAddress ? (
+                <Badge
+                  variant="outline"
+                  className="ml-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 cursor-pointer"
+                  onClick={() => window.open(`https://sepolia.etherscan.io/address/${smartAccountAddress}`, '_blank')}
+                >
+                  スマートアカウント
+                </Badge>
+              ) : isConnected ? (
+                <Badge
+                  variant="outline"
+                  className="ml-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800"
+                >
+                  EOA
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="ml-2 bg-slate-100 dark:bg-slate-900/30 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800"
+                >
+                  未接続
+                </Badge>
+              )}
             </div>
 
             <div className="space-y-4 mb-8">

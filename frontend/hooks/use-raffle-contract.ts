@@ -266,15 +266,17 @@ export function useRaffleContract() {
   };
 
   // トークン残高チェック用関数
-  const checkTokenBalance = async () => {
-    if (!isConnected || !address || !erc20Address || !publicClient) return false;
+  const checkTokenBalance = async (checkAddress = '') => {
+    const accountAddress = checkAddress || address;
+    
+    if ((!isConnected && !checkAddress) || !accountAddress || !erc20Address || !publicClient) return false;
     
     try {
       const balance = await publicClient.readContract({
         address: erc20Address as `0x${string}`,
         abi: ERC20ABI,
         functionName: "balanceOf",
-        args: [address]
+        args: [accountAddress]
       });
       
       const minRequired = entranceFeeData || BigInt(10000000);
@@ -291,15 +293,17 @@ export function useRaffleContract() {
   };
   
   // 承認状態チェック用関数
-  const checkAllowance = async () => {
-    if (!isConnected || !address || !erc20Address || !contractAddress || !publicClient) return false;
+  const checkAllowance = async (checkAddress = '') => {
+    const accountAddress = checkAddress || address;
+    
+    if ((!isConnected && !checkAddress) || !accountAddress || !erc20Address || !contractAddress || !publicClient) return false;
     
     try {
       const allowance = await publicClient.readContract({
         address: erc20Address as `0x${string}`,
         abi: ERC20ABI,
         functionName: "allowance",
-        args: [address, contractAddress as `0x${string}`]
+        args: [accountAddress, contractAddress as `0x${string}`]
       });
       
       const minRequired = entranceFeeData || BigInt(10000000);
@@ -365,8 +369,11 @@ export function useRaffleContract() {
   };
 
   // ラッフルに参加する関数
-  const handleEnterRaffle = async () => {
-    if (!isConnected || !address) {
+  const handleEnterRaffle = async (smartAccountAddress = '') => {
+    // スマートアカウントが渡された場合はそれを使用し、そうでなければ通常のEOAを使用
+    const userAddress = smartAccountAddress || address;
+    
+    if (!isConnected && !smartAccountAddress) {
       setError("ウォレットが接続されていません");
       return { success: false, error: "ウォレットが接続されていません" };
     }
@@ -388,7 +395,7 @@ export function useRaffleContract() {
       setError(null);
       
       // トークン残高チェック
-      const hasEnoughBalance = await checkTokenBalance();
+      const hasEnoughBalance = await checkTokenBalance(userAddress);
       if (!hasEnoughBalance) {
         throw new Error(error || "トークン残高が不足しています。テストネットUSDCを取得してください。");
       }
@@ -396,7 +403,7 @@ export function useRaffleContract() {
       // ERC20承認用のヘルパー関数
       const approveErc20Transaction = async () => {
         // 既存の承認状態をチェック
-        const hasAllowance = await checkAllowance();
+        const hasAllowance = await checkAllowance(userAddress);
         if (hasAllowance) {
           return "Allowance already sufficient";
         }
@@ -412,7 +419,7 @@ export function useRaffleContract() {
           abi: ERC20ABI,
           functionName: "approve",
           args: [contractAddress as `0x${string}`, BigInt("100000000000000")], // 大きめの値で承認
-          account: address
+          account: userAddress as `0x${string}`
         });
         
         if (!request) {
@@ -440,7 +447,7 @@ export function useRaffleContract() {
         await approveErc20Transaction();
         
         // 承認後、承認状態を再確認
-        const allowanceAfterApprove = await checkAllowance();
+        const allowanceAfterApprove = await checkAllowance(userAddress);
         if (!allowanceAfterApprove) {
           throw new Error("承認処理は完了しましたが、承認状態が反映されていません。少し時間をおいてから再試行してください。");
         }
@@ -456,7 +463,7 @@ export function useRaffleContract() {
           address: contractAddress as `0x${string}`,
           abi: RaffleABI,
           functionName: "enterRaffle",
-          account: address
+          account: userAddress as `0x${string}`
         });
 
         if (!request) {

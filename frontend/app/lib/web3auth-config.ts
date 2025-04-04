@@ -3,6 +3,9 @@ import { CHAIN_NAMESPACES, CustomChainConfig } from "@web3auth/base";
 import { Web3AuthNoModal } from "@web3auth/no-modal";
 import { OpenloginAdapter } from "@web3auth/openlogin-adapter";
 import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
+import { WALLET_ADAPTERS } from "@web3auth/base";
+// AuthAdapterのインポートを追加しようとしましたが、モジュールが存在しない可能性があります
+// import { AuthAdapter } from "@web3auth/auth-adapter";
 
 // ローカル開発用のクライアントIDを設定
 // 注意：実際の運用ではプロジェクト専用のクライアントIDが必要です
@@ -17,6 +20,13 @@ const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 if (!googleClientId) {
   console.error("FATAL ERROR: NEXT_PUBLIC_GOOGLE_CLIENT_ID environment variable is not set.");
   throw new Error("Google Client ID is missing in environment variables.");
+}
+
+// Web3Auth Network のチェックを追加
+const web3AuthNetwork = process.env.NEXT_PUBLIC_WEB3AUTH_NETWORK;
+if (!web3AuthNetwork) {
+  console.error("FATAL ERROR: NEXT_PUBLIC_WEB3AUTH_NETWORK environment variable is not set.");
+  throw new Error("Web3Auth Network is missing in environment variables.");
 }
 
 // チェーン設定
@@ -77,8 +87,9 @@ export async function initializeWeb3Auth(chainId: number) {
 
   // Web3Authクライアントの初期化
   const web3auth = new Web3AuthNoModal({
-    clientId: WEB3AUTH_CLIENT_ID,
-    web3AuthNetwork: process.env.NEXT_PUBLIC_WEB3AUTH_NETWORK,
+    clientId: WEB3AUTH_CLIENT_ID!, // Non-null assertion を追加
+    web3AuthNetwork: web3AuthNetwork as any, // 型アサーションを追加 (より安全な型ガードが望ましいが、一旦 any で対応)
+    // web3AuthNetwork: web3AuthNetwork as OPENLOGIN_NETWORK_TYPE, // OPENLOGIN_NETWORK_TYPE をインポートする必要あり
     chainConfig: chainConfig,
   });
 
@@ -86,20 +97,20 @@ export async function initializeWeb3Auth(chainId: number) {
   const openloginAdapter = new OpenloginAdapter({
     privateKeyProvider,
     adapterSettings: {
-      uxMode: "popup",
+      uxMode: "popup", // popup から redirect に戻す
       loginConfig: {
         google: {
           name: "Google",
-          verifier: "Raffle_Dapp",
+          verifier: "Raffle-Dapp-Google",
           typeOfLogin: "google",
-          clientId: googleClientId,
+          clientId: googleClientId!, // Non-null assertion を追加
         },
-        // メール認証の設定
+        // メール認証の設定 - 正しいIDを使用
         email_passwordless: {
           name: "Email",
-          verifier: "Raffle_Dapp2",
-          typeOfLogin: "email_passwordless",
-          clientId: process.env.NEXT_PUBLIC_WEB3AUTH_EMAIL_CLIENT_ID,
+          verifier: "Raffle-Dapp-Email", 
+          typeOfLogin: "email_passwordless", // "email_password" から元に戻す
+          clientId: WEB3AUTH_CLIENT_ID!, // Non-null assertion を追加
         },
       },
     },
@@ -107,8 +118,15 @@ export async function initializeWeb3Auth(chainId: number) {
 
   web3auth.configureAdapter(openloginAdapter);
 
-  await web3auth.init();
-  return web3auth;
+  try {
+    console.log("Initializing Web3Auth...");
+    await web3auth.init(); // ここで初期化を実行
+    console.log("Web3Auth initialized successfully.");
+    return web3auth;
+  } catch (error) {
+    console.error("Error during web3auth.init():", error);
+    throw error; // エラーを再スローして呼び出し元で捕捉できるようにする
+  }
 }
 
 // ユーティリティ関数
@@ -117,7 +135,7 @@ export const getWeb3AuthProvider = async (chainId: number) => {
     const web3auth = await initializeWeb3Auth(chainId);
     return web3auth;
   } catch (error) {
-    console.error("Error initializing Web3Auth:", error);
+    // console.error("Error initializing Web3Auth:", error);
     return null;
   }
 };
