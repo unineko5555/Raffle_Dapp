@@ -97,8 +97,8 @@ export function useWeb3Auth() {
       // ドキュメントに従って、email_passwordlessの場合は特別な処理が必要
       let options: any = { loginProvider: actualProvider };
       
-      // email_password の場合はメールアドレスを渡す
-      if (actualProvider === 'email_password' && email) {
+      // email_passwordlessの場合はメールアドレスを渡す
+      if (actualProvider === 'email_passwordless' && email) {
         options.extraLoginOptions = {
           login_hint: email.trim() // login_hint を使用
         };
@@ -106,7 +106,7 @@ export function useWeb3Auth() {
       }
       
       console.log('ログインオプション:', options);
-      const provider = await web3auth.connectTo(WALLET_ADAPTERS.OPENLOGIN, options);
+      const provider = await web3auth.connectTo(WALLET_ADAPTERS.AUTH, options);
 
       console.log('Login successful');
       
