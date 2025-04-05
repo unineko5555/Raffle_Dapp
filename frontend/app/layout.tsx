@@ -2,17 +2,15 @@ import type React from "react"
 import "./globals.css"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
-import { ThemeProvider } from "@/components/theme-provider"
-import { WagmiProviderWrapper } from "./providers/wagmi-provider"
+import { Providers } from "./providers"
 import { ToastContainer } from "@/components/ui/toast"
-import { SidebarLoginButton } from "./components/wallet/sidebar-login-button"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Raffle Dapp",
-  description: "A modern raffle application on the blockchain",
-  generator: 'v0.dev'
+  description: "A modern raffle application on the blockchain with Account Abstraction",
+  generator: 'Cyfrin Updraft'
 }
 
 export default function RootLayout({
@@ -23,12 +21,10 @@ export default function RootLayout({
   return (
     <html lang="ja" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <WagmiProviderWrapper>
-            {children}
-            <ToastContainer />
-          </WagmiProviderWrapper>
-        </ThemeProvider>
+        <Providers>
+          {children}
+          <ToastContainer />
+        </Providers>
       </body>
     </html>
   )

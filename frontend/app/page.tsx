@@ -4,9 +4,10 @@ import { useState, useEffect } from "react"
 import { Trophy, Users, CheckCircle2, X, Zap, Sparkles, ArrowRight, Shield, Wallet } from "lucide-react"
 import Image from "next/image"
 
-import { ConnectWalletButton } from "./components/auth/connect-wallet-button"
+import { SmartWalletButton } from "./components/auth/smart-wallet-button"
 import OwnerAdminPanel from "./components/admin/owner-admin-panel"
 import RaffleEntryStatus from "./components/raffle/raffle-entry-status"
+import { EnterRaffleButton } from "./components/raffle/enter-raffle-button"
 import { supportedChains, getContractConfig } from "./lib/web3-config"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
@@ -14,14 +15,22 @@ import { Progress } from "@/components/ui/progress"
 import { useAccount, useChainId, useSwitchChain } from "wagmi"
 import { useRaffleContract } from "@/hooks/use-raffle-contract"
 import { formatAddress } from "./utils/format-address"
-import { useWeb3Auth } from "@/hooks/use-web3auth"; // Web3Authフックを追加
+import { useWeb3Auth } from "@/hooks/use-web3auth";
+import { useSmartAccountContext } from "./providers/smart-account-provider"
 
 export default function RaffleDapp() {
   const chainId = useChainId()
   const { switchChain } = useSwitchChain()
   const { address, isConnected } = useAccount()
-  const { user, provider, getAddress, getSavedSmartAccountInfo, web3auth } = useWeb3Auth(); // Web3Authの状態を取得
-  const [smartAccountAddress, setSmartAccountAddress] = useState<string | null>(null);
+  const { user, provider, getAddress, getSavedSmartAccountInfo, web3auth } = useWeb3Auth();
+  
+  // スマートアカウントの状態を取得
+  const { 
+    smartAccountClient, 
+    smartAccountAddress, 
+    isReadyToSendTx 
+  } = useSmartAccountContext();
+  
   const [showNotification, setShowNotification] = useState(false)
   const [minutes, setMinutes] = useState(0)
   const [seconds, setSeconds] = useState(42)
@@ -114,23 +123,6 @@ export default function RaffleDapp() {
     }
   }, [checkAutomationStatus, performManualUpkeep])
   
-  // 接続状態確認とローカルストレージからの復元
-  useEffect(() => {
-    // 1. 最初にローカルストレージからの情報を確認
-    try {
-      const savedData = localStorage.getItem('web3auth_account');
-      if (savedData) {
-        const parsedData = JSON.parse(savedData);
-        if (parsedData.address) {
-          setSmartAccountAddress(parsedData.address);
-          console.log('Restored smart account from localStorage:', parsedData.address);
-        }
-      }
-    } catch (err) {
-      console.error('Error reading from localStorage:', err);
-    }
-  }, []);
-  
   // Wagmiの接続状態監視
   useEffect(() => {
     if (isConnected && address) {
@@ -138,106 +130,6 @@ export default function RaffleDapp() {
     }
   }, [isConnected, address, checkPlayerEntered])
   
-  // Web3Authの接続状態監視
-  useEffect(() => {
-    let mounted = true;
-    
-    const checkWeb3AuthStatus = async () => {
-      // Web3Authが接続されているか確認 - 状態のみをチェック
-      const isWeb3AuthConnected = web3auth?.status === 'connected';
-      
-      // 状態のログ出力を減らす
-      // console.log('Web3Auth connection status:', isWeb3AuthConnected);
-      
-      if ((isWeb3AuthConnected || !!provider) && typeof getAddress === 'function') {
-        try {
-          // スマートアカウントアドレスを取得
-          const smartAddress = await getAddress();
-          if (smartAddress && mounted) {
-            setSmartAccountAddress(smartAddress);
-            // スマートアカウントアドレスの更新ログを非表示にする
-            // console.log('Updated smart account address:', smartAddress);
-          }
-        } catch (err) {
-          console.error('Error getting web3auth address:', err);
-        }
-      }
-    };
-    
-    checkWeb3AuthStatus();
-    
-    return () => {
-      mounted = false;
-    };
-  }, [web3auth?.status, provider, user, getAddress]);
-  
-  // スマートアカウント状態変更監視
-  // スマートアカウントの状態変更監視
-  // useEffect(() => {
-  //   if (smartAccountAddress) {
-  //     console.log('Smart account is active:', smartAccountAddress);
-  //   }
-  // }, [smartAccountAddress]);
-
-  // ラッフルボタンレンダリング
-  const renderRaffleButton = () => {
-    // データローディングのタイムアウト対策
-    if (isLoading || isProcessing) {
-      return (
-        <button
-          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
-          disabled
-        >
-          <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
-          しばらくお待ちください...
-        </button>
-      );
-    }
-    
-    // ウォレット未接続 (WagmiとWeb3Authの両方をチェック)
-    if (!isConnected && !smartAccountAddress) {
-      return (
-        <div className="w-full text-center">
-          <p className="text-amber-500 mb-2">ラッフルに参加するには、まずウォレットを接続してください。</p>
-        </div>
-      );
-    }
-    
-    // チェーンが異なる場合
-    if (chainId !== activeChain.id) {
-      return (
-        <button
-          className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
-          onClick={() => switchChain({ chainId: activeChain.id })}
-        >
-          <Zap className="w-5 h-5" />
-          {activeChain.name}に切り替える
-        </button>
-      );
-    }
-    
-    // すでに参加済みの場合
-    if (isPlayerEntered) {
-      return (
-        <div className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-2">
-          <CheckCircle2 className="w-5 h-5" />
-          すでにラッフルに参加済みです
-        </div>
-      );
-    }
-    
-    // 標準状態
-    return (
-      <button
-        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
-        onClick={onEnterRaffle}
-      >
-        <Zap className="w-5 h-5" />
-        ラッフルに参加する ({raffleData.entranceFee || "10"} USDC)
-      </button>
-    );
-  };
-
   // チェーンが変更されたときにアクティブチェーンを更新
   useEffect(() => {
     if (chainId) {
@@ -264,63 +156,11 @@ export default function RaffleDapp() {
     return () => clearInterval(timer)
   }, [minutes, seconds])
 
-  // ラッフル参加処理
-  const onEnterRaffle = async () => {
-    try {
-      // 接続確認（通常のウォレットまたはスマートアカウント）
-      if (!isConnected && !smartAccountAddress) {
-        alert('ウォレットが接続されていません。ウォレットを接続してください。');
-        return;
-      }
-      
-      // チェーンを切り替え
-      if (chainId !== activeChain.id) {
-        try {
-          await switchChain({ chainId: activeChain.id });
-          // チェーン切り替え後、少し待つ
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          alert('ネットワークが切り替わりました。ラッフルに参加するにはもう一度ボタンをクリックしてください。');
-          return;
-        } catch (error) {
-          console.error('チェーン切り替えエラー:', error);
-          alert('ネットワークの切り替えに失敗しました。MetaMaskで手動で切り替えてください。');
-          return;
-        }
-      }
-
-      // ラッフルに参加する前に、アラートでユーザーに確認する
-      if (!confirm(`${raffleData.entranceFee || "10"} USDCを使ってラッフルに参加しますか？`)) {
-        return;
-      }
-
-      // ローディング表示
-      setIsProcessing(true);
-
-      // ラッフルに参加（Web3Authスマートアカウントの場合も考慮）
-      try {
-        const result = smartAccountAddress 
-          ? await handleEnterRaffle(smartAccountAddress) // スマートアカウント
-          : await handleEnterRaffle(); // 通常のEOA
-        
-        if (result?.success) {
-          setTxHash(result.txHash || "");
-          setShowNotification(true);
-        } else {
-          console.error('ラッフル参加エラー:', result?.error);
-          alert(`ラッフル参加エラー: ${result?.error || 'ウォレットが接続されていないか、MetaMaskの状態を確認してください'}`);
-        }
-      } catch (error) {
-        console.error("ラッフル参加エラー:", error instanceof Error ? error.message : error);
-        alert(`ラッフル参加エラー: ${error instanceof Error ? error.message : 'ウォレットが接続されていないか、MetaMaskの状態を確認してください'}`);
-      } finally {
-        setIsProcessing(false);
-      }
-    } catch (error) {
-      console.error("処理中にエラーが発生しました:", error instanceof Error ? error.message : error);
-      alert(`エラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
-      setIsProcessing(false);
-    }
-  }
+  // ラッフル参加成功時のコールバック
+  const handleRaffleEntrySuccess = () => {
+    setShowNotification(true);
+    checkPlayerEntered();
+  };
 
   // チェーン切り替え処理
   const handleChainChange = async (newChain: (typeof supportedChains)[0]) => {
@@ -361,7 +201,8 @@ export default function RaffleDapp() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <ConnectWalletButton />
+            {/* ConnectWalletButtonをSmartWalletButtonに変更 */}
+            <SmartWalletButton />
           </div>
         </header>
 
@@ -445,7 +286,13 @@ export default function RaffleDapp() {
 
             <div className="relative">
               <RaffleEntryStatus />
-              {renderRaffleButton()}
+              {/* カスタムEnterRaffleButtonを使用 */}
+              <EnterRaffleButton 
+                raffleAddress={contractAddress || ""}
+                entryFee={raffleData.entranceFee || BigInt(10)}
+                isRaffleOpen={!isLoading}
+                onSuccess={handleRaffleEntrySuccess}
+              />
               <div className="absolute -top-2 right-2">
                 <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">ガス代無料</Badge>
               </div>
@@ -481,7 +328,7 @@ export default function RaffleDapp() {
             <h3 className="text-xl font-bold mb-4">ユーザー情報</h3>
             <div className="bg-slate-100 dark:bg-slate-700 p-3 rounded-xl font-mono text-sm mb-6 break-all flex items-center justify-between">
               {isConnected || smartAccountAddress ? (
-                <span>{formatAddress(address || smartAccountAddress || user?.email || "N/A")}</span> // スマートアカウントアドレスを優先表示
+                <span>{formatAddress(smartAccountAddress || address || user?.email || "N/A")}</span> // スマートアカウントアドレスを優先表示
               ) : (
                 <span className="text-slate-400">未接続</span>
               )}
