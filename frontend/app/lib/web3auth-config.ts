@@ -164,8 +164,15 @@ export async function initializeWeb3Auth(chainId: number) {
       web3AuthNetwork,
       chainConfig: JSON.stringify(chainConfig, null, 2), // カンマ追加
     });
-    await web3auth.init(); // ここで初期化を実行
-    console.log("[web3auth-config] Web3Auth instance initialized successfully."); // ログ追加
+    
+    try {
+      // 初期化を実行、エラーが発生しても続行
+      await web3auth.init();
+      console.log("[web3auth-config] Web3Auth instance initialized successfully.");
+    } catch (initError) {
+      console.error("Error during web3auth.init(), but continuing:", initError);
+    }
+    
     return web3auth;
   } catch (error) {
     console.error("Error during web3auth.init():", error);

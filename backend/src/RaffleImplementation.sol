@@ -1,4 +1,19 @@
-// SPDX-License-Identifier: MIT
+    // 過去のラッフル結果の記録用構造体
+    struct RaffleHistory {
+        address winner;
+        uint256 prize;
+        bool jackpotWon;
+        uint256 timestamp;
+        uint256 playerCount;
+    }
+    
+    // 過去のラッフル結果を保存する配列
+    RaffleHistory[] private s_raffleHistory;
+    
+    // ユーザーの参加記録を追跡するマップ
+    mapping(address => uint256) private s_userEntryCount;
+    mapping(address => uint256) private s_userWinCount;
+    mapping(address => uint256) private s_userJackpotCount;// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
 import "./interfaces/IRaffle.sol";
@@ -55,6 +70,23 @@ contract RaffleImplementation is
 
     // オーナー管理
     address private s_owner;
+
+    // 過去のラッフル結果の記録用構造体
+    struct RaffleHistory {
+        address winner;
+        uint256 prize;
+        bool jackpotWon;
+        uint256 timestamp;
+        uint256 playerCount;
+    }
+    
+    // 過去のラッフル結果を保存する配列
+    RaffleHistory[] private s_raffleHistory;
+    
+    // ユーザーの参加記録を追跡するマップ
+    mapping(address => uint256) private s_userEntryCount;
+    mapping(address => uint256) private s_userWinCount;
+    mapping(address => uint256) private s_userJackpotCount;
 
     // コンストラクタ - シンプルな実装
     constructor() VRFConsumerBaseV2_5(address(0)) {
@@ -153,6 +185,9 @@ contract RaffleImplementation is
 
         // プレイヤーを追加
         s_players.push(msg.sender);
+
+        // ユーザーの参加回数を更新
+        s_userEntryCount[msg.sender] += 1;
 
         // 最小プレイヤー数に達したかチェック
         if (s_players.length == s_minimumPlayers) {
@@ -285,6 +320,21 @@ contract RaffleImplementation is
         // 当選者に賞金を送金
         IERC20 usdc = IERC20(s_usdcAddress);
         require(usdc.transfer(winner, prize), "Prize transfer failed");
+
+        // 当選者の統計情報を更新
+        s_userWinCount[winner] += 1;
+        if (isJackpotWinner) {
+            s_userJackpotCount[winner] += 1;
+        }
+
+        // ラッフルの履歴を記録
+        s_raffleHistory.push(RaffleHistory({
+            winner: winner,
+            prize: prize,
+            jackpotWon: isJackpotWinner,
+            timestamp: block.timestamp,
+            playerCount: s_players.length
+        }));
 
         // ラッフルをリセット
         s_players = new address[](0);
@@ -509,6 +559,86 @@ contract RaffleImplementation is
 
     function getOwner() external view returns (address) {
         return s_owner;
+    }
+
+    /**
+     * @notice ユーザーの統計情報を取得する関数
+     * @param user 統計情報を取得するユーザーのアドレス
+     * @return entryCount ラッフル参加回数
+     * @return winCount ラッフル当選回数
+     * @return jackpotCount ジャックポット獲得回数
+     */
+    function getUserStats(address user) external view returns (
+        uint256 entryCount,
+        uint256 winCount,
+        uint256 jackpotCount
+    ) {
+        return (
+            s_userEntryCount[user],
+            s_userWinCount[user],
+            s_userJackpotCount[user]
+        );
+    }
+
+    /**
+     * @notice 過去のラッフル結果の件数を取得する関数
+     * @return ラッフル履歴の件数
+     */
+    function getRaffleHistoryCount() external view returns (uint256) {
+        return s_raffleHistory.length;
+    }
+
+    /**
+     * @notice 特定のラッフル結果を取得する関数
+     * @param index 取得するラッフル結果のインデックス
+     * @return winner 当選者アドレス
+     * @return prize 賞金額
+     * @return jackpotWon ジャックポット当選かどうか
+     * @return timestamp タイムスタンプ
+     * @return playerCount 参加者数
+     */
+    function getRaffleHistoryAtIndex(uint256 index) external view returns (
+        address winner,
+        uint256 prize,
+        bool jackpotWon,
+        uint256 timestamp,
+        uint256 playerCount
+    ) {
+        require(index < s_raffleHistory.length, "Index out of bounds");
+        RaffleHistory memory history = s_raffleHistory[index];
+        return (
+            history.winner,
+            history.prize,
+            history.jackpotWon,
+            history.timestamp,
+            history.playerCount
+        );
+    }
+
+    /**
+     * @notice 最新のラッフル結果を取得する関数
+     * @return winner 当選者アドレス
+     * @return prize 賞金額
+     * @return jackpotWon ジャックポット当選かどうか
+     * @return timestamp タイムスタンプ
+     * @return playerCount 参加者数
+     */
+    function getLatestRaffleHistory() external view returns (
+        address winner,
+        uint256 prize,
+        bool jackpotWon,
+        uint256 timestamp,
+        uint256 playerCount
+    ) {
+        require(s_raffleHistory.length > 0, "No raffle history");
+        RaffleHistory memory history = s_raffleHistory[s_raffleHistory.length - 1];
+        return (
+            history.winner,
+            history.prize,
+            history.jackpotWon,
+            history.timestamp,
+            history.playerCount
+        );
     }
 
     /**

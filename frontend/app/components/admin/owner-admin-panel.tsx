@@ -114,7 +114,8 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   };
   
-  if (!isOwner) return null;
+  // テストモードの場合は常に表示する
+  // if (!isOwner) return null;
   
   return (
     <Card className="border-amber-200 dark:border-amber-800">
@@ -124,7 +125,7 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
           <CardTitle className="text-amber-600 dark:text-amber-400">コントラクト管理パネル</CardTitle>
         </div>
         <CardDescription>
-          このパネルはコントラクトオーナーのみが利用できます
+          テストモード: 現在はすべてのユーザーが操作できます (ソーシャルログイン/EOA対応)
         </CardDescription>
       </CardHeader>
       
@@ -531,7 +532,7 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
       </CardContent>
       
       <CardFooter className="bg-amber-50 dark:bg-amber-900/20 rounded-b-lg p-3 text-xs text-amber-600 dark:text-amber-400">
-        コントラクトオーナー専用の管理パネルです。一般ユーザーには表示されません。
+        テストモード: この管理パネルは現在すべてのユーザーが操作できます。本番環境ではオーナーのみに制限されます。
       </CardFooter>
     </Card>
   );

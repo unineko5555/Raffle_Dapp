@@ -193,8 +193,10 @@ export function useWeb3Auth() {
       if (!accounts || accounts.length === 0) {
         return null;
       }
-      // アドレスを取得したらコンソールに出力（デバッグ用）
-      console.log("Web3Auth Smart Account Address:", accounts[0]);
+      // アドレスのデバッグログは開発モードのみ出力
+      if (process.env.NODE_ENV === 'development' && localStorage.getItem('debug_logs') === 'true') {
+        console.log("Web3Auth Smart Account Address:", accounts[0]);
+      }
       return accounts[0] as `0x${string}`;
     } catch (err) {
       console.error("Error getting address:", err);

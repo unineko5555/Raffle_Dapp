@@ -1,5 +1,15 @@
 "use client"
 
+// グローバルにデバッグモードを設定 (本番環境ではオフにするべき)
+const DEBUG_MODE = false;
+
+// デバッグログ関数
+const debugLog = (message: string, ...args: any[]) => {
+  if (DEBUG_MODE) {
+    console.log(message, ...args);
+  }
+};
+
 import { useState, useEffect, useRef } from "react";
 import { Wallet, ChevronDown, Loader2, Mail, ShieldAlert, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -273,39 +283,79 @@ export function SmartWalletButton() {
          return;
       }
       
+      // ログイン済みプロバイダーの状態を確認
+      debugLog("Web3Auth ログイン状態:", web3auth.status);
+      debugLog("Web3Auth ユーザー情報:", user);
+      debugLog("Web3Auth プロバイダー情報:", loginResultProvider);
+      
+      // いったん少し待機してWeb3Authの情報が反映されるようにする
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // グローバルにプロバイダーを保存
+      if (typeof window !== 'undefined') {
+        // @ts-ignore
+        window.web3AuthLoginProvider = loginResultProvider;
+      }
+      
       // スマートアカウントを初期化
       console.log("Web3Auth ログイン成功、スマートアカウントを初期化します...");
-      const smartAccount = await initializeSmartAccount();
       
-      if (smartAccount) {
-        const smartAddress = await smartAccount.getAddress();
-        console.log("スマートアカウント初期化成功:", smartAddress);
+      try {
+        // スマートアカウントの初期化を複数回試行
+        let smartAccount = null;
+        let retryCount = 0;
+        const maxRetries = 3;
         
-        setOpen(false);
-        
-        const event = new CustomEvent('wallet-status-change', {
-          detail: { 
-            isLoggedIn: true, 
-            address: smartAddress,
-            displayAddress: smartAddress.slice(0, 6) + '...' + smartAddress.slice(-4),
-            smartAccountInfo: {
-              address: smartAddress,
-              provider: actualProviderId
-            }
+        while (!smartAccount && retryCount < maxRetries) {
+          try {
+            console.log(`スマートアカウント初期化試行 ${retryCount + 1}/${maxRetries}`);
+            smartAccount = await initializeSmartAccount();
+            if (smartAccount) break;
+          } catch (retryError) {
+            console.error(`初期化試行 ${retryCount + 1} 失敗:`, retryError);
+            // 次の試行の前に少し待機
+            await new Promise(resolve => setTimeout(resolve, 1000));
           }
-        });
-        window.dispatchEvent(event);
+          retryCount++;
+        }
         
-        toast({
-          title: "スマートアカウント作成成功",
-          description: `${actualProviderId === 'email_passwordless' ? 'メール' : actualProviderId} でスマートアカウントが作成されました`,
-          variant: "default",
-        });
-      } else {
-        console.error("スマートアカウントの初期化に失敗しました");
+        if (smartAccount) {
+          const smartAddress = await smartAccount.getAddress();
+          console.log("スマートアカウント初期化成功:", smartAddress);
+          
+          setOpen(false);
+          
+          const event = new CustomEvent('wallet-status-change', {
+            detail: { 
+              isLoggedIn: true, 
+              address: smartAddress,
+              displayAddress: smartAddress.slice(0, 6) + '...' + smartAddress.slice(-4),
+              smartAccountInfo: {
+                address: smartAddress,
+                provider: actualProviderId
+              }
+            }
+          });
+          window.dispatchEvent(event);
+          
+          toast({
+            title: "スマートアカウント作成成功",
+            description: `${actualProviderId === 'email_passwordless' ? 'メール' : actualProviderId} でスマートアカウントが作成されました`,
+            variant: "default",
+          });
+        } else {
+          console.error("スマートアカウントの初期化に失敗しました (最大試行回数を超過)");
+          toast({
+            title: "スマートアカウント初期化エラー",
+            description: "ログインは成功しましたが、スマートアカウントの初期化に失敗しました。再度お試しください。",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("スマートアカウントの初期化中にエラーが発生しました:", error);
         toast({
           title: "スマートアカウント初期化エラー",
-          description: "ログインは成功しましたが、スマートアカウントの初期化に失敗しました",
+          description: "ログインは成功しましたが、スマートアカウントの初期化中にエラーが発生しました。",
           variant: "destructive",
         });
       }
@@ -372,14 +422,13 @@ export function SmartWalletButton() {
           <DialogTrigger asChild>
             <Button className="flex items-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium py-2.5 px-5 rounded-full transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5">
               <Shield className="w-5 h-5" />
-              アカウント作成
+              アカウント接続
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-center text-2xl font-bold">スマートアカウント作成</DialogTitle>
+              <DialogTitle className="text-center text-2xl font-bold">アカウント接続</DialogTitle>
               <DialogDescription className="text-center text-sm text-slate-500">
-                ソーシャルログインまたはウォレットでスマートアカウントを作成できます
               </DialogDescription>
             </DialogHeader>
             <Tabs defaultValue="social" className="w-full" onValueChange={setActiveTab}>
@@ -476,7 +525,7 @@ export function SmartWalletButton() {
             </Tabs>
             <div className="flex items-center space-x-2 mt-4">
               <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-              <p className="text-xs text-slate-500">AlchemyAccountKit採用</p>
+              <p className="text-xs text-slate-500">AlchemyAccountKit採用(ERC4337 Account Abstraction)</p>
               <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
             </div>
           </DialogContent>

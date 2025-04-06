@@ -18,6 +18,7 @@ import { useRaffleContract } from "@/hooks/use-raffle-contract"
 import { formatAddress } from "./utils/format-address"
 import { useWeb3Auth } from "@/hooks/use-web3auth";
 import { useSmartAccountContext } from "./providers/smart-account-provider"
+import { useRaffleHistory } from "@/hooks/use-raffle-history"
 
 export default function RaffleDapp() {
   const chainId = useChainId()
@@ -31,6 +32,11 @@ export default function RaffleDapp() {
     smartAccountAddress, 
     isReadyToSendTx 
   } = useSmartAccountContext();
+  
+  // ユーザーのラッフル履歴を取得
+  const { userStats, pastRaffles, isLoading: isHistoryLoading } = useRaffleHistory(
+    smartAccountAddress || address
+  );
   
   const [showNotification, setShowNotification] = useState(false)
   const [minutes, setMinutes] = useState(0)
@@ -360,22 +366,26 @@ export default function RaffleDapp() {
             </div>
 
             <div className="space-y-4 mb-8">
-              {[
-                { label: "総参加数", value: "12", icon: <Users className="w-4 h-4 text-slate-400" /> },
-                { label: "勝利回数", value: "2", icon: <Trophy className="w-4 h-4 text-slate-400" /> },
-                { label: "ジャックポット獲得", value: "0", icon: <Sparkles className="w-4 h-4 text-slate-400" /> },
-              ].map((stat, index) => (
-                <div
-                  key={index}
-                  className="flex justify-between items-center py-3 border-b border-slate-200 dark:border-slate-700"
-                >
-                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-                    {stat.icon}
-                    <span>{stat.label}</span>
+              {isHistoryLoading ? (
+                <div className="py-8 text-center text-slate-500">ユーザー統計情報を読み込み中...</div>
+              ) : (
+                [
+                  { label: "総参加数", value: userStats.totalParticipations.toString(), icon: <Users className="w-4 h-4 text-slate-400" /> },
+                  { label: "勝利回数", value: userStats.totalWins.toString(), icon: <Trophy className="w-4 h-4 text-slate-400" /> },
+                  { label: "ジャックポット獲得", value: userStats.jackpotWins.toString(), icon: <Sparkles className="w-4 h-4 text-slate-400" /> },
+                ].map((stat, index) => (
+                  <div
+                    key={index}
+                    className="flex justify-between items-center py-3 border-b border-slate-200 dark:border-slate-700"
+                  >
+                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+                      {stat.icon}
+                      <span>{stat.label}</span>
+                    </div>
+                    <div className="font-bold">{stat.value}</div>
                   </div>
-                  <div className="font-bold">{stat.value}</div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
             <div>
@@ -410,16 +420,19 @@ export default function RaffleDapp() {
               </div>
             </div>
             
-            {/* 管理者パネルを追加 */}
-            {isConnected && address && raffleData.owner && (
+            {/* 管理者パネルを追加 - テスト用にすべてのユーザーに表示 */}
+            {(isConnected || smartAccountAddress) && raffleData.owner && (
               <div className="mt-8">
+                <div className="p-3 mb-3 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded-lg text-sm">
+                  テスト用: この管理パネルは本来オーナーのみが操作できます
+                </div>
                 <OwnerAdminPanel
-                  isOwner={address.toLowerCase() === (raffleData.owner || "").toLowerCase()}
+                  isOwner={true} /* テスト用に常にtrueに設定 */
                   contractAddress={contractAddress || ""}
                   balance={0.015}
                   usdcBalance={Number(raffleData.numberOfPlayers || 0) * 10}
                   jackpotAmount={Number(raffleData.jackpotAmount || 0)}
-                  ownerAddress={raffleData.owner}
+                  ownerAddress={smartAccountAddress || raffleData.owner}
                   supportedChains={supportedChains}
                   onWithdraw={() => {}}
                   onChangeOwner={() => {}}
@@ -453,70 +466,39 @@ export default function RaffleDapp() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[
-                    {
-                      round: "#42",
-                      participants: "5",
-                      winner: "0x3b45...c72e",
-                      prize: "45 USDC",
-                      jackpot: "なし",
-                      time: "2分前",
-                      isWinner: true,
-                      tx: "0x8a72...3f21",
-                    },
-                    {
-                      round: "#41",
-                      participants: "8",
-                      winner: "0x9d12...4e5f",
-                      prize: "72 USDC",
-                      jackpot: "なし",
-                      time: "15分前",
-                      isWinner: false,
-                      tx: "0x7b34...9c12",
-                    },
-                    {
-                      round: "#40",
-                      participants: "4",
-                      winner: "0x5f78...2a3b",
-                      prize: "36 USDC",
-                      jackpot: "なし",
-                      time: "32分前",
-                      isWinner: false,
-                      tx: "0x3e56...1d78",
-                    },
-                    {
-                      round: "#39",
-                      participants: "10",
-                      winner: "0x7a23...9f21",
-                      prize: "90 USDC",
-                      jackpot: "115 USDC",
-                      time: "1時間前",
-                      isWinner: true,
-                      tx: "0x2c45...8e34",
-                    },
-                  ].map((row, index) => (
-                    <tr
-                      key={index}
-                      className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/30"
-                    >
-                      <td className="py-4 pr-4 font-medium">{row.round}</td>
-                      <td className="py-4 px-4">{row.participants}</td>
-                      <td className={`py-4 px-4 ${row.isWinner ? "text-emerald-500 font-bold" : ""}`}>{row.winner}</td>
-                      <td className="py-4 px-4">{row.prize}</td>
-                      <td className="py-4 px-4">{row.jackpot}</td>
-                      <td className="py-4 px-4 text-slate-500">{row.time}</td>
-                      <td className="py-4 pl-4">
-                        <a
-                          href={`https://sepolia-explorer.arbitrum.io/tx/${row.tx}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 underline text-sm"
-                        >
-                          表示
-                        </a>
-                      </td>
+                  {isHistoryLoading ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-slate-500">過去のラッフル結果を読み込み中...</td>
                     </tr>
-                  ))}
+                  ) : pastRaffles.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-slate-500">過去のラッフル結果がありません</td>
+                    </tr>
+                  ) : (
+                    pastRaffles.map((row, index) => (
+                      <tr
+                        key={index}
+                        className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/30"
+                      >
+                        <td className="py-4 pr-4 font-medium">{row.round}</td>
+                        <td className="py-4 px-4">{row.participants}</td>
+                        <td className={`py-4 px-4 ${row.isWinner ? "text-emerald-500 font-bold" : ""}`}>{row.winner}</td>
+                        <td className="py-4 px-4">{row.prize}</td>
+                        <td className="py-4 px-4">{row.jackpot}</td>
+                        <td className="py-4 px-4 text-slate-500">{row.time}</td>
+                        <td className="py-4 pl-4">
+                          <a
+                            href={`https://sepolia-explorer.arbitrum.io/tx/${row.tx}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 underline text-sm"
+                          >
+                            表示
+                          </a>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

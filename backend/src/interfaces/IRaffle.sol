@@ -24,8 +24,6 @@ interface IRaffle {
      */
     function enterRaffle() external;
 
-
-
     /**
      * @dev Chainlink Automationで呼び出される関数
      * 条件を満たした場合にラッフルの当選者を決定するプロセスを開始します
@@ -83,6 +81,58 @@ interface IRaffle {
         uint256 prize,
         bool isJackpot
     ) external;
+
+    /**
+     * @dev ユーザーの統計情報を取得する関数
+     * @param user 統計情報を取得するユーザーのアドレス
+     * @return entryCount ラッフル参加回数
+     * @return winCount ラッフル当選回数
+     * @return jackpotCount ジャックポット獲得回数
+     */
+    function getUserStats(address user) external view returns (
+        uint256 entryCount,
+        uint256 winCount,
+        uint256 jackpotCount
+    );
+
+    /**
+     * @dev 過去のラッフル結果の件数を取得する関数
+     * @return ラッフル履歴の件数
+     */
+    function getRaffleHistoryCount() external view returns (uint256);
+
+    /**
+     * @dev 特定のラッフル結果を取得する関数
+     * @param index 取得するラッフル結果のインデックス
+     * @return winner 当選者アドレス
+     * @return prize 賞金額
+     * @return jackpotWon ジャックポット当選かどうか
+     * @return timestamp タイムスタンプ
+     * @return playerCount 参加者数
+     */
+    function getRaffleHistoryAtIndex(uint256 index) external view returns (
+        address winner,
+        uint256 prize,
+        bool jackpotWon,
+        uint256 timestamp,
+        uint256 playerCount
+    );
+
+    /**
+     * @dev 最新のラッフル結果を取得する関数
+     * @return winner 当選者アドレス
+     * @return prize 賞金額
+     * @return jackpotWon ジャックポット当選かどうか
+     * @return timestamp タイムスタンプ
+     * @return playerCount 参加者数
+     */
+    function getLatestRaffleHistory() external view returns (
+        address winner,
+        uint256 prize,
+        bool jackpotWon,
+        uint256 timestamp,
+        uint256 playerCount
+    );
 
     // イベント
     /**

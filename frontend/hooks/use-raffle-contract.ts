@@ -141,16 +141,22 @@ export function useRaffleContract() {
     return players;
   };
 
-  // プレイヤーの参加状態を確認
-  const checkPlayerEntered = async () => {
-    if (!isConnected || !address || !contractAddress || !publicClient || !numberOfPlayersData) {
+  // プレイヤーの参加状態を確認 - スマートアカウントアドレスのサポートを追加
+  const checkPlayerEntered = async (checkAddress = '') => {
+    // チェック対象のアドレスを決定 - 引数で指定されたアドレスか通常の接続アドレス
+    const targetAddress = checkAddress || address;
+    
+    if ((!isConnected && !checkAddress) || !targetAddress || !contractAddress || !publicClient || !numberOfPlayersData) {
       setIsPlayerEntered(false);
       return false;
     }
     
     try {
+      console.log("checkPlayerEntered - チェック対象アドレス:", targetAddress);
       const players = await getPlayers();
-      const isEntered = players.some(player => player.toLowerCase() === address.toLowerCase());
+      console.log("checkPlayerEntered - 現在のプレイヤー:", players);
+      const isEntered = players.some(player => player.toLowerCase() === targetAddress.toLowerCase());
+      console.log("checkPlayerEntered - 参加状態:", isEntered);
       setIsPlayerEntered(isEntered);
       return isEntered;
     } catch (error) {
@@ -383,8 +389,13 @@ export function useRaffleContract() {
       return { success: false, error: "コントラクトアドレスが設定されていません" };
     }
     
-    // プレイヤーがすでに参加しているかチェック
-    const playerEntered = await checkPlayerEntered();
+    // デバッグ出力を追加
+    console.log("handleEnterRaffle - 使用するアドレス:", userAddress);
+    console.log("handleEnterRaffle - コントラクトアドレス:", contractAddress);
+    console.log("handleEnterRaffle - ERC20アドレス:", erc20Address);
+    
+    // プレイヤーがすでに参加しているかチェック - スマートアカウントアドレスが渡された場合はそのアドレスを使用してチェック
+    const playerEntered = await checkPlayerEntered(smartAccountAddress);
     if (playerEntered) {
       setError("あなたはすでにこのラッフルに参加しています");
       return { success: false, error: "あなたはすでにこのラッフルに参加しています" };

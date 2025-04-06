@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useRaffleContract } from "@/hooks/use-raffle-contract";
+import { RaffleABI } from "@/app/lib/contract-config";
 import { useAccount } from "wagmi";
 import { useWeb3Auth } from "@/hooks/use-web3auth";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
@@ -55,63 +56,59 @@ export function EnterRaffleButton({
     setIsEntering(true);
     
     try {
+      let txHash;
+      
+      // スマートアカウントを使用している場合
       if (smartAccountClient && isReadyToSendTx) {
-        // スマートアカウントでの参加処理（ガスレス）
-        console.log("スマートアカウントでラッフルに参加します");
-        console.log("ラッフルアドレス:", raffleAddress);
-        console.log("参加料:", entryFee.toString());
+        console.log("スマートアカウントでラッフルに参加中...");
         
-        // enterRaffle関数のABIエンコード
+        // enterRaffle関数のデータをエンコード
         const callData = encodeFunctionData({
-          abi: [{
-            name: "enterRaffle",
-            type: "function",
-            stateMutability: "payable",
-            inputs: [],
-            outputs: []
-          }],
-          functionName: "enterRaffle",
+          abi: RaffleABI,
+          functionName: 'enterRaffle',
           args: []
         });
         
-        console.log("エンコードされたcallData:", callData);
-        
         // UserOperationを送信
-        const { userOpHash, txHash } = await sendUserOperation(
-          raffleAddress as `0x${string}`, 
-          callData,
-          entryFee
-        );
-        
-        console.log("UserOperation ハッシュ:", userOpHash);
-        console.log("トランザクションハッシュ:", txHash);
-        
-        toast({
-          title: "ラッフル参加成功！",
-          description: "トランザクションが完了しました。ガスレスで送信されました。",
+        const { transactionHash } = await sendUserOperation({
+          to: raffleAddress,
+          data: callData,
+          value: entryFee
         });
         
-        // 成功時のコールバック
-        if (onSuccess) {
-          onSuccess();
-        }
-      } else if (contract && address) {
-        // 従来のウォレットでの参加処理
-        console.log("通常のウォレットでラッフルに参加します");
-        const tx = await contract.write.enterRaffle({ value: entryFee });
-        console.log("トランザクションハッシュ:", tx);
+        txHash = transactionHash;
+      } 
+      // 通常のウォレット接続の場合
+      else if (contract && address) {
+        console.log("通常ウォレットでラッフルに参加中...");
         
-        toast({
-          title: "ラッフル参加成功！",
-          description: "トランザクションが送信されました。",
+        // writeContractを使用してラッフルに参加
+        const tx = await contract.write.enterRaffle({
+          value: entryFee
         });
         
-        // 成功時のコールバック
-        if (onSuccess) {
-          onSuccess();
-        }
+        txHash = tx;
+        
+        // トランザクションの確認を待つ
+        // const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
+        // console.log("Transaction receipt:", receipt);
       } else {
-        throw new Error("ウォレットが接続されていないか、コントラクトが見つかりません");
+        throw new Error("ウォレットが正しく接続されていません");
+      }
+      
+      console.log("トランザクションハッシュ:", txHash);
+      
+      toast({
+        title: "ラッフル参加成功！",
+        description: smartAccountClient 
+          ? "スマートウォレットでラッフルに参加しました。トランザクションが確認されるまでお待ちください。" 
+          : "ラッフルに参加しました。トランザクションが確認されるまでお待ちください。",
+        variant: "default",
+      });
+      
+      // 成功時のコールバック
+      if (onSuccess) {
+        onSuccess();
       }
     } catch (error) {
       console.error("ラッフル参加エラー:", error);
