@@ -5,6 +5,7 @@ import { Trophy, Users, CheckCircle2, X, Zap, Sparkles, ArrowRight, Shield, Wall
 import Image from "next/image"
 
 import { SmartWalletButton } from "./components/auth/smart-wallet-button"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 import OwnerAdminPanel from "./components/admin/owner-admin-panel"
 import RaffleEntryStatus from "./components/raffle/raffle-entry-status"
 import { EnterRaffleButton } from "./components/raffle/enter-raffle-button"
@@ -201,6 +202,7 @@ export default function RaffleDapp() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            <ThemeToggle />
             {/* ConnectWalletButtonをSmartWalletButtonに変更 */}
             <SmartWalletButton />
           </div>
