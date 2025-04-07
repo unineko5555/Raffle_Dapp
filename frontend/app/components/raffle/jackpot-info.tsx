@@ -3,22 +3,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles, TrendingUp, DollarSign, Info, HelpCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
+interface JackpotInfoProps {
+  jackpotAmount?: number | bigint;
+  entranceFee?: number;
+  jackpotProbability?: number; // 百分率表記（例: 1は1%）
+  contributionRate?: number; // 百分率表記（例: 10は10%）
+}
+
 const JackpotInfo = ({ 
   jackpotAmount = 0,
   entranceFee = 10,
   jackpotProbability = 1, // 百分率表記（例: 1は1%）
   contributionRate = 10 // 百分率表記（例: 10は10%）
-}) => {
+}: JackpotInfoProps) => {
   // USDCの6桁小数点を考慮してフォーマット
-  const formatUSDC = (amount) => {
-    return (amount / 1e6).toLocaleString('ja-JP', {
+  const formatUSDC = (amount: number | bigint) => {
+    // bigintの場合はnumberへ変換
+    const amountNum = typeof amount === 'bigint' ? Number(amount) : amount;
+    return (amountNum / 1e6).toLocaleString('ja-JP', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
   };
   
   // おおよその当選確率を計算するための補助関数
-  const getWinProbabilityText = (percentage) => {
+  const getWinProbabilityText = (percentage: number) => {
     if (percentage < 0.1) return "極めて低い（0.1%未満）";
     if (percentage < 1) return "非常に低い（約" + percentage.toFixed(1) + "%）";
     return "約" + percentage.toFixed(1) + "%";

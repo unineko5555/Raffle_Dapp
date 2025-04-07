@@ -119,13 +119,13 @@ export default function RaffleDapp() {
       };
       
       // 初回のみデバッグ情報を表示
-      if (!window.debugRaffleInitialized) {
+      if (!(window as any).debugRaffleInitialized) {
         console.log('===== ラッフルデバッグ機能 =====');
         console.log('Automation状態を確認: window.debugRaffle.checkAutomation()');
         console.log('手動でUpkeepを実行: window.debugRaffle.manualUpkeep()');
         console.log('============================');
         // @ts-ignore
-        window.debugRaffleInitialized = true;
+        (window as any).debugRaffleInitialized = true;
       }
     }
   }, [checkAutomationStatus, performManualUpkeep])
@@ -297,7 +297,7 @@ export default function RaffleDapp() {
               {/* カスタムEnterRaffleButtonを使用 */}
               <EnterRaffleButton 
                 raffleAddress={contractAddress || ""}
-                entryFee={raffleData.entranceFee || BigInt(10)}
+                entryFee={typeof raffleData.entranceFee === 'string' ? BigInt(raffleData.entranceFee) : (raffleData.entranceFee || BigInt(10))}
                 isRaffleOpen={!isLoading}
                 onSuccess={handleRaffleEntrySuccess}
               />

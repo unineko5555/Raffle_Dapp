@@ -54,7 +54,7 @@ export const supportedChains = [
 
 // チェーンIDからコントラクト設定を取得
 export function getContractConfig(chainId: number) {
-  return contractConfig[chainId] || null;
+  return contractConfig[chainId as keyof typeof contractConfig] || null;
 }
 
 // ソーシャルログイン用の設定

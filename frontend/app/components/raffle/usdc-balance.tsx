@@ -14,6 +14,18 @@ import {
   AlertTitle,
 } from "@/components/ui/alert";
 
+// USDC残高コンポーネントのプロップ型
+interface USDCBalanceProps {
+  balance?: number | bigint;
+  entranceFee?: number | bigint;
+  isApproved?: boolean;
+  isConnected?: boolean;
+  isLoading?: boolean;
+  onApprove?: () => void;
+  onEnterRaffle?: () => void;
+  raffleState?: number; // 0: OPEN, 1: CALCULATING_WINNER, 2: CLOSED
+}
+
 const USDCBalance = ({
   balance = 0,
   entranceFee = 10 * 1e6, // 10 USDC、6桁の小数点を考慮
@@ -23,15 +35,23 @@ const USDCBalance = ({
   onApprove = () => {},
   onEnterRaffle = () => {},
   raffleState = 0, // 0: OPEN, 1: CALCULATING_WINNER, 2: CLOSED
-}) => {
+}: USDCBalanceProps) => {
   const [showDetails, setShowDetails] = useState(false);
+  
+  // 計算用の補助関数（bigintを考慮）
+  const calculatePercentage = (amount: number | bigint, percentage: number): number => {
+    const amountNum = typeof amount === 'bigint' ? Number(amount) : amount;
+    return amountNum * percentage;
+  };
   
   // 残高が十分かチェック
   const hasEnoughBalance = balance >= entranceFee;
   
   // USDCの6桁小数点を考慮してフォーマット
-  const formatUSDC = (amount) => {
-    return (amount / 1e6).toLocaleString('ja-JP', {
+  const formatUSDC = (amount: number | bigint) => {
+    // bigintの場合はnumberへ変換
+    const amountNum = typeof amount === 'bigint' ? Number(amount) : amount;
+    return (amountNum / 1e6).toLocaleString('ja-JP', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
@@ -102,12 +122,12 @@ const USDCBalance = ({
             
             <div className="flex justify-between items-center text-sm">
               <span className="text-slate-600 dark:text-slate-400">ジャックポット寄与分 (10%)</span>
-              <span className="font-medium">{formatUSDC(entranceFee * 0.1)} USDC</span>
+              <span className="font-medium">{formatUSDC(calculatePercentage(entranceFee, 0.1))} USDC</span>
             </div>
             
             <div className="flex justify-between items-center text-sm">
               <span className="text-slate-600 dark:text-slate-400">賞金プール寄与分 (90%)</span>
-              <span className="font-medium">{formatUSDC(entranceFee * 0.9)} USDC</span>
+              <span className="font-medium">{formatUSDC(calculatePercentage(entranceFee, 0.9))} USDC</span>
             </div>
             
             <div className="flex justify-between items-center text-sm font-medium pt-2 border-t border-slate-100 dark:border-slate-700">

@@ -36,7 +36,9 @@ export function EnterRaffleButton({
   
   const [isLoading, setIsLoading] = useState(false);
   const [isEntering, setIsEntering] = useState(false);
-  const { contract } = useRaffleContract(raffleAddress);
+  
+  // useRaffleContractフックからは必要な関数と状態を取得
+  const { handleEnterRaffle, isLoading: isContractLoading } = useRaffleContract();
   
   // ユーザーがラッフルに参加できるかのチェック
   const canEnterRaffle = isRaffleOpen && (isConnected || isReadyToSendTx);
@@ -70,28 +72,25 @@ export function EnterRaffleButton({
         });
         
         // UserOperationを送信
-        const { transactionHash } = await sendUserOperation({
-          to: raffleAddress,
-          data: callData,
-          value: entryFee
-        });
+        const { txHash: transactionHash } = await sendUserOperation(
+          raffleAddress,
+          callData,
+          entryFee
+        );
         
         txHash = transactionHash;
       } 
       // 通常のウォレット接続の場合
-      else if (contract && address) {
+      else if (address) {
         console.log("通常ウォレットでラッフルに参加中...");
         
-        // writeContractを使用してラッフルに参加
-        const tx = await contract.write.enterRaffle({
-          value: entryFee
-        });
-        
-        txHash = tx;
-        
-        // トランザクションの確認を待つ
-        // const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
-        // console.log("Transaction receipt:", receipt);
+        // handleEnterRaffle関数を使用してラッフルに参加
+        const result = await handleEnterRaffle();
+        if (result && result.success && result.txHash) {
+          txHash = result.txHash;
+        } else {
+          throw new Error(result?.error || "ラッフル参加に失敗しました");
+        }
       } else {
         throw new Error("ウォレットが正しく接続されていません");
       }
@@ -131,7 +130,7 @@ export function EnterRaffleButton({
   return (
     <Button
       onClick={enterRaffle}
-      disabled={!canEnterRaffle || isLoading}
+      disabled={!canEnterRaffle || isLoading || isContractLoading}
       className="w-full mt-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
     >
       {isLoading ? (

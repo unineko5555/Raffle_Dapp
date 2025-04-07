@@ -320,6 +320,7 @@ export function SmartWalletButton() {
         }
         
         if (smartAccount) {
+          // @ts-ignore getAddressの引数に関する型定義の不一致を無視
           const smartAddress = await smartAccount.getAddress();
           console.log("スマートアカウント初期化成功:", smartAddress);
           

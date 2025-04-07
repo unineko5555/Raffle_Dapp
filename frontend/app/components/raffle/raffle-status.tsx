@@ -9,7 +9,17 @@ const RaffleState = {
   OPEN: 0,
   CALCULATING_WINNER: 1,
   CLOSED: 2
-};
+} as const;
+
+// ラッフルステータスコンポーネントのプロップ型
+interface RaffleStatusProps {
+  raffleState?: typeof RaffleState[keyof typeof RaffleState];
+  playerCount?: number;
+  minPlayers?: number;
+  minTimeAfterMinPlayers?: number; // 秒単位
+  minPlayersReachedTime?: number | null;
+  onTimerComplete?: () => void;
+}
 
 const RaffleStatus = ({ 
   raffleState = RaffleState.OPEN,
@@ -18,7 +28,7 @@ const RaffleStatus = ({
   minTimeAfterMinPlayers = 60, // 秒単位
   minPlayersReachedTime = null,
   onTimerComplete = () => {}
-}) => {
+}: RaffleStatusProps) => {
   const [timeRemaining, setTimeRemaining] = useState(minTimeAfterMinPlayers);
   const [progress, setProgress] = useState(0);
 
@@ -85,7 +95,7 @@ const RaffleStatus = ({
   }, [playerCount, minPlayers, raffleState, minPlayersReachedTime, minTimeAfterMinPlayers, onTimerComplete]);
   
   // 残り時間を分:秒形式でフォーマット
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;

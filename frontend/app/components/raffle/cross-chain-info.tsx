@@ -14,21 +14,36 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
+// チェーン情報の型定義
+interface ChainInfo {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+  borderColor?: string;
+  textColor?: string;
+}
+
+interface CrossChainInfoProps {
+  supportedChains?: ChainInfo[];
+  activeChain?: ChainInfo | null;
+  onChangeChain?: (chain: ChainInfo) => void;
+  isOwner?: boolean;
+}
+
 const CrossChainInfo = ({
   supportedChains = [],
   activeChain = null,
   onChangeChain = () => {},
   isOwner = false,
-}) => {
+}: CrossChainInfoProps) => {
   const [expanded, setExpanded] = useState(false);
   
   // サポートされているチェーンが存在しない場合に備えて、デフォルト値を設定
   const chains = supportedChains.length > 0 ? supportedChains : [
-    { id: 11155111, name: "Ethereum Sepolia", icon: "/icons/ethereum.svg", color: "bg-blue-500" },
-    { id: 80001, name: "Polygon Mumbai", icon: "/icons/polygon.svg", color: "bg-purple-600" },
-    { id: 421613, name: "Arbitrum Sepolia", icon: "/icons/arbitrum.svg", color: "bg-blue-400" },
-    { id: 420, name: "Optimism Goerli", icon: "/icons/optimism.svg", color: "bg-red-500" },
-    { id: 84531, name: "Base Sepolia", icon: "/icons/ethereum.svg", color: "bg-blue-700" }
+    { id: 11155111, name: "Ethereum Sepolia", icon: "/icons/ethereum.svg", color: "bg-blue-500", borderColor: "border-blue-500", textColor: "text-blue-500" },
+    { id: 421613, name: "Arbitrum Sepolia", icon: "/icons/arbitrum.svg", color: "bg-blue-400", borderColor: "border-blue-400", textColor: "text-blue-400" },
+    { id: 84531, name: "Base Sepolia", icon: "/icons/ethereum.svg", color: "bg-blue-700", borderColor: "border-blue-700", textColor: "text-blue-700" }
   ];
   
   // 現在のアクティブチェーンを設定

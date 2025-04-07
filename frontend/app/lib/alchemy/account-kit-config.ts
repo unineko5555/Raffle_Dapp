@@ -10,7 +10,7 @@ const debugLog = (message: string, ...args: any[]) => {
 };
 
 import { Chain, sepolia } from "viem/chains";
-import { createPublicClient, custom } from "viem";
+import { createPublicClient, custom, type SignableMessage } from "viem";
 import { type SmartAccountSigner } from "@alchemy/aa-core";
 
 // 環境変数からAPI Keyを取得
@@ -76,14 +76,24 @@ export async function createWeb3AuthSigner(provider: any): Promise<SmartAccountS
       debugLog("Web3Auth アカウントアドレス:", address);
 
       // カスタム署名関数を作成
-      const signMessage = async (message: string | Uint8Array): Promise<`0x${string}`> => {
+      const signMessage = async (message: SignableMessage): Promise<`0x${string}`> => {
         try {
-          // message が Uint8Array の場合は 16進数文字列に変換
-          const messageToSign = typeof message === 'string' 
-            ? message 
-            : Buffer.from(message).toString('hex').startsWith('0x') 
-              ? Buffer.from(message).toString('hex') 
+          // 署名可能なメッセージを適切な形式に変換
+          let messageToSign;
+          
+          if (typeof message === 'string') {
+            messageToSign = message;
+          } else if (message instanceof Uint8Array) {
+            messageToSign = Buffer.from(message).toString('hex').startsWith('0x')
+              ? Buffer.from(message).toString('hex')
               : '0x' + Buffer.from(message).toString('hex');
+          } else if (message.raw instanceof Uint8Array) {
+            messageToSign = Buffer.from(message.raw).toString('hex').startsWith('0x')
+              ? Buffer.from(message.raw).toString('hex')
+              : '0x' + Buffer.from(message.raw).toString('hex');
+          } else {
+            messageToSign = message.raw; // 0x形式の文字列と仕定
+          }
           
           // personal_sign メソッドを使用
           const signature = await publicClient.request({
@@ -101,8 +111,23 @@ export async function createWeb3AuthSigner(provider: any): Promise<SmartAccountS
       // カスタム署名者オブジェクトを作成
       const signer: SmartAccountSigner = {
         signerType: "web3auth" as any,
+        inner: provider, // 内部クライアントとしてプロバイダーを設定
         getAddress: async () => address as `0x${string}`,
         signMessage,
+        // TypedDataの署名メソッドを実装
+        signTypedData: async (params) => {
+          try {
+            const signature = await publicClient.request({
+              method: "eth_signTypedData_v4",
+              params: [address, JSON.stringify(params)],
+            } as any) as `0x${string}`;
+            
+            return signature;
+          } catch (error) {
+            console.error("TypedData署名中にエラーが発生しました:", error);
+            throw error;
+          }
+        },
       };
 
       return signer;
@@ -122,13 +147,24 @@ export async function createWeb3AuthSigner(provider: any): Promise<SmartAccountS
         debugLog("直接メソッドで取得したアドレス:", address);
         
         // 直接プロバイダーを使用した署名関数
-        const signMessage = async (message: string | Uint8Array): Promise<`0x${string}`> => {
+        const signMessage = async (message: SignableMessage): Promise<`0x${string}`> => {
           try {
-            const messageToSign = typeof message === 'string' 
-              ? message 
-              : Buffer.from(message).toString('hex').startsWith('0x') 
-                ? Buffer.from(message).toString('hex') 
+            // 署名可能なメッセージを適切な形式に変換
+            let messageToSign;
+            
+            if (typeof message === 'string') {
+              messageToSign = message;
+            } else if (message instanceof Uint8Array) {
+              messageToSign = Buffer.from(message).toString('hex').startsWith('0x')
+                ? Buffer.from(message).toString('hex')
                 : '0x' + Buffer.from(message).toString('hex');
+            } else if (message.raw instanceof Uint8Array) {
+              messageToSign = Buffer.from(message.raw).toString('hex').startsWith('0x')
+                ? Buffer.from(message.raw).toString('hex')
+                : '0x' + Buffer.from(message.raw).toString('hex');
+            } else {
+              messageToSign = message.raw; // 0x形式の文字列と仕定
+            }
             
             const signature = await provider.request({
               method: "personal_sign",
@@ -145,8 +181,23 @@ export async function createWeb3AuthSigner(provider: any): Promise<SmartAccountS
         // 直接メソッドを使用した署名者
         const signer: SmartAccountSigner = {
           signerType: "web3auth" as any,
+          inner: provider, // 内部クライアントとしてプロバイダーを設定
           getAddress: async () => address as `0x${string}`,
           signMessage,
+          // TypedDataの署名メソッドを実装
+          signTypedData: async (params) => {
+            try {
+              const signature = await provider.request({
+                method: "eth_signTypedData_v4",
+                params: [address, JSON.stringify(params)]
+              }) as `0x${string}`;
+              
+              return signature;
+            } catch (error) {
+              console.error("TypedData署名中にエラーが発生しました(直接メソッド):", error);
+              throw error;
+            }
+          },
         };
         
         return signer;
@@ -184,7 +235,7 @@ export async function createLightSmartAccountClient(
             sender: await signer.getAddress(),
             nonce: "0",
             initCode: "0x",
-            callData: options?.data || "0x",
+            callData: "0x", // optionsはこのスコープには存在しないので固定値に変更
             callGasLimit: "0",
             verificationGasLimit: "0",
             preVerificationGas: "0",

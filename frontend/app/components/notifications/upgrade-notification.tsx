@@ -12,24 +12,33 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, AlertTriangle, Sparkles, X, ChevronRight, ArrowUpRight } from "lucide-react";
 
+// アップグレード情報の型定義
+interface UpgradeInfo {
+  type: 'feature' | 'fix' | 'security' | string;
+  title: string;
+  description: string;
+}
+
 const UpgradeNotification = ({
   isOpen = false,
-  onOpenChange = () => {},
-  upgrades = [], // アップグレード情報の配列
+  onOpenChange = (open: boolean) => {},
+  upgrades = [] as UpgradeInfo[], // アップグレード情報の配列
   currentVersion = "1.0.0",
-  previousVersion = null, // 過去のバージョン（初回ログイン時はnull）
+  previousVersion = null as string | null, // 過去のバージョン（初回ログイン時はnull）
   contractAddress = "0x...",
-  upgradeTimestamp = null, // アップグレード日時のタイムスタンプ
+  upgradeTimestamp = null as number | null, // アップグレード日時のタイムスタンプ
   explorerUrl = "", // ブロックエクスプローラのURL
 }) => {
   const [showAll, setShowAll] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   
   // 日付をフォーマットする関数
-  const formatDate = (timestamp) => {
+  const formatDate = (timestamp: number | string | null): string => {
     if (!timestamp) return "不明";
     
-    const date = new Date(timestamp * 1000);
+    // 文字列の場合は数値に変換
+    const timestampNum = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
+    const date = new Date(timestampNum * 1000);
     return date.toLocaleDateString('ja-JP', {
       year: 'numeric',
       month: 'long',

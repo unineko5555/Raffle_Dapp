@@ -1,9 +1,10 @@
 "use server"
 
-import { contractConfig } from "../lib/contract-config";
+import { contractConfig, RaffleABI } from "../lib/contract-config";
 import { createPublicClient, http, createWalletClient, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia, baseSepolia, arbitrumSepolia } from "viem/chains";
+
 
 // 使用するチェーンを定義
 const getChain = (chainId: number) => {
@@ -33,9 +34,12 @@ export async function enterRaffle(chainId: number, userAddress: string) {
           .map(() => Math.floor(Math.random() * 16).toString(16))
           .join(""),
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error entering raffle:", error);
-    return { success: false, error: error.message };
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    };
   }
 }
 
@@ -43,7 +47,9 @@ export async function enterRaffle(chainId: number, userAddress: string) {
 export async function getRaffleInfo(chainId: number) {
   try {
     const chain = getChain(chainId);
-    const config = contractConfig[chainId];
+    // チェーンIDをキーとしてアクセスする前に型チェック
+    const chainIdKey = chainId as keyof typeof contractConfig;
+    const config = contractConfig[chainIdKey];
     
     if (!config) {
       throw new Error(`Unsupported chain ID: ${chainId}`);
@@ -59,27 +65,27 @@ export async function getRaffleInfo(chainId: number) {
     const [entranceFee, numberOfPlayers, raffleState, jackpotAmount, recentWinner] = await Promise.all([
       publicClient.readContract({
         address: config.raffleProxy as `0x${string}`,
-        abi: contractConfig.RaffleABI,
+        abi: RaffleABI,
         functionName: "getEntranceFee",
       }),
       publicClient.readContract({
         address: config.raffleProxy as `0x${string}`,
-        abi: contractConfig.RaffleABI,
+        abi: RaffleABI,
         functionName: "getNumberOfPlayers",
       }),
       publicClient.readContract({
         address: config.raffleProxy as `0x${string}`,
-        abi: contractConfig.RaffleABI,
+        abi: RaffleABI,
         functionName: "getRaffleState",
       }),
       publicClient.readContract({
         address: config.raffleProxy as `0x${string}`,
-        abi: contractConfig.RaffleABI,
+        abi: RaffleABI,
         functionName: "getJackpotAmount",
       }),
       publicClient.readContract({
         address: config.raffleProxy as `0x${string}`,
-        abi: contractConfig.RaffleABI,
+        abi: RaffleABI,
         functionName: "getRecentWinner",
       }),
     ]);
@@ -94,8 +100,11 @@ export async function getRaffleInfo(chainId: number) {
         recentWinner,
       }
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error getting raffle info:", error);
-    return { success: false, error: error.message };
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    };
   }
 }

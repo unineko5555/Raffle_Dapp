@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRaffleContract } from './use-raffle-contract';
-import { formatEther } from 'viem';
+import { usePublicClient } from 'wagmi';
+import { RaffleABI } from '@/app/lib/contract-config';
+import { formatUnits } from 'viem';
 
 export function useRaffleHistory(userAddress: string | undefined | null) {
   const [userStats, setUserStats] = useState({
@@ -14,15 +16,10 @@ export function useRaffleHistory(userAddress: string | undefined | null) {
   const [pastRaffles, setPastRaffles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // ラッフルコントラクトフックから必要な情報を取得
-  const { 
-    contractAddress, 
-    raffleData, 
-    publicClient,
-    contract
-  } = useRaffleContract();
+  const { contractAddress, raffleData } = useRaffleContract();
+  const publicClient = usePublicClient();
   
-  // ユーザー統計とラッフル結果を模擬データから取得（本来はコントラクトイベントから取得）
+  // ユーザー統計とラッフル結果をコントラクトから取得
   useEffect(() => {
     const fetchRaffleHistory = async () => {
       if (!userAddress || !contractAddress || !publicClient) {
@@ -33,15 +30,98 @@ export function useRaffleHistory(userAddress: string | undefined | null) {
       setIsLoading(true);
       
       try {
-        // 本番環境では、実際にイベントログから過去のラッフル情報を取得する
-        // 簡易版として模擬データを生成する
+        // WinnerPickedイベントをフェッチ
+        const winnerEvents = await publicClient.getContractEvents({
+          address: contractAddress as `0x${string}`,
+          abi: RaffleABI,
+          eventName: 'WinnerPicked',
+          fromBlock: BigInt(0),
+          toBlock: 'latest'
+        });
         
-        // 模擬データ生成（実際はスマートコントラクトのイベントから取得）
-        const mockUserStats = generateMockUserStats(userAddress);
-        const mockPastRaffles = generateMockPastRaffles(userAddress);
+        // RaffleEnterイベントをフェッチ
+        const enterEvents = await publicClient.getContractEvents({
+          address: contractAddress as `0x${string}`,
+          abi: RaffleABI,
+          eventName: 'RaffleEnter',
+          fromBlock: BigInt(0),
+          toBlock: 'latest'
+        });
         
-        setUserStats(mockUserStats);
-        setPastRaffles(mockPastRaffles);
+        // ユーザー関連のイベントをフィルタリング
+        const userEnterEvents = enterEvents.filter(event => {
+          // 型エラーを回避するために、any型としてアクセス
+          const eventData = event as any;
+          const player = eventData.args?.player || eventData.player;
+          return player?.toLowerCase() === userAddress?.toLowerCase();
+        });
+        
+        const userWinEvents = winnerEvents.filter(event => {
+          // 型エラーを回避するために、any型としてアクセス
+          const eventData = event as any;
+          const winner = eventData.args?.winner || eventData.winner;
+          return winner?.toLowerCase() === userAddress?.toLowerCase();
+        });
+        
+        const jackpotWins = userWinEvents.filter(event => {
+          // 型エラーを回避するために、any型としてアクセス
+          const eventData = event as any;
+          return eventData.args?.isJackpot || eventData.isJackpot;
+        });
+        
+        // ユーザー統計を更新
+        setUserStats({
+          totalParticipations: userEnterEvents.length,
+          totalWins: userWinEvents.length,
+          jackpotWins: jackpotWins.length
+        });
+        
+        // ラッフル履歴を作成
+        const raffleHistory = await Promise.all(winnerEvents.map(async (event) => {
+          // 型エラーを回避するために、any型としてアクセス
+          const eventData = event as any;
+          const winner = eventData.args?.winner || eventData.winner;
+          const prize = eventData.args?.prize || eventData.prize || BigInt(0);
+          const isJackpot = eventData.args?.isJackpot || eventData.isJackpot || false;
+          const blockNumber = eventData.blockNumber || eventData.blockHash;
+          const txHash = eventData.transactionHash || eventData.hash || '';
+          
+          // ブロック情報を取得してタイムスタンプを得る
+          let timestamp = Date.now();
+          try {
+            if (blockNumber) {
+              const block = await publicClient.getBlock({
+                blockNumber: typeof blockNumber === 'string' ? BigInt(blockNumber) : blockNumber
+              });
+              timestamp = Number(block.timestamp) * 1000;
+            }
+          } catch (error) {
+            console.error('ブロック情報の取得失敗:', error);
+          }
+          
+          // 該当ラウンドの参加者数を推定
+          // 注: より正確な情報を得るには、ラウンド番号などをイベントに含める必要がある
+          const participantCount = eventData.transactionIndex ? Number(eventData.transactionIndex) + 3 : 3; // 簡易的な推定
+          
+          return {
+            round: `#${blockNumber || '???'}`,
+            participants: participantCount.toString(),
+            winner: winner ? `${winner.slice(0, 6)}...${winner.slice(-4)}` : '不明',
+            prize: `${formatUnits(prize, 6)} USDC`,
+            jackpot: isJackpot ? `獲得！` : "なし",
+            time: new Date(timestamp).toLocaleString('ja-JP'),
+            isWinner: winner?.toLowerCase() === userAddress?.toLowerCase(),
+            tx: txHash,
+          };
+        }));
+        
+        // 最新のラウンドが先頭に来るように並べ替え
+        setPastRaffles(raffleHistory.sort((a, b) => {
+          // ブロック番号を数値として抽出して比較
+          const aBlock = parseInt(a.round.substring(1).replace('???', '0'));
+          const bBlock = parseInt(b.round.substring(1).replace('???', '0'));
+          return bBlock - aBlock; // 降順
+        }));
       } catch (error) {
         console.error("ラッフル履歴データの取得に失敗しました:", error);
       } finally {
@@ -57,54 +137,4 @@ export function useRaffleHistory(userAddress: string | undefined | null) {
     pastRaffles,
     isLoading
   };
-}
-
-// 模擬データ生成関数（実際の実装では削除し、実データに置き換え）
-function generateMockUserStats(userAddress: string | undefined | null) {
-  // ユーザーアドレスの末尾の数値を使って、模擬的にランダムな値を生成
-  const addressNum = userAddress ? parseInt(userAddress.slice(-2), 16) : 0;
-  
-  return {
-    totalParticipations: (addressNum % 10) + 5, // 5〜14の間
-    totalWins: (addressNum % 3) + 1,            // 1〜3の間
-    jackpotWins: addressNum % 2                 // 0または1
-  };
-}
-
-function generateMockPastRaffles(userAddress: string | undefined | null) {
-  // ユーザーアドレスの末尾の数値を使って、模擬的にランダムな値を生成
-  const addressNum = userAddress ? parseInt(userAddress.slice(-2), 16) : 0;
-  const isWinner = (round: number) => round % (addressNum % 5 + 2) === 0;
-  
-  // 最新の4つのラッフル結果を模擬データとして生成
-  return Array.from({ length: 4 }, (_, i) => {
-    const round = 42 - i;
-    const participants = 3 + (round % 8);
-    const timestamp = Date.now() - i * (15 * 60 * 1000); // 15分ごとに過去にさかのぼる
-    const hasJackpot = round % 3 === 0;
-    const winner = isWinner(round) 
-      ? userAddress 
-      : `0x${Math.random().toString(16).slice(2, 6)}...${Math.random().toString(16).slice(2, 6)}`;
-      
-    return {
-      round: `#${round}`,
-      participants: participants.toString(),
-      winner: winner?.slice(0, 6) + '...' + winner?.slice(-4),
-      prize: `${participants * 9} USDC`,
-      jackpot: hasJackpot ? `${(round % 4) * 30 + 25} USDC` : "なし",
-      time: getTimeAgo(timestamp),
-      isWinner: isWinner(round),
-      tx: `0x${Math.random().toString(16).slice(2, 10)}...${Math.random().toString(16).slice(2, 4)}`,
-    };
-  });
-}
-
-// 時間表示の補助関数
-function getTimeAgo(timestamp: number) {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  
-  if (seconds < 60) return `${seconds}秒前`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}分前`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}時間前`;
-  return `${Math.floor(seconds / 86400)}日前`;
 }
