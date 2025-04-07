@@ -1,19 +1,4 @@
-    // 過去のラッフル結果の記録用構造体
-    struct RaffleHistory {
-        address winner;
-        uint256 prize;
-        bool jackpotWon;
-        uint256 timestamp;
-        uint256 playerCount;
-    }
-    
-    // 過去のラッフル結果を保存する配列
-    RaffleHistory[] private s_raffleHistory;
-    
-    // ユーザーの参加記録を追跡するマップ
-    mapping(address => uint256) private s_userEntryCount;
-    mapping(address => uint256) private s_userWinCount;
-    mapping(address => uint256) private s_userJackpotCount;// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
 import "./interfaces/IRaffle.sol";
