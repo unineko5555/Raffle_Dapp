@@ -9,6 +9,7 @@ import "./interfaces/CCIPInterface.sol";
 import "./interfaces/IERC20.sol";
 import "./libraries/RaffleLib.sol";
 import "./interfaces/IUUPSUpgradeable.sol";
+import "./mocks/MockVRFProvider.sol";
 
 /**
  * @title RaffleImplementation
@@ -30,6 +31,10 @@ contract RaffleImplementation is
     uint32 private s_callbackGasLimit;
     uint32 private constant NUM_WORDS = 2;
     uint256 private s_lastRequestId;
+
+    // MockVRF用の変数
+    IMockRandomProvider private s_mockVRFProvider;
+    bool private s_useMockVRF;
 
     // ラッフル設定
     uint256 private s_entranceFee;
@@ -89,6 +94,8 @@ contract RaffleImplementation is
      * @param usdcAddress USDCトークンのアドレス
      * @param ccipRouter CCIPルーターのアドレス
      * @param addMockPlayers テスト用にモックプレイヤーを追加するかどうか
+     * @param mockVRFProvider MockVRFプロバイダーのアドレス
+     * @param useMockVRF MockVRFを使用するかどうか
      */
     function initialize(
         address vrfCoordinatorV2,
@@ -98,7 +105,9 @@ contract RaffleImplementation is
         uint256 entranceFee,
         address usdcAddress,
         address ccipRouter,
-        bool addMockPlayers
+        bool addMockPlayers,
+        address mockVRFProvider,
+        bool useMockVRF
     ) external {
         // 初期化は一度だけ
         require(!s_initialized, "Already initialized");
@@ -108,6 +117,12 @@ contract RaffleImplementation is
         s_subscriptionId = uint64(subscriptionId);
         s_keyHash = keyHash;
         s_callbackGasLimit = callbackGasLimit;
+        
+        // MockVRF設定
+        if (mockVRFProvider != address(0)) {
+            s_mockVRFProvider = IMockRandomProvider(mockVRFProvider);
+        }
+        s_useMockVRF = useMockVRF;
         
         // ラッフル設定
         s_entranceFee = entranceFee;
@@ -259,16 +274,29 @@ contract RaffleImplementation is
         s_raffleState = RaffleState.CALCULATING_WINNER;
         emit RaffleStateChanged(s_raffleState);
 
-        // Chainlink VRFに乱数生成をリクエスト
-        uint256 requestId = s_vrfCoordinator.requestRandomWords(
-            s_keyHash,
-            s_subscriptionId,
-            REQUEST_CONFIRMATIONS,
-            s_callbackGasLimit,
-            NUM_WORDS
-        );
-
-        s_lastRequestId = requestId;
+        // 環境に応じてVRFかMockVRFを使用
+        if (s_useMockVRF && address(s_mockVRFProvider) != address(0)) {
+            // MockVRFを使用する場合
+            uint256 requestId = s_mockVRFProvider.requestRandomWords(NUM_WORDS);
+            s_lastRequestId = requestId;
+            
+            // MockVRFは即座に結果を返すので、直接処理する
+            if (s_mockVRFProvider.randomWordsAvailable()) {
+                uint256[] memory randomWords = s_mockVRFProvider.getLatestRandomWords();
+                processRandomWords(randomWords);
+                s_mockVRFProvider.resetRandomWords();
+            }
+        } else {
+            // 通常のChainlink VRFを使用する場合
+            uint256 requestId = s_vrfCoordinator.requestRandomWords(
+                s_keyHash,
+                s_subscriptionId,
+                REQUEST_CONFIRMATIONS,
+                s_callbackGasLimit,
+                NUM_WORDS
+            );
+            s_lastRequestId = requestId;
+        }
     }
 
     /**
@@ -277,6 +305,15 @@ contract RaffleImplementation is
      * @param randomWords 生成された乱数配列
      */
     function fulfillRandomWords(uint256 /* requestId */, uint256[] memory randomWords) internal override {
+        processRandomWords(randomWords);
+    }
+    
+    /**
+     * @notice 乱数を処理して当選者を決定する内部関数
+     * @dev VRFとMockVRFで共通の処理を行う
+     * @param randomWords 生成された乱数配列
+     */
+    function processRandomWords(uint256[] memory randomWords) internal {
         // 参加者の中から当選者を選ぶ
         uint256 winnerIndex = randomWords[0] % s_players.length;
         address winner = s_players[winnerIndex];
@@ -286,7 +323,7 @@ contract RaffleImplementation is
         uint256 prize = (s_entranceFee * s_players.length) * 90 / 100; // 参加料の90%が賞金
         s_recentPrize = prize;
 
-        // 修正: ジャックポット当選判定 - 配列の長さをチェック
+        // ジャックポット当選判定 - 配列の長さをチェック
         bool isJackpotWinner = false;
         if (randomWords.length > 1) {
             isJackpotWinner = RaffleLib.isWinner(randomWords[1], RaffleLib.getJackpotProbability());
@@ -413,6 +450,19 @@ contract RaffleImplementation is
     }
     
     /**
+     * @notice MockVRF設定を変更する関数
+     * @param mockVRFProvider 新しいMockVRFプロバイダーのアドレス
+     * @param useMockVRF MockVRFを使用するかどうか
+     */
+    function setMockVRF(address mockVRFProvider, bool useMockVRF) external {
+        require(msg.sender == s_owner, "Only owner can set MockVRF");
+        if (mockVRFProvider != address(0)) {
+            s_mockVRFProvider = IMockRandomProvider(mockVRFProvider);
+        }
+        s_useMockVRF = useMockVRF;
+    }
+    
+    /**
      * @dev UUPSアップグレード用の関数
      * @param newImplementation 新しい実装コントラクトのアドレス
      */
@@ -470,16 +520,29 @@ contract RaffleImplementation is
         s_raffleState = RaffleState.CALCULATING_WINNER;
         emit RaffleStateChanged(s_raffleState);
 
-        // Chainlink VRFに乱数生成をリクエスト
-        uint256 requestId = s_vrfCoordinator.requestRandomWords(
-            s_keyHash,
-            s_subscriptionId,
-            REQUEST_CONFIRMATIONS,
-            s_callbackGasLimit,
-            NUM_WORDS
-        );
-
-        s_lastRequestId = requestId;
+        // 環境に応じてVRFかMockVRFを使用
+        if (s_useMockVRF && address(s_mockVRFProvider) != address(0)) {
+            // MockVRFを使用する場合
+            uint256 requestId = s_mockVRFProvider.requestRandomWords(NUM_WORDS);
+            s_lastRequestId = requestId;
+            
+            // MockVRFは即座に結果を返すので、直接処理する
+            if (s_mockVRFProvider.randomWordsAvailable()) {
+                uint256[] memory randomWords = s_mockVRFProvider.getLatestRandomWords();
+                processRandomWords(randomWords);
+                s_mockVRFProvider.resetRandomWords();
+            }
+        } else {
+            // 通常のChainlink VRFを使用する場合
+            uint256 requestId = s_vrfCoordinator.requestRandomWords(
+                s_keyHash,
+                s_subscriptionId,
+                REQUEST_CONFIRMATIONS,
+                s_callbackGasLimit,
+                NUM_WORDS
+            );
+            s_lastRequestId = requestId;
+        }
     }
 
     /**
@@ -544,6 +607,15 @@ contract RaffleImplementation is
 
     function getOwner() external view returns (address) {
         return s_owner;
+    }
+    
+    /**
+     * @notice MockVRFの使用状態を取得する
+     * @return useMockVRF MockVRFを使用しているかどうか
+     * @return mockVRFProvider MockVRFプロバイダーのアドレス
+     */
+    function getMockVRFStatus() external view returns (bool useMockVRF, address mockVRFProvider) {
+        return (s_useMockVRF, address(s_mockVRFProvider));
     }
 
     /**

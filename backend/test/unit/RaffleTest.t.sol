@@ -31,6 +31,8 @@ contract RaffleTest is Test {
     uint256 public entranceFee;
     address public usdcAddress;
     address public ccipRouter;
+    address public mockVRFProvider;
+    bool public useMockVRF;
 
     // テストアドレス
     address public USER = makeAddr("user");
@@ -51,7 +53,9 @@ contract RaffleTest is Test {
             callbackGasLimit,
             entranceFee,
             usdcAddress,
-            ccipRouter
+            ccipRouter,
+            mockVRFProvider,
+            useMockVRF
         ) = helperConfig.activeNetworkConfig();
 
         // プロキシを通してラッフルコントラクトにアクセス
@@ -421,6 +425,29 @@ contract RaffleTest is Test {
         // ジャックポット額は以前より増加しているはず
         uint256 newJackpotAmount = raffle.getJackpotAmount();
         assertGt(newJackpotAmount, jackpotAmount);
+    }
+    
+    /**
+     * @notice MockVRF機能をテストする関数
+     */
+    function testMockVRFSettings() public {
+        RaffleImplementation raffle = RaffleImplementation(payable(address(raffleProxy)));
+        
+        // 現在のMockVRF設定を取得
+        (bool currentUseMockVRF, address currentMockVRFProvider) = raffle.getMockVRFStatus();
+        
+        // オーナーとしてMockVRF設定を変更
+        address owner = raffle.getOwner();
+        address newMockVRFProvider = makeAddr("newMockVRFProvider");
+        bool newUseMockVRF = !currentUseMockVRF;
+        
+        vm.prank(owner);
+        raffle.setMockVRF(newMockVRFProvider, newUseMockVRF);
+        
+        // 変更後の設定を確認
+        (bool updatedUseMockVRF, address updatedMockVRFProvider) = raffle.getMockVRFStatus();
+        assertEq(updatedUseMockVRF, newUseMockVRF);
+        assertEq(updatedMockVRFProvider, newMockVRFProvider);
     }
 }
 

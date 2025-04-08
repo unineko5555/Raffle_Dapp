@@ -9,6 +9,9 @@ help:
 	@echo "  make test                         - Run all tests"
 	@echo "  make test-unit                    - Run unit tests only"
 	@echo "  make test-integration             - Run integration tests only"
+	@echo "  make deploy-with-mock-vrf          - Deploy with Mock VRF enabled"
+	@echo "  make deploy-all-with-mock-vrf      - Deploy to all testnets with Mock VRF"
+	@echo "  make deploy-all-with-mock-vrf-update - Deploy to all testnets with Mock VRF and update frontend"
 	@echo "  make anvil                        - Run Anvil local chain"
 	@echo "  make deploy-anvil                 - Deploy to Anvil local chain"
 	@echo "  make deploy-sepolia               - Deploy to Ethereum Sepolia testnet"
@@ -112,6 +115,26 @@ deploy-arb-sepolia-with-update: deploy-arb-sepolia update-frontend
 deploy-all: deploy-sepolia deploy-base-sepolia deploy-arb-sepolia
 
 deploy-all-with-update: deploy-all update-frontend
+
+# ==============================================================================
+# MockVRF Deployment
+# ==============================================================================
+
+deploy-with-mock-vrf: check-env
+	@echo "Deploying to testnet with MockVRF enabled..."
+	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast -vvvv
+
+deploy-base-with-mock-vrf: check-env
+	@echo "Deploying to Base Sepolia with MockVRF enabled..."
+	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(BASE_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast -vvvv
+
+deploy-arb-with-mock-vrf: check-env
+	@echo "Deploying to Arbitrum Sepolia with MockVRF enabled..."
+	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast -vvvv
+
+deploy-all-with-mock-vrf: deploy-with-mock-vrf deploy-base-with-mock-vrf deploy-arb-with-mock-vrf
+
+deploy-all-with-mock-vrf-update: deploy-all-with-mock-vrf update-frontend
 
 # ==============================================================================
 # Contract Verification

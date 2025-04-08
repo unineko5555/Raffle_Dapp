@@ -21,16 +21,20 @@ contract DeployRaffle is Script {
             uint32 callbackGasLimit,
             uint256 entranceFee,
             address usdcAddress,
-            address ccipRouter
+            address ccipRouter,
+            address mockVRFProvider,
+            bool useMockVRF
         ) = helperConfig.activeNetworkConfig();
 
         console.log("VRF Coordinator: ", vrfCoordinatorV2);
         console.log("Subscription ID: ", subscriptionId);
-        // console.log("Key Hash: ", keyHas); // keyHashはbytes32型なのでconsole.logで出力できない
+        // console.log("Key Hash: ", keyHash); // keyHashはbytes32型なのでconsole.logで出力できない
         console.log("Callback Gas Limit: ", callbackGasLimit);
         console.log("Entrance Fee: ", entranceFee);
         console.log("USDC Address: ", usdcAddress);
         console.log("CCIP Router: ", ccipRouter);
+        console.log("Mock VRF Provider: ", mockVRFProvider);
+        console.log("Use Mock VRF: ", useMockVRF);
 
         // デプロイトランザクションの開始
         vm.startBroadcast();
@@ -49,7 +53,9 @@ contract DeployRaffle is Script {
             entranceFee,
             usdcAddress,
             ccipRouter,
-            true  // addMockPlayers: テスト用にモックプレイヤーを2人追加
+            true,  // addMockPlayers: テスト用にモックプレイヤーを2人追加
+            mockVRFProvider,  // MockVRFプロバイダーのアドレス
+            useMockVRF  // MockVRFを使用するかどうか
         );
 
         // プロキシコントラクトのデプロイ

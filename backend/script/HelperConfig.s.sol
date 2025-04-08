@@ -2,6 +2,7 @@
 pragma solidity ^0.8.18;
 
 import {Script} from "forge-std/Script.sol";
+import {MockVRFProvider} from "../src/mocks/MockVRFProvider.sol";
 
 /**
  * @title HelperConfig
@@ -16,6 +17,8 @@ contract HelperConfig is Script {
         uint256 entranceFee;
         address usdcAddress;
         address ccipRouter;
+        address mockVRFProvider; // 追加: MockVRFのアドレス
+        bool useMockVRF;        // 追加: MockVRFを使用するかどうか
     }
 
     uint256 public constant DEFAULT_ANVIL_PRIVATE_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
@@ -39,7 +42,15 @@ contract HelperConfig is Script {
     /**
      * @notice Ethereum Sepolia設定を取得する関数
      */
-    function getSepoliaConfig() public pure returns (NetworkConfig memory) {
+    function getSepoliaConfig() public returns (NetworkConfig memory) {
+        // デプロイキーの設定
+        vm.startBroadcast();
+        
+        // テストネット用にMockVRFProviderをデプロイ
+        MockVRFProvider mockVRFProvider = new MockVRFProvider();
+        
+        vm.stopBroadcast();
+
         return NetworkConfig({
             vrfCoordinatorV2: 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B, // VRF 2.5のコーディネーターアドレス
             subscriptionId: 35215710747108285885424679702400045098207236400821432776421763953481952749017,
@@ -47,14 +58,24 @@ contract HelperConfig is Script {
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: 0x74ce1e12998fB861A612CD6C65244f8620e2937A, // Sepolia USDC
-            ccipRouter: 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59 // Sepolia CCIP Router
+            ccipRouter: 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59, // Sepolia CCIP Router
+            mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス
+            useMockVRF: true  // テストネットではMockVRFを使用
         });
     }
 
     /**
      * @notice Arbitrum Sepolia設定を取得する関数
      */
-    function getArbitrumSepoliaConfig() public pure returns (NetworkConfig memory) {
+    function getArbitrumSepoliaConfig() public returns (NetworkConfig memory) {
+        // デプロイキーの設定
+        vm.startBroadcast();
+        
+        // テストネット用にMockVRFProviderをデプロイ
+        MockVRFProvider mockVRFProvider = new MockVRFProvider();
+        
+        vm.stopBroadcast();
+
         return NetworkConfig({
             vrfCoordinatorV2: 0x5CE8D5A2BC84beb22a398CCA51996F7930313D61, // Arbitrum Sepolia VRF 2.5
             subscriptionId: 101240342784025722467677436226156457361476948824878688464903340927284469428368, // 実際のサブスクリプションIDに更新する必要あり
@@ -62,14 +83,24 @@ contract HelperConfig is Script {
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d, // Arbitrum Sepolia USDC
-            ccipRouter: 0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165 // Arbitrum Sepolia CCIP Router
+            ccipRouter: 0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165, // Arbitrum Sepolia CCIP Router
+            mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス
+            useMockVRF: true  // テストネットではMockVRFを使用
         });
     }
 
     /**
      * @notice Base Sepolia設定を取得する関数
      */
-    function getBaseSepoliaConfig() public pure returns (NetworkConfig memory) {
+    function getBaseSepoliaConfig() public returns (NetworkConfig memory) {
+        // デプロイキーの設定
+        vm.startBroadcast();
+        
+        // テストネット用にMockVRFProviderをデプロイ
+        MockVRFProvider mockVRFProvider = new MockVRFProvider();
+        
+        vm.stopBroadcast();
+
         return NetworkConfig({
             vrfCoordinatorV2: 0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE, // Base Sepolia VRF 2.5
             subscriptionId: 33458206399445572067715640330168096614526430692290839248425322519759385655642, // 実際のサブスクリプションIDに更新する必要あり
@@ -77,7 +108,9 @@ contract HelperConfig is Script {
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: 0x036CbD53842c5426634e7929541eC2318f3dCF7e, // Base Sepolia USDC
-            ccipRouter: 0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93 // Base Sepolia CCIP Router
+            ccipRouter: 0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93, // Base Sepolia CCIP Router
+            mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス
+            useMockVRF: true  // テストネットではMockVRFを使用
         });
     }
 
@@ -101,6 +134,9 @@ contract HelperConfig is Script {
         
         // 仮のCCIPルーターをデプロイ
         MockCCIPRouter mockCcipRouter = new MockCCIPRouter();
+        
+        // MockVRFProviderをデプロイ
+        MockVRFProvider mockVRFProvider = new MockVRFProvider();
 
         vm.stopBroadcast();
 
@@ -117,7 +153,9 @@ contract HelperConfig is Script {
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: address(mockUsdc),
-            ccipRouter: address(mockCcipRouter)
+            ccipRouter: address(mockCcipRouter),
+            mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス
+            useMockVRF: false  // Anvilテスト環境では従来のMockを使用
         });
     }
 }

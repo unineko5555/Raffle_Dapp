@@ -3,7 +3,7 @@ export const contractConfig = {
   // Ethereum Sepolia
   11155111: {
     name: "Ethereum Sepolia",
-    raffleProxy: "0x0bba43b2afdf7661c05c6ac0fc292359407d0f71", // Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "0xdf98c3e9a2ea1250e0894d27a9cc0205df049d00", // Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x74ce1e12998fB861A612CD6C65244f8620e2937A", // SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59", // SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia.etherscan.io",
@@ -12,7 +12,7 @@ export const contractConfig = {
   // Base Sepolia
   84532: {
     name: "Base Sepolia",
-    raffleProxy: "0xa73ed5014daa4c96761f7fb076cce834599bd6ec", // Base Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "0x6d75088355eba59a4d99ba2969c53cd05df5bc0a", // Base Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93", // Base SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia.basescan.org",
@@ -21,7 +21,7 @@ export const contractConfig = {
   // Arbitrum Sepolia
   421614: {
     name: "Arbitrum Sepolia",
-    raffleProxy: "0x04d0c53746fefcf9f205ccff531424e669690146", // Arbitrum Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "0xc36e2bd13b2e05340572546e54746804f3af8b96", // Arbitrum Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d", // Arbitrum SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165", // Arbitrum SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia-explorer.arbitrum.io",
@@ -210,6 +210,24 @@ export const RaffleABI = [
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getMockVRFStatus",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "useMockVRF",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "mockVRFProvider",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"
@@ -409,6 +427,16 @@ export const RaffleABI = [
         "name": "addMockPlayers",
         "type": "bool",
         "internalType": "bool"
+      },
+      {
+        "name": "mockVRFProvider",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "useMockVRF",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "outputs": [],
@@ -473,6 +501,24 @@ export const RaffleABI = [
       },
       {
         "name": "isJackpot",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setMockVRF",
+    "inputs": [
+      {
+        "name": "mockVRFProvider",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "useMockVRF",
         "type": "bool",
         "internalType": "bool"
       }
