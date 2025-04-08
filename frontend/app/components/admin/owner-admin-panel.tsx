@@ -47,9 +47,9 @@ import {
 interface OwnerAdminPanelProps {
   isOwner: boolean;
   contractAddress: string;
-  balance: number;
-  usdcBalance: number;
-  jackpotAmount: number;
+  balance: string | number; // 文字列または数値として受け取れるように型を変更
+  usdcBalance: string | number; // 文字列または数値として受け取れるように型を変更
+  jackpotAmount: string | number; // 文字列または数値として受け取れるように型を変更
   ownerAddress: string;
   supportedChains: {
     id: number;
@@ -94,11 +94,35 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
   const [upgradeInitData, setUpgradeInitData] = useState("");
   
   // USDCの6桁小数点を考慮してフォーマット
-  const formatUSDC = (amount: number) => {
-    return (amount / 1e6).toLocaleString('ja-JP', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
+  const formatUSDC = (amount: string | number) => {
+    // 数値が直接文字列として渡されることもあるため、適切に処理
+    // 文字列 "0" または空文字列の場合は0として処理
+    if (amount === "0" || amount === "") return "0.00";
+    
+    try {
+      // まず文字列に変換
+      const amountStr = amount.toString();
+      
+      // 入力値を数値として解釈
+      let numericAmount: number;
+      
+      // 小数点を含む場合は通常の数値として処理
+      if (amountStr.includes('.')) {
+        numericAmount = parseFloat(amountStr);
+      } else {
+        // 小数点を含まない場合は最小単位トークンとして処理、100万分の1に変換
+        numericAmount = Number(amountStr) / 1000000;
+      }
+      
+      return numericAmount.toLocaleString('ja-JP', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+      
+    } catch (error) {
+      console.error("USDC金額フォーマットエラー:", error, "値:", amount);
+      return "0.00"; // エラーの場合はデフォルト値を返す
+    }
   };
   
   // アドレスをコピーする関数
@@ -185,7 +209,7 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
                   <span className="text-sm text-slate-600 dark:text-slate-400">コントラクト残高</span>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-xs text-right">{balance.toFixed(4)} ETH</div>
+                  <div className="text-xs text-right">{(typeof balance === "string" ? parseFloat(balance) : balance).toFixed(4)} ETH</div>
                   <div className="text-xs text-right">{formatUSDC(usdcBalance)} USDC</div>
                 </div>
               </div>
@@ -210,7 +234,7 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
                 <Wallet className="w-4 h-4 text-slate-500" />
                 <span className="text-sm">ETH残高</span>
               </div>
-              <div className="text-sm font-bold">{balance.toFixed(6)} ETH</div>
+              <div className="text-sm font-bold">{(typeof balance === "string" ? parseFloat(balance) : balance).toFixed(6)} ETH</div>
             </div>
             
             <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-md">
@@ -218,7 +242,7 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
                 <CreditCard className="w-4 h-4 text-slate-500" />
                 <span className="text-sm">USDC残高（引き出し可能）</span>
               </div>
-              <div className="text-sm font-bold">{formatUSDC(usdcBalance - jackpotAmount)} USDC</div>
+              <div className="text-sm font-bold">{formatUSDC((typeof usdcBalance === "string" ? parseFloat(usdcBalance) : usdcBalance) - (typeof jackpotAmount === "string" ? parseFloat(jackpotAmount) : jackpotAmount))} USDC</div>
             </div>
             
             <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-md">
@@ -232,7 +256,7 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
             <div className="grid grid-cols-2 gap-3 mt-4">
               <Button
                 onClick={() => onWithdraw("0x0000000000000000000000000000000000000000")}
-                disabled={balance <= 0 || isLoading}
+                disabled={(typeof balance === "string" ? parseFloat(balance) : balance) <= 0 || isLoading}
                 className="w-full"
               >
                 {isLoading ? (
@@ -245,7 +269,7 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
               
               <Button
                 onClick={() => onWithdraw("usdc")}
-                disabled={usdcBalance <= jackpotAmount || isLoading}
+                disabled={(typeof usdcBalance === "string" ? parseFloat(usdcBalance) : usdcBalance) <= (typeof jackpotAmount === "string" ? parseFloat(jackpotAmount) : jackpotAmount) || isLoading}
                 className="w-full"
               >
                 {isLoading ? (

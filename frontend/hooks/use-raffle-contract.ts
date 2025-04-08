@@ -10,6 +10,7 @@ import {
   usePublicClient, 
   useSimulateContract 
 } from "wagmi";
+
 import { formatUnits, parseUnits } from "viem";
 import { RaffleABI, ERC20ABI, contractConfig } from "@/app/lib/contract-config";
 import { createHandleCancelEntry } from "./cancel-entry";
@@ -67,6 +68,8 @@ export function useRaffleContract() {
   const [isPlayerEntered, setIsPlayerEntered] = useState(false);
   // upkeepNeededの状態を管理
   const [isUpkeepNeeded, setIsUpkeepNeeded] = useState(false);
+  // デバッグ表示防止用
+  const [lastStateChange, setLastStateChange] = useState(Date.now());
 
   // チェーンIDから正しいコントラクトアドレスを取得
   const currentChainId = chainId || 11155111; // デフォルトはSepolia
@@ -129,27 +132,54 @@ export function useRaffleContract() {
 
   // プレイヤーリストを取得
   const getPlayers = async () => {
-    if (!contractAddress || !numberOfPlayersData || !publicClient) return [];
+    if (!contractAddress || !publicClient) return [];
     
-    const players = [];
-    const count = Number(numberOfPlayersData);
-    
-    for (let i = 0; i < count; i++) {
+    try {
+      // まずプレイヤー数を再取得して確認
+      let currentPlayerCount;
       try {
-        const player = await publicClient.readContract({
+        currentPlayerCount = await publicClient.readContract({
           address: contractAddress as `0x${string}`,
           abi: RaffleABI,
-          functionName: "getPlayer",
-          args: [BigInt(i)],
+          functionName: "getNumberOfPlayers",
         });
-        
-        if (player) players.push(player as string);
       } catch (error) {
-        console.error(`Error fetching player at index ${i}:`, error);
+        console.error('プレイヤー数取得エラー:', error);
+        return [];
       }
+      
+      // プレイヤー数が0の場合は早期リターン
+      const count = Number(currentPlayerCount || 0);
+      if (count <= 0) return [];
+      
+      const players = [];
+      
+      // 安全にプレイヤーを取得するため、一度に1人ずつ処理
+      for (let i = 0; i < count; i++) {
+        try {
+          const player = await publicClient.readContract({
+            address: contractAddress as `0x${string}`,
+            abi: RaffleABI,
+            functionName: "getPlayer",
+            args: [BigInt(i)],
+          });
+          
+          if (player) players.push(player as string);
+        } catch (error) {
+          // エラーログを跨度に出しすぎないように制御
+          if (i === 0) {
+            console.error('プレイヤー取得エラー:', error);
+          }
+          // エラーが発生した場合は、以降の取得を中止
+          break;
+        }
+      }
+      
+      return players;
+    } catch (error) {
+      console.error('プレイヤーリスト取得全体エラー:', error);
+      return [];
     }
-    
-    return players;
   };
 
   // プレイヤーの参加状態を確認 - スマートアカウントアドレスのサポートを追加
@@ -163,26 +193,176 @@ export function useRaffleContract() {
     }
     
     try {
-      // デバッグログ削減のため一部コメントアウト
-      // console.log("checkPlayerEntered - チェック対象アドレス:", targetAddress);
+      // 前回のチェックと比較するために現在の状態を記録
+      const prevIsPlayerEntered = isPlayerEntered;
       
-      // 方法1: プレイヤー配列からの確認（ほとんどのケースで十分）
+      // 直接コントラクトから最新のプレイヤーリストを取得
       const players = await getPlayers();
-      // console.log("checkPlayerEntered - 現在のプレイヤー:", players);
-      const isEnteredByArray = players.some(player => player.toLowerCase() === targetAddress.toLowerCase());
       
-      // 結果をセットして返す（コントラクトにisPlayerEntered関数がないため単純化）
-      setIsPlayerEntered(isEnteredByArray);
-      return isEnteredByArray;
+      // プレイヤー配列内にアドレスがあるかをチェック
+      const isEntered = players.some(player => 
+        player.toLowerCase() === targetAddress.toLowerCase()
+      );
+      
+      // 状態が変わった場合のみデバッグ情報を出力
+      if (prevIsPlayerEntered !== isEntered) {
+        // 状態変更時間を更新
+        setLastStateChange(Date.now());
+        
+        console.log('参加状態変更:', {
+          targetAddress,
+          prevState: prevIsPlayerEntered,
+          newState: isEntered,
+          playerCount: players.length
+        });
+      }
+      
+      // 状態を更新
+      setIsPlayerEntered(isEntered);
+      
+      // 結果を返す
+      return isEntered;
     } catch (error) {
       console.error('プレイヤー参加状態確認エラー:', error);
+      // エラーの場合は参加していないと判断
+      setIsPlayerEntered(false);
       return false;
     }
   };
 
   // データを更新
   const updateRaffleData = async (forceUpdate = false) => {
+    try { 
+      // 強制更新フラグが有効な場合はローディング状態を一時的に有効にする
+      if (forceUpdate) {
+        console.log('ラッフルデータの強制更新を実行します');
+        setUiLoading(true);
+      }
+      
+      if (contractAddress && publicClient) {
+        // 必須のデータを直接コントラクトから再取得
+        try {
+          // より確実な参加者数を取得するためのAPI定義
+          const directPlayerCountRequest = {
+            address: contractAddress as `0x${string}`,
+            abi: RaffleABI,
+            functionName: "getNumberOfPlayers",
+          };
+          
+          // 必須データを再取得(プレイヤー数)
+          let currentPlayerCount = await publicClient.readContract(directPlayerCountRequest);
+          
+          // 中間デバッグログ
+          console.log('コントラクトからの最新プレイヤー数:', Number(currentPlayerCount));
+
+          // 現在の参加者リストを取得
+          const players = [];
+          // プレイヤー数をBigIntからNumberに安全に変換
+          const playerCount = typeof currentPlayerCount === 'bigint' ? Number(currentPlayerCount) : 0;
+          for (let i = 0; i < playerCount; i++) {
+            try {
+              const playerRequest = {
+                address: contractAddress as `0x${string}`,
+                abi: RaffleABI,
+                functionName: "getPlayer",
+                args: [BigInt(i)],
+              };
+              
+              const player = await publicClient.readContract(playerRequest);
+              if (player) players.push(player as string);
+            } catch (playerError) {
+              if (i === 0) {
+                console.warn(`プレイヤー取得エラー (${i})`, playerError);
+              }
+              // エラーが発生した場合は継続しない
+              continue;
+            }
+          }
+
+          // プレイヤー数と取得できたプレイヤーのチェック
+          console.log('プレイヤーリスト取得結果:', {
+            expectedCount: Number(currentPlayerCount),
+            actualCount: players.length,
+            players: players.map(p => p.substring(0, 6) + '...' + p.substring(p.length - 4))
+          });
+          
+          // プレイヤー参加状態を確認
+          if (isConnected && address) {
+            await checkPlayerEntered();
+          }
+          
+          // BigInt型のデータを安全に処理
+          let formattedEntranceFee = "0";
+          let formattedJackpotAmount = "0";
+          
+          try {
+            if (entranceFeeData && typeof entranceFeeData === 'bigint') {
+              formattedEntranceFee = formatUnits(entranceFeeData, 6);
+            }
+            
+            if (jackpotAmountData && typeof jackpotAmountData === 'bigint') {
+              formattedJackpotAmount = formatUnits(jackpotAmountData, 6);
+            }
+          } catch (error) {
+            console.error('Error formatting data:', error);
+          }
+          
+          // データ更新前にデバッグログ出力
+          const now = Date.now();
+          // 前回の更新から5秒以上経過している場合のみログを出力
+          if (now - lastStateChange > 5000) {
+            console.log('ラッフル状態更新:', {
+              currentPlayers: players.length,
+              isPlayerEntered: isPlayerEntered,
+            });
+          }
+          
+          // ラッフルデータ更新
+          setRaffleData({
+            entranceFee: formattedEntranceFee,
+            numberOfPlayers: playerCount,
+            raffleState: raffleStateData ? Number(raffleStateData) : 0,
+            jackpotAmount: formattedJackpotAmount,
+            recentWinner: recentWinnerData && (recentWinnerData as string) !== "0x0000000000000000000000000000000000000000" 
+              ? recentWinnerData as string 
+              : null,
+            players,
+            owner: ownerData as string || null,
+          });
+          
+          // データ更新後に再度参加状態をチェックして確実に表示に反映させる
+          if (isConnected && address) {
+            setTimeout(async () => {
+              await checkPlayerEntered();
+            }, 500);
+          }
+        } catch (directError) {
+          console.error('直接データ取得エラー:', directError);
+          
+          // フォールバック: 元のロジックを使用
+          await fallbackUpdateRaffleData();
+        }
+      }
+    } catch (error) {
+      console.error('ラッフルデータ更新エラー:', error);
+      try {
+        // フォールバックを再度試行
+        await fallbackUpdateRaffleData();
+      } catch (fallbackError) {
+        console.error('フォールバックデータ更新エラー:', fallbackError);
+      }
+    } finally {
+      // UI表示用のローディング状態を停止
+      setTimeout(() => {
+        setUiLoading(false);
+      }, 500); // 少し遅らせて表示を正しく切り替える
+    }
+  };
+  
+  // フォールバック用のデータ更新関数
+  const fallbackUpdateRaffleData = async () => {
     if (contractAddress) {
+      // 参加者リストの取得を試みる
       const players = await getPlayers();
       
       // プレイヤー参加状態を確認
@@ -206,9 +386,10 @@ export function useRaffleContract() {
         console.error('Error formatting data:', error);
       }
       
+      // データを更新
       setRaffleData({
         entranceFee: formattedEntranceFee,
-        numberOfPlayers: numberOfPlayersData ? Number(numberOfPlayersData) : 0,
+        numberOfPlayers: players.length, // 当面の措置として、取得できたプレイヤー数を使用
         raffleState: raffleStateData ? Number(raffleStateData) : 0,
         jackpotAmount: formattedJackpotAmount,
         recentWinner: recentWinnerData && (recentWinnerData as string) !== "0x0000000000000000000000000000000000000000" 
@@ -246,10 +427,14 @@ export function useRaffleContract() {
     }
     
     try {
+      setIsLoading(true); // 処理中状態を設定
+      
       const automationStatus = await checkAutomationStatus();
       
       if (!automationStatus || !automationStatus.upkeepNeeded) {
-        return;
+        alert('現在のラッフル状態ではUpkeepを実行できません。\n参加者数または時間経過などの条件を確認してください。');
+        setIsLoading(false);
+        return null;
       }
       
       const { request } = await publicClient.simulateContract({
@@ -271,18 +456,32 @@ export function useRaffleContract() {
       
       await writeContract(customRequest);
       
-      // contractWriteData にトランザクションハッシュが含まれるのを待つ必要があるかもしれない
-      // ここでは単純化のため、writeContractが成功したと仮定
-      // 必要に応じて useWaitForTransactionReceipt を使用して待機
+      // トランザクションハッシュが返されるのを待つ
       if (contractWriteData) {
          if (!publicClient) throw new Error("Public client is not available");
-         await publicClient.waitForTransactionReceipt({ hash: contractWriteData });
-         return contractWriteData;
+         
+         try {
+           // トランザクションの確認を待つ
+           const receipt = await publicClient.waitForTransactionReceipt({ hash: contractWriteData });
+           
+           // トランザクション成功後、データを再取得して状態を更新
+           setTimeout(async () => {
+             // 少し遅延させてペンディング中のブロックチェーン更新が反映されるようにする
+             await updateRaffleData(true); // データを強制更新
+           }, 2000); // 2秒の遅延
+           
+           return contractWriteData;
+         } catch (error) {
+           console.error('トランザクション確認エラー:', error);
+           throw error;
+         }
       }
       return null;
     } catch (error) {
       console.error('手動Upkeep実行エラー:', error);
       throw error;
+    } finally {
+      setIsLoading(false); // 処理完了状態を設定
     }
   };
 
@@ -428,6 +627,43 @@ export function useRaffleContract() {
     } catch (error) {
       console.error('管理者コマンド実行エラー:', error);
       throw error;
+    }
+  };
+
+  // コントラクトのETH残高を取得する関数
+  const getContractEthBalance = async () => {
+    if (!contractAddress || !publicClient) return "0";
+    
+    try {
+      const balance = await publicClient.getBalance({
+        address: contractAddress as `0x${string}`
+      });
+      
+      return formatUnits(balance, 18); // ETHは18桁
+    } catch (error) {
+      console.error("コントラクトETH残高取得エラー:", error);
+      return "0";
+    }
+  };
+
+  // コントラクトのUSDC残高を取得する関数
+  const getContractUsdcBalance = async () => {
+    if (!contractAddress || !erc20Address || !publicClient) return "0";
+    
+    try {
+      const balance = await publicClient.readContract({
+        address: erc20Address as `0x${string}`,
+        abi: ERC20ABI,
+        functionName: "balanceOf",
+        args: [contractAddress]
+      });
+      
+      // 数値を文字列化して、元の最小単位（小数点なし）で返す
+      const balanceStr = typeof balance === 'bigint' ? balance.toString() : "0";
+      return balanceStr; // 最小単位の整数文字列として返す
+    } catch (error) {
+      console.error("コントラクトUSDC残高取得エラー:", error);
+      return "0";
     }
   };
 
@@ -656,21 +892,23 @@ export function useRaffleContract() {
     updateRaffleData();
   }, [contractAddress, entranceFeeData, numberOfPlayersData, raffleStateData, jackpotAmountData, recentWinnerData, address, isConnected]);
 
-  // 初期データ読み込み後、ローディングを停止
+  // 当初データ読み込み後、ローディングを停止
   useEffect(() => {
-    if (entranceFeeData) {
+    if (entranceFeeData !== undefined) {
       setUiLoading(false);
     }
   }, [entranceFeeData]);
 
-  // タイムアウトハンドラー
+  // タイムアウトハンドラー - 読み込みが長い場合に強制的にローディングを停止
   useEffect(() => {
-    // 5秒後にデータが取得できなければ、前進を許可
+    // 3秒後にデータが取得できなければ、前進を許可
     const timeoutId = setTimeout(() => {
       if (uiLoading) {
+        console.log('データ取得タイムアウト: UI表示を進行します');
         setUiLoading(false);
+        setIsLoading(false);
       }
-    }, 5000);
+    }, 3000);
     
     return () => clearTimeout(timeoutId);
   }, [uiLoading]);
@@ -682,8 +920,8 @@ export function useRaffleContract() {
     };
   }, []);
 
-  // ラッフル参加取り消し関数を初期化
-  const handleCancelEntry = createHandleCancelEntry(
+  // 参加取り消し関数を初期化
+  const cancelEntryHandler = createHandleCancelEntry(
     isConnected,
     address,
     contractAddress || "", // null の場合に空文字列を渡す
@@ -695,6 +933,43 @@ export function useRaffleContract() {
     updateRaffleData,
     RaffleABI
   );
+  
+  // ラッフル参加取り消し処理を拡張してデータ更新を確実にする
+  const handleCancelEntry = async () => {
+    try {
+      const result = await cancelEntryHandler();
+      
+      if (result && result.success) {
+        // 成功時は強制的にデータを再取得
+        console.log('ラッフル参加取り消し成功、データを更新します');  
+        
+        // 少し遅延させてデータ反映を待つ
+        setTimeout(async () => {
+          // 強制的に参加状態を更新
+          setIsPlayerEntered(false);
+          
+          // 全データを再取得
+          try {
+            await updateRaffleData(true);
+          } catch (updateError) {
+            console.warn('データ更新エラーは無視します:', updateError);
+          }
+          
+          // 参加状態を再確認
+          try {
+            await checkPlayerEntered();
+          } catch (checkError) {
+            console.warn('参加状態チェックエラーは無視します:', checkError);
+          }
+        }, 2000);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('拡張取り消し処理エラー:', error);
+      throw error;
+    }
+  };
 
   return {
     raffleData,
@@ -711,6 +986,8 @@ export function useRaffleContract() {
     checkPlayerEntered,
     manualPerformUpkeepAsOwner,
     tokenBalanceInfo,
-    checkTokenBalanceWithInfo
+    checkTokenBalanceWithInfo,
+    getContractEthBalance,
+    getContractUsdcBalance
   };
 }

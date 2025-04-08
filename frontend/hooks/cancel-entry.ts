@@ -56,13 +56,45 @@ export const createHandleCancelEntry = (
         // トランザクション完了を待機
         if (cancelTxHash) {
           console.log('トランザクション完了を待機中...');
-          const receipt = await publicClient.waitForTransactionReceipt({ hash: cancelTxHash });
-          console.log('ラッフル参加取り消しトランザクション完了:', receipt);
           
-          // データを再取得して状態を更新
-          console.log('データを再取得します');
-          await updateRaffleData(true);
-          await checkPlayerEntered();
+          try {
+            const receipt = await publicClient.waitForTransactionReceipt({ hash: cancelTxHash });
+            console.log('ラッフル参加取り消しトランザクション完了:', receipt);
+            
+            // トランザクション処理後、データの更新が反映されるのを待つ
+            console.log('データ反映のために少し待機します...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // データを再取得して状態を更新
+            console.log('データを再取得します');
+            
+            try {
+              // updateRaffleDataが正しく渡されているか確認
+              if (typeof updateRaffleData === 'function') {
+                await updateRaffleData(true); // 強制更新
+              } else {
+                console.warn('updateRaffleData関数が利用できません');
+              }
+            } catch (updateError) {
+              console.warn('データ更新エラー:', updateError);
+            }
+            
+            try {
+              // 参加状態を再確認
+              if (typeof checkPlayerEntered === 'function') {
+                await checkPlayerEntered();
+              } else {
+                console.warn('checkPlayerEntered関数が利用できません');
+              }
+            } catch (checkError) {
+              console.warn('参加状態確認エラー:', checkError);
+            }
+          } catch (receiptError) {
+            console.error('トランザクション受領エラー:', receiptError);
+            throw new Error(`取り消しトランザクションの完了確認に失敗しました: ${receiptError instanceof Error ? receiptError.message : '不明なエラー'}`);
+          }
+        } else {
+          console.warn('トランザクションハッシュが取得できませんでした');
         }
         
         return {

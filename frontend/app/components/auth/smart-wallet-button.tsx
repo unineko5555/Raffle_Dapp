@@ -11,7 +11,7 @@ const debugLog = (message: string, ...args: any[]) => {
 };
 
 import { useState, useEffect, useRef } from "react";
-import { Wallet, ChevronDown, Loader2, Mail, ShieldAlert, Shield } from "lucide-react";
+import { Wallet, ChevronDown, Loader2, Mail, ShieldAlert, Shield, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -46,6 +46,7 @@ export function SmartWalletButton() {
   const [smartAccountInfo, setSmartAccountInfo] = useState<{address: string, provider: string} | null>(null);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailInput, setEmailInput] = useState("");
+  const [isCopied, setIsCopied] = useState(false);
   
   // Web3Authフックを使用
   const {
@@ -191,6 +192,32 @@ export function SmartWalletButton() {
     }
   }, [smartAccountError, toast]);
   
+  // アドレスをコピーする関数
+  const copyAddressToClipboard = () => {
+    const fullAddress = smartAccountInfo?.address || address;
+    if (fullAddress) {
+      navigator.clipboard.writeText(fullAddress)
+        .then(() => {
+          setIsCopied(true);
+          toast({
+            title: "コピー完了",
+            description: "アドレスがクリップボードにコピーされました",
+            variant: "default",
+          });
+          // 2秒後にコピー状態をリセット
+          setTimeout(() => setIsCopied(false), 2000);
+        })
+        .catch((err) => {
+          console.error("アドレスのコピーに失敗しました:", err);
+          toast({
+            title: "コピーエラー",
+            description: "アドレスのコピーに失敗しました",
+            variant: "destructive",
+          });
+        });
+    }
+  };
+
   // 切断処理
   const handleDisconnect = async () => {
     setIsLoggedIn(false);
@@ -550,6 +577,13 @@ export function SmartWalletButton() {
                 onClick={handleDisconnect}
               >
                 切断する
+              </button>
+              <button
+                className="w-full text-left px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"
+                onClick={copyAddressToClipboard}
+              >
+                {isCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                {isCopied ? "コピー済み" : "アドレスをコピー"}
               </button>
             </div>
           </div>

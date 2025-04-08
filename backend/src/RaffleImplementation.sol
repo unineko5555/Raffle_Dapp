@@ -367,6 +367,29 @@ contract RaffleImplementation is
         // イベント発行
         emit WinnerPicked(winner, prize, isJackpotWinner);
         emit RaffleStateChanged(s_raffleState);
+        
+        // ラッフルリセット後に新しいモックプレイヤーを追加（テスト環境用）
+        if (s_useMockVRF) {
+            // 新しいタイムスタンプベースで2つのモックアドレスを生成
+            address mockPlayer1 = address(uint160(uint256(keccak256(abi.encodePacked("mockPlayer1", block.timestamp)))));
+            address mockPlayer2 = address(uint160(uint256(keccak256(abi.encodePacked("mockPlayer2", block.timestamp)))));
+            
+            // プレイヤーリストに追加
+            s_players.push(mockPlayer1);
+            s_players.push(mockPlayer2);
+            
+            // ジャックポットへの寄与を追加 (2人分の10%)
+            s_jackpotAmount += (s_entranceFee / 10) * 2;
+            
+            // イベントを発行
+            emit RaffleEnter(mockPlayer1, s_entranceFee);
+            emit RaffleEnter(mockPlayer2, s_entranceFee);
+            
+            // 最小プレイヤー数に達した場合のタイムスタンプを設定
+            if (s_players.length >= s_minimumPlayers) {
+                s_minPlayersReachedTime = block.timestamp;
+            }
+        }
     }
 
     /**

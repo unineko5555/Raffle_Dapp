@@ -168,8 +168,16 @@ export function EnterRaffleButton({
           await new Promise(resolve => setTimeout(resolve, 5000));
           
           // トランザクション完了後に参加状態をチェック
-          await checkPlayerEntered(smartAccountAddress);
-          success = true;
+          try {
+            if (typeof checkPlayerEntered === 'function') {
+              await checkPlayerEntered(smartAccountAddress);
+            }
+            success = true;
+          } catch (checkError) {
+            console.warn('参加状態のチェック中にエラーが発生しましたが、トランザクションは成功している可能性があります:', checkError);
+            // トランザクションは送信されたので、成功とみなす
+            success = true;
+          }
         } catch (error) {
           console.error("スマートアカウントでのラッフル参加エラー:", error);
           throw new Error(`スマートアカウントトランザクションエラー: ${error instanceof Error ? error.message : '不明なエラー'}`);
@@ -179,13 +187,69 @@ export function EnterRaffleButton({
       else if (address) {
         console.log("通常ウォレットでラッフルに参加中...");
         
-        // handleEnterRaffle関数を使用してラッフルに参加
-        const result = await handleEnterRaffle(smartAccountAddress);
-        if (result && result.success && result.txHash) {
-          txHash = result.txHash;
-          success = true;
-        } else {
-          throw new Error(result?.error || "ラッフル参加に失敗しました");
+        try {
+          // handleEnterRaffle関数を使用してラッフルに参加
+          const result = await handleEnterRaffle(smartAccountAddress);
+          console.log("ラッフル参加結果:", result);
+          
+          if (result && result.success) {
+            // hashプロパティをtxHashとして使用
+            txHash = result.hash || result.txHash;
+            
+            // 少し待機してブロックチェーンの状態が更新されるのを待つ
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // 参加状態を明示的に更新
+            try {
+              if (typeof checkPlayerEntered === 'function') {
+                await checkPlayerEntered(address);
+              } else {
+                console.warn('プレイヤー状態確認関数が定義されていません');
+              }
+            } catch (checkError) {
+              console.warn('参加状態のチェック中にエラーが発生しました:', checkError);
+            }
+            
+            // ラッフルデータを更新しようとしてエラーハンドリング
+            try {
+              // 関数が正しく渡されているかチェック
+              if (typeof updateRaffleData === 'function') {
+                await updateRaffleData(true);
+              } else {
+                // updateRaffleDataがない場合は成功コールバックを使用
+                console.log('コールバックを使用して表示を更新します');
+                if (onSuccess) {
+                  onSuccess();
+                }
+              }
+            } catch (updateError) {
+              console.log('データ更新エラーですが、参加は成功しています:', updateError);
+              // エラーがあってもコールバックは実行
+              if (onSuccess) {
+                onSuccess();
+              }
+            }
+            
+            success = true;
+          } else {
+            throw new Error(result?.error || "ラッフル参加に失敗しました");
+          }
+        } catch (error) {
+          console.error("ラッフル参加エラー詳細:", error);
+          
+          // エラーをスローするが、実際は参加成功している可能性があるため
+          // 念のためにプレイヤー状態を確認
+          const isEntered = await checkPlayerEntered(address);
+          
+          if (isEntered) {
+            // 参加は実際には成功している
+            console.log("トランザクションエラーが報告されましたが、ユーザーはラッフルに参加しています");
+            success = true;
+            // ラッフルデータを強制的に更新
+            await updateRaffleData(true);
+          } else {
+            throw error; // 本当に失敗した場合は再スロー
+          }
         }
       } else {
         throw new Error("ウォレットが正しく接続されていません");
@@ -208,8 +272,14 @@ export function EnterRaffleButton({
         }
         
         // ラッフルデータを更新
-        if (typeof updateRaffleData === 'function') {
-          await updateRaffleData(true);
+        try {
+          if (typeof updateRaffleData === 'function') {
+            await updateRaffleData(true);
+          } else {
+            console.log('ラッフルデータ更新関数が定義されていません');
+          }
+        } catch (updateError) {
+          console.warn('リスト更新エラーが発生しましたが、参加は成功しました:', updateError);
         }
       } else {
         throw new Error("トランザクションは送信されましたが、ラッフル参加確認に失敗しました。しばらく待ってからページを更新してください。");
