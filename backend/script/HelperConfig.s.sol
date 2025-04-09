@@ -57,7 +57,7 @@ contract HelperConfig is Script {
             keyHash: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
-            usdcAddress: 0x74ce1e12998fB861A612CD6C65244f8620e2937A, // Sepolia USDC
+            usdcAddress: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238, // Sepolia USDC
             ccipRouter: 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59, // Sepolia CCIP Router
             mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス
             useMockVRF: true  // テストネットではMockVRFを使用
