@@ -1,18 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Trophy, Users, CheckCircle2, X, Zap, Sparkles, ArrowRight, Shield, Wallet, CreditCard, Copy } from "lucide-react"
-import Image from "next/image"
+import { Trophy, Users, CheckCircle2, X, Zap, Sparkles, Shield, Wallet, CreditCard, Copy } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
-import { SmartWalletButton } from "./components/auth/smart-wallet-button"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
+import { AppHeader } from "./components/header/app-header"
 import OwnerAdminPanel from "./components/admin/owner-admin-panel"
 import RaffleEntryStatus from "./components/raffle/raffle-entry-status"
 import { EnterRaffleButton } from "./components/raffle/enter-raffle-button"
 import { WinnerModal } from "./components/raffle/winner-modal" // 当選モーダルをインポート
 import { supportedChains, getContractConfig } from "./lib/web3-config"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useAccount, useChainId, useSwitchChain } from "wagmi"
@@ -271,37 +268,7 @@ export default function RaffleDapp() {
           </div>
         </div>
         
-        <header className="flex justify-between items-center mb-8 p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-lg backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">
-          <div className="flex items-center gap-2">
-            <div className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Raffle Dapp
-            </div>
-            <Badge
-              variant="outline"
-              className="ml-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800"
-            >
-              Beta
-            </Badge>
-          </div>
-          <div className="flex items-center gap-4">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-sm font-medium">
-                    <div className={`w-2 h-2 rounded-full ${activeChain.color} animate-pulse`}></div>
-                    <span>{activeChain.name}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>現在接続中のネットワーク</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <ThemeToggle />
-            {/* ConnectWalletButtonをSmartWalletButtonに変更 */}
-            <SmartWalletButton />
-          </div>
-        </header>
+        <AppHeader />
 
         <main className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">
