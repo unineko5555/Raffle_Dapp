@@ -168,16 +168,16 @@ contract RaffleImplementation is
      */
     function enterRaffle() external override {
         // ラッフルがオープン状態であることを確認
-        if (s_raffleState != RaffleState.OPEN) revert RaffleNotOpen();
+        require(s_raffleState == RaffleState.OPEN, "Raffle is not open");
         
         // 同じアドレスからの複数参加を防止
         for (uint256 i = 0; i < s_players.length; i++) {
-            if (s_players[i] == msg.sender) revert PlayerAlreadyEntered();
+            require(s_players[i] != msg.sender, "Player already entered");
         }
 
         // 参加料の転送
         IERC20 usdc = IERC20(s_usdcAddress);
-        if (!usdc.transferFrom(msg.sender, address(this), s_entranceFee)) revert USDCTransferFailed();
+        require(usdc.transferFrom(msg.sender, address(this), s_entranceFee), "USDC transfer failed");
 
         // ジャックポットに10%を追加
         uint256 jackpotContribution = s_entranceFee / 10;
@@ -204,7 +204,7 @@ contract RaffleImplementation is
      */
     function cancelEntry() external {
         // ラッフルがオープン状態であることを確認
-        if (s_raffleState != RaffleState.OPEN) revert RaffleNotOpen();
+        require(s_raffleState == RaffleState.OPEN, "Raffle is not open");
         
         // プレイヤーが参加しているか確認
         bool found = false;
@@ -450,4 +450,279 @@ contract RaffleImplementation is
             require(success, "Transfer failed");
         } else {
             // ERC20トークンの引き出し
-            IE
+            IERC20 erc20 = IERC20(token);
+            uint256 balance = erc20.balanceOf(address(this));
+            
+            // ジャックポット分を除く残高のみ引き出し可能
+            if (token == s_usdcAddress) {
+                balance -= s_jackpotAmount;
+            }
+            
+            require(erc20.transfer(s_owner, balance), "ERC20 transfer failed");
+        }
+    }
+
+    /**
+     * @notice オーナー変更関数
+     * @param newOwner 新しいオーナーのアドレス
+     */
+    function setOwner(address newOwner) external {
+        require(msg.sender == s_owner, "Only owner can change owner");
+        require(newOwner != address(0), "New owner cannot be zero address");
+        s_owner = newOwner;
+    }
+    
+    /**
+     * @notice MockVRF設定を変更する関数
+     * @param mockVRFProvider 新しいMockVRFプロバイダーのアドレス
+     * @param useMockVRF MockVRFを使用するかどうか
+     */
+    function setMockVRF(address mockVRFProvider, bool useMockVRF) external {
+        require(msg.sender == s_owner, "Only owner can set MockVRF");
+        if (mockVRFProvider != address(0)) {
+            s_mockVRFProvider = IMockRandomProvider(mockVRFProvider);
+        }
+        s_useMockVRF = useMockVRF;
+    }
+    
+    /**
+     * @dev UUPSアップグレード用の関数
+     * @param newImplementation 新しい実装コントラクトのアドレス
+     */
+    function upgradeTo(address newImplementation) external override {
+        require(msg.sender == s_owner, "Only owner can upgrade");
+        _authorizeUpgrade(newImplementation);
+        // コードスロットに新しい実装を書き込む
+        assembly {
+            sstore(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc, newImplementation)
+        }
+    }
+
+    /**
+     * @dev UUPSアップグレードと初期化用の関数
+     * @param newImplementation 新しい実装コントラクトのアドレス
+     * @param data 初期化データ
+     */
+    function upgradeToAndCall(address newImplementation, bytes memory data) external payable override {
+        require(msg.sender == s_owner, "Only owner can upgrade");
+        _authorizeUpgrade(newImplementation);
+        // コードスロットに新しい実装を書き込む
+        assembly {
+            sstore(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc, newImplementation)
+        }
+        // 初期化関数を呼び出す
+        (bool success, ) = newImplementation.delegatecall(data);
+        require(success, "Call failed");
+    }
+
+    /**
+     * @notice UUPSアップグレードの承認
+     * @dev オーナーのみがアップグレードを承認できる
+     * @param newImplementation 新しい実装コントラクトのアドレス
+     */
+    function _authorizeUpgrade(address newImplementation) internal override {
+        require(msg.sender == s_owner, "Only owner can upgrade");
+    }
+
+    /**
+     * @notice 管理者用のラッフル手動実行関数
+     * @dev オーナーのみが呼び出せる特別な関数
+     */
+    function manualPerformUpkeep() external {
+        // オーナーのみが呼び出せるように制限
+        require(msg.sender == s_owner, "Only owner can manual perform upkeep");
+        
+        // ラッフルを開始するための最小条件を確認
+        bool isOpen = s_raffleState == RaffleState.OPEN;
+        bool hasPlayers = s_players.length >= s_minimumPlayers;
+        
+        require(isOpen, "Raffle is not open");
+        require(hasPlayers, "Not enough players");
+        
+        // ラッフル状態を更新
+        s_raffleState = RaffleState.CALCULATING_WINNER;
+        emit RaffleStateChanged(s_raffleState);
+
+        // 環境に応じてVRFかMockVRFを使用
+        if (s_useMockVRF && address(s_mockVRFProvider) != address(0)) {
+            // MockVRFを使用する場合
+            uint256 requestId = s_mockVRFProvider.requestRandomWords(NUM_WORDS);
+            s_lastRequestId = requestId;
+            
+            // MockVRFは即座に結果を返すので、直接処理する
+            if (s_mockVRFProvider.randomWordsAvailable()) {
+                uint256[] memory randomWords = s_mockVRFProvider.getLatestRandomWords();
+                processRandomWords(randomWords);
+                s_mockVRFProvider.resetRandomWords();
+            }
+        } else {
+            // 通常のChainlink VRFを使用する場合
+            uint256 requestId = s_vrfCoordinator.requestRandomWords(
+                s_keyHash,
+                s_subscriptionId,
+                REQUEST_CONFIRMATIONS,
+                s_callbackGasLimit,
+                NUM_WORDS
+            );
+            s_lastRequestId = requestId;
+        }
+    }
+
+    /**
+     * @notice デバッグ用のアップキープ状態確認関数
+     * @dev 現在のアップキープ条件の状態を詳細に返す
+     */
+    function checkUpkeepDebug() external view returns (
+        bool isOpen,
+        bool hasPlayers,
+        bool hasTimePassed,
+        uint256 timeSinceMinPlayers,
+        uint256 requiredTime,
+        uint256 playerCount
+    ) {
+        isOpen = s_raffleState == RaffleState.OPEN;
+        hasPlayers = s_players.length >= s_minimumPlayers;
+        timeSinceMinPlayers = s_minPlayersReachedTime > 0 ? block.timestamp - s_minPlayersReachedTime : 0;
+        requiredTime = s_minTimeAfterMinPlayers;
+        hasTimePassed = hasPlayers && timeSinceMinPlayers > requiredTime;
+        playerCount = s_players.length;
+        
+        return (isOpen, hasPlayers, hasTimePassed, timeSinceMinPlayers, requiredTime, playerCount);
+    }
+
+    /* View / Pure functions */
+
+    function getRaffleState() external view override returns (RaffleState) {
+        return s_raffleState;
+    }
+
+    function getNumberOfPlayers() external view override returns (uint256) {
+        return s_players.length;
+    }
+
+    function getJackpotAmount() external view override returns (uint256) {
+        return s_jackpotAmount;
+    }
+
+    function getRecentWinner() external view override returns (address) {
+        return s_recentWinner;
+    }
+
+    function getEntranceFee() external view override returns (uint256) {
+        return s_entranceFee;
+    }
+
+    function getPlayer(uint256 index) external view returns (address) {
+        return s_players[index];
+    }
+
+    function getLastRaffleTime() external view returns (uint256) {
+        return s_lastRaffleTime;
+    }
+
+    function getMinPlayersReachedTime() external view returns (uint256) {
+        return s_minPlayersReachedTime;
+    }
+
+    function getMinimumPlayers() external view returns (uint256) {
+        return s_minimumPlayers;
+    }
+
+    function getOwner() external view returns (address) {
+        return s_owner;
+    }
+    
+    /**
+     * @notice MockVRFの使用状態を取得する
+     * @return useMockVRF MockVRFを使用しているかどうか
+     * @return mockVRFProvider MockVRFプロバイダーのアドレス
+     */
+    function getMockVRFStatus() external view returns (bool useMockVRF, address mockVRFProvider) {
+        return (s_useMockVRF, address(s_mockVRFProvider));
+    }
+
+    /**
+     * @notice ユーザーの統計情報を取得する関数
+     * @param user 統計情報を取得するユーザーのアドレス
+     * @return entryCount ラッフル参加回数
+     * @return winCount ラッフル当選回数
+     * @return jackpotCount ジャックポット獲得回数
+     */
+    function getUserStats(address user) external view returns (
+        uint256 entryCount,
+        uint256 winCount,
+        uint256 jackpotCount
+    ) {
+        return (
+            s_userEntryCount[user],
+            s_userWinCount[user],
+            s_userJackpotCount[user]
+        );
+    }
+
+    /**
+     * @notice 過去のラッフル結果の件数を取得する関数
+     * @return ラッフル履歴の件数
+     */
+    function getRaffleHistoryCount() external view returns (uint256) {
+        return s_raffleHistory.length;
+    }
+
+    /**
+     * @notice 特定のラッフル結果を取得する関数
+     * @param index 取得するラッフル結果のインデックス
+     * @return winner 当選者アドレス
+     * @return prize 賞金額
+     * @return jackpotWon ジャックポット当選かどうか
+     * @return timestamp タイムスタンプ
+     * @return playerCount 参加者数
+     */
+    function getRaffleHistoryAtIndex(uint256 index) external view returns (
+        address winner,
+        uint256 prize,
+        bool jackpotWon,
+        uint256 timestamp,
+        uint256 playerCount
+    ) {
+        require(index < s_raffleHistory.length, "Index out of bounds");
+        RaffleHistory memory history = s_raffleHistory[index];
+        return (
+            history.winner,
+            history.prize,
+            history.jackpotWon,
+            history.timestamp,
+            history.playerCount
+        );
+    }
+
+    /**
+     * @notice 最新のラッフル結果を取得する関数
+     * @return winner 当選者アドレス
+     * @return prize 賞金額
+     * @return jackpotWon ジャックポット当選かどうか
+     * @return timestamp タイムスタンプ
+     * @return playerCount 参加者数
+     */
+    function getLatestRaffleHistory() external view returns (
+        address winner,
+        uint256 prize,
+        bool jackpotWon,
+        uint256 timestamp,
+        uint256 playerCount
+    ) {
+        require(s_raffleHistory.length > 0, "No raffle history");
+        RaffleHistory memory history = s_raffleHistory[s_raffleHistory.length - 1];
+        return (
+            history.winner,
+            history.prize,
+            history.jackpotWon,
+            history.timestamp,
+            history.playerCount
+        );
+    }
+
+    /**
+     * @dev Fallback関数 - コントラクトがネイティブトークンを受け取れるようにする
+     */
+    receive() external payable {}
+}s
