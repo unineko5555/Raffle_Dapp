@@ -407,8 +407,9 @@ export default function RaffleDapp() {
                     {pastRaffles.slice(0, 5).map((raffle, index) => {
                       // 現在のウォレットアドレスと当選アドレスが一致するか確認
                       const currentAddress = smartAccountAddress || address || "";
-                      const isCurrentWalletWinner = raffle.winnerAddress && 
-                        currentAddress.toLowerCase() === raffle.winnerAddress.toLowerCase();
+                      const winnerAddress = raffle.winner || "";
+                      const isCurrentWalletWinner = winnerAddress && 
+                        currentAddress.toLowerCase() === winnerAddress.toLowerCase();
                       
                       return (
                         <div key={index} className="grid grid-cols-12 p-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors">
@@ -416,15 +417,15 @@ export default function RaffleDapp() {
                             {raffle.time || "不明"}
                           </div>
                           <div className="col-span-5 font-mono text-xs">
-                            {raffle.winnerAddress ? (
+                            {winnerAddress ? (
                               <div className="flex items-center gap-1">
                                 <span className={`${isCurrentWalletWinner ? "text-green-600 dark:text-green-400 font-medium" : "text-slate-600 dark:text-slate-300"}`}>
-                                  {formatAddress(raffle.winnerAddress)}
+                                  {formatAddress(winnerAddress)}
                                 </span>
                                 <button 
                                   onClick={() => {
-                                    if (raffle.winnerAddress) {
-                                      navigator.clipboard.writeText(raffle.winnerAddress);
+                                    if (winnerAddress) {
+                                      navigator.clipboard.writeText(winnerAddress);
                                       toast({
                                         title: "コピー完了",
                                         description: "アドレスがクリップボードにコピーされました",
@@ -445,13 +446,13 @@ export default function RaffleDapp() {
                             {raffle.prize || "0 USDC"}
                           </div>
                           <div className="col-span-2 flex justify-center items-center gap-1">
-                            {raffle.isWinner && (
+                            {isCurrentWalletWinner && (
                               <Badge className="bg-green-500 text-white text-xs">当選</Badge>
                             )}
                             {raffle.jackpot && raffle.jackpot !== "なし" && (
                               <Badge className="bg-amber-500 text-white text-xs">JP</Badge>
                             )}
-                            {!raffle.isWinner && (!raffle.jackpot || raffle.jackpot === "なし") && (
+                            {!isCurrentWalletWinner && (!raffle.jackpot || raffle.jackpot === "なし") && (
                               <span className="text-slate-400 text-xs">-</span>
                             )}
                           </div>
