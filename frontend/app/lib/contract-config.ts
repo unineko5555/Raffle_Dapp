@@ -4,7 +4,7 @@ export const contractConfig = {
   11155111: {
     name: "Ethereum Sepolia",
     raffleProxy: "0x364ce7a1e94f093d58463df9482d384395099b48", // Sepoliaにデプロイしたプロキシアドレス
-    erc20Address: "0x74ce1e12998fB861A612CD6C65244f8620e2937A", // SepoliaのUSDC (またはモックトークン) アドレス
+    erc20Address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", // SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59", // SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia.etherscan.io",
     rpcUrl: "${NEXT_PUBLIC_SEPOLIA_RPC_URL}",
