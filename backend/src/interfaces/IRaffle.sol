@@ -19,6 +19,21 @@ interface IRaffle {
     }
 
     /**
+     * @dev エラー: プレイヤーがすでに参加している場合
+     */
+    error PlayerAlreadyEntered();
+
+    /**
+     * @dev エラー: ラッフルが開催中でない場合
+     */
+    error RaffleNotOpen();
+
+    /**
+     * @dev エラー: USDC転送に失敗した場合
+     */
+    error USDCTransferFailed();
+
+    /**
      * @dev ラッフルに参加するための関数
      * ユーザーは10 USDCを支払って参加します
      */
