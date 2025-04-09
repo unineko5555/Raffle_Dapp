@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Trophy, Users, CheckCircle2, X, Zap, Sparkles, ArrowRight, Shield, Wallet, CreditCard, Copy } from "lucide-react"
+import { Trophy, Users, CheckCircle2, X, Zap, Sparkles, ArrowRight, Shield, Wallet, CreditCard, Copy, ChevronDown } from "lucide-react"
 import Image from "next/image"
 import { useToast } from "@/hooks/use-toast"
 
@@ -18,14 +18,32 @@ import { Progress } from "@/components/ui/progress"
 import { useAccount, useChainId, useSwitchChain } from "wagmi"
 import { useRaffleContract } from "@/hooks/use-raffle-contract"
 import { useRaffleWinEvents } from "@/hooks/use-raffle-win-events" // 当選イベントフックをインポート
+import { useAutomationLogger } from "@/hooks/use-automation-logger" // Automationログフックをインポート
 import { formatAddress } from "./utils/format-address"
 import { useWeb3Auth } from "@/hooks/use-web3auth";
 import { useSmartAccountContext } from "./providers/smart-account-provider"
 import { useRaffleHistory } from "@/hooks/use-raffle-history"
+import { mainnet, sepolia, arbitrumSepolia, baseSepolia } from "wagmi/chains"
+import AutomationLogPanel from "./components/logs/automation-log-panel" // Automationログパネルをインポート
+
+// Alchemyのデフォルトキー（環境変数が利用できない場合）
+const alchemyApiKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "demo";
+
+// Ethereumウィンドウオブジェクトの型拡張
+declare global {
+  interface Window {
+    ethereum?: {
+      isMetaMask?: boolean;
+      request: (request: { method: string; params?: any[] }) => Promise<any>;
+      on: (event: string, listener: (...args: any[]) => void) => void;
+      removeListener: (event: string, listener: (...args: any[]) => void) => void;
+    };
+  }
+}
 
 export default function RaffleDapp() {
   const chainId = useChainId()
-  const { switchChain } = useSwitchChain()
+  const { chains, switchChain, status: switchChainStatus, error: switchChainError } = useSwitchChain()
   const { address, isConnected } = useAccount()
   const { user, provider, getAddress, getSavedSmartAccountInfo, web3auth } = useWeb3Auth();
   const { toast } = useToast(); // トースト通知用フック
@@ -43,9 +61,20 @@ export default function RaffleDapp() {
   );
   
   // 当選イベント監視フックを使用
-  const { winner, prize, isJackpot, showModal, closeModal } = useRaffleWinEvents();
+  const { winner, prize, isJackpot, showModal, closeModal, eventLogs, clearLogs: clearEventLogs } = useRaffleWinEvents();
+  
+  // Automationログフックを使用
+  const { automationLogs, clearLogs: clearAutomationLogs } = useAutomationLogger();
+  
+  // イベントログとAutomationログを結合
+  const combinedLogs = [...(eventLogs || []), ...(automationLogs || [])].sort((a, b) => {
+    // 新しい順に並べ替え
+    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+  });
   
   const [showNotification, setShowNotification] = useState(false)
+  const [showNetworkDropdown, setShowNetworkDropdown] = useState(false)
+  const [buttonPosition, setButtonPosition] = useState({ top: 0, left: 0 })
   const [minutes, setMinutes] = useState(0)
   const [seconds, setSeconds] = useState(42)
   const [progress, setProgress] = useState(75)
@@ -197,6 +226,17 @@ export default function RaffleDapp() {
     }
   }, [checkAutomationStatus, performManualUpkeep])
   
+  // switchChainの状態変化を追跡
+  useEffect(() => {
+    if (switchChainStatus === 'pending') {
+      console.log('チェーン切り替え実行中...');
+    } else if (switchChainStatus === 'error' && switchChainError) {
+      console.error('チェーン切り替えエラー:', switchChainError);
+    } else if (switchChainStatus === 'success') {
+      console.log('チェーン切り替え成功');
+    }
+  }, [switchChainStatus, switchChainError]);
+  
   // Wagmiの接続状態監視
   useEffect(() => {
     if (isConnected && address) {
@@ -214,6 +254,24 @@ export default function RaffleDapp() {
     }
   }, [chainId])
 
+  // ネットワークドロップダウンを外部クリックで閉じるためのイベントリスナー
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showNetworkDropdown) {
+        // リンクボタン自体がクリックされた場合は閉じない
+        const target = event.target as Element;
+        if (!target.closest('[data-dropdown-toggle]')) {
+          setShowNetworkDropdown(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNetworkDropdown]);
+  
   // カウントダウンタイマー
   useEffect(() => {
     const timer = setInterval(() => {
@@ -246,15 +304,155 @@ export default function RaffleDapp() {
     }, 2000); // トランザクションの反映を待つために少し遅延
   };
 
-  // チェーン切り替え処理
+  // チェーン切り替え処理 - Ethereumウィンドウオブジェクトを直接使用
   const handleChainChange = async (newChain: (typeof supportedChains)[0]) => {
-    setActiveChain(newChain)
+    // まずアクティブチェーンを更新(表示用)
+    console.log(`チェーン切り替え: ${newChain.name} (ID: ${newChain.id})`);
+    setActiveChain(newChain);
+    
+    // ウォレットの接続確認
+    if (!isConnected || !address) {
+      console.log('ウォレット未接続状態');
+      toast({
+        title: "ネットワーク表示変更",
+        description: "ネットワークのUI表示を切り替えました。実際のネットワーク切り替えはウォレット接続後に行えます。",
+        variant: "default"
+      });
+      return;
+    }
+    
     try {
-      await switchChain({ chainId: newChain.id })
+      // window.ethereumを使用して直接MetaMaskにアクセス
+      if (window.ethereum) {
+        console.log(`window.ethereumを使用してチェーンID切り替え: 0x${newChain.id.toString(16)}`);
+        try {
+          // チェーンIDを切り替えようとする
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: `0x${newChain.id.toString(16)}` }]
+          });
+          
+          console.log(`チェーン切り替え成功: ${newChain.name}`);
+          
+          toast({
+            title: "ネットワーク切り替え成功",
+            description: `${newChain.name}に切り替えました`,
+            variant: "default"
+          });
+          
+          return;
+        } catch (switchError: any) {
+          // 未認識チェーンの場合は追加を試みる
+          if (switchError.code === 4902) {
+            console.log(`未認識チェーンのため、チェーン追加を試みます: ${newChain.name}`);
+            try {
+              let params;
+              if (newChain.id === sepolia.id) {
+                params = [{
+                  chainId: `0x${newChain.id.toString(16)}`,
+                  chainName: 'Ethereum Sepolia',
+                  nativeCurrency: { name: 'Sepolia ETH', symbol: 'SEP', decimals: 18 },
+                  rpcUrls: [`https://eth-sepolia.g.alchemy.com/v2/${alchemyApiKey}`],
+                  blockExplorerUrls: ['https://sepolia.etherscan.io/'],
+                }];
+              } else if (newChain.id === baseSepolia.id) {
+                params = [{
+                  chainId: `0x${newChain.id.toString(16)}`,
+                  chainName: 'Base Sepolia',
+                  nativeCurrency: { name: 'Sepolia ETH', symbol: 'SEP', decimals: 18 },
+                  rpcUrls: [`https://base-sepolia.g.alchemy.com/v2/${alchemyApiKey}`],
+                  blockExplorerUrls: ['https://sepolia.basescan.org/'],
+                }];
+              } else if (newChain.id === arbitrumSepolia.id) {
+                params = [{
+                  chainId: `0x${newChain.id.toString(16)}`,
+                  chainName: 'Arbitrum Sepolia',
+                  nativeCurrency: { name: 'Sepolia ETH', symbol: 'SEP', decimals: 18 },
+                  rpcUrls: [`https://arb-sepolia.g.alchemy.com/v2/${alchemyApiKey}`],
+                  blockExplorerUrls: ['https://sepolia-explorer.arbitrum.io/'],
+                }];
+              } else {
+                throw new Error('サポートされていないチェーンID');
+              }
+              
+              // チェーン追加を試みる
+              await window.ethereum.request({
+                method: "wallet_addEthereumChain",
+                params
+              });
+              
+              // 一定時間待機してから再度切り替えを試みる
+              setTimeout(async () => {
+                try {
+                  await window.ethereum.request({
+                    method: "wallet_switchEthereumChain",
+                    params: [{ chainId: `0x${newChain.id.toString(16)}` }]
+                  });
+                  
+                  console.log(`チェーン追加と切り替え成功: ${newChain.name}`);
+                  
+                  toast({
+                    title: "ネットワーク追加と切り替え成功",
+                    description: `${newChain.name}を追加し、切り替えました`,
+                    variant: "default"
+                  });
+                } catch (finalError) {
+                  console.error('最終的なチェーン切り替え失敗:', finalError);
+                  
+                  toast({
+                    title: "ネットワーク切り替えエラー",
+                    description: 'ネットワークを追加しましたが、切り替えに失敗しました。ウォレットアプリで手動で切り替えてください。',
+                    variant: "destructive"
+                  });
+                }
+              }, 1500);
+            } catch (addError) {
+              console.error('チェーン追加エラー:', addError);
+              
+              toast({
+                title: "ネットワーク追加エラー",
+                description: '新しいネットワークの追加に失敗しました。',
+                variant: "destructive"
+              });
+            }
+          } else {
+            // その他のエラー
+            console.error('チェーン切り替えエラー:', switchError);
+            
+            toast({
+              title: "ネットワーク切り替えエラー",
+              description: switchError.message || 'ネットワークの切り替えに失敗しました。',
+              variant: "destructive"
+            });
+          }
+        }
+      } else {
+        console.error('window.ethereumが見つかりません。メタマスクがインストールされているか確認してください。');
+        
+        toast({
+          title: "ウォレットにアクセスできません",
+          description: 'MetaMaskなどのイーサリアム対応ウォレットがインストールされているか確認してください。',
+          variant: "destructive"
+        });
+      }
     } catch (error) {
-      console.error('チェーン切り替えエラー:', error);
+      console.error('ネットワーク切り替え中の予期しないエラー:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+      
+      toast({
+        title: "ネットワーク切り替えエラー",
+        description: `ネットワークの切り替え中にエラーが発生しました: ${errorMessage}`,
+        variant: "destructive"
+      });
     }
   }
+
+  // ログをクリアする関数
+  const clearAllLogs = () => {
+    clearEventLogs();
+    clearAutomationLogs();
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 text-slate-900 dark:text-slate-100">
@@ -284,19 +482,36 @@ export default function RaffleDapp() {
             </Badge>
           </div>
           <div className="flex items-center gap-4">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-sm font-medium">
-                    <div className={`w-2 h-2 rounded-full ${activeChain.color} animate-pulse`}></div>
-                    <span>{activeChain.name}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>現在接続中のネットワーク</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {/* チェーン選択ドロップダウン */}
+            <div className="relative inline-block">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="flex items-center gap-2 px-3 py-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-sm font-medium transition-all hover:bg-indigo-200 dark:hover:bg-indigo-800/50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const button = e.currentTarget;
+                        const rect = button.getBoundingClientRect();
+                        setButtonPosition({
+                          top: rect.bottom,
+                          left: rect.left + rect.width / 2,
+                        });
+                        setShowNetworkDropdown(!showNetworkDropdown);
+                      }}
+                      data-dropdown-toggle="network-dropdown"
+                    >
+                      <div className={`w-2 h-2 rounded-full ${activeChain.color} animate-pulse`}></div>
+                      <span>{activeChain.name}</span>
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>ネットワークを選択</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <ThemeToggle />
             {/* ConnectWalletButtonをSmartWalletButtonに変更 */}
             <SmartWalletButton />
@@ -304,6 +519,16 @@ export default function RaffleDapp() {
         </header>
 
         <main className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Automationログパネル - ページ全体の一番上に配置 */}
+          {(combinedLogs.length > 0 || isConnected) && (
+            <div className="lg:col-span-3 mb-2">
+              <AutomationLogPanel 
+                logs={combinedLogs} 
+                onClear={clearAllLogs} 
+              />
+            </div>
+          )}
+          
           <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-3">
@@ -431,9 +656,9 @@ export default function RaffleDapp() {
                 <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
                   <div className="bg-slate-50 dark:bg-slate-800/50 p-3 border-b border-slate-200 dark:border-slate-700 grid grid-cols-12 text-xs font-medium text-slate-500 dark:text-slate-400">
                     <div className="col-span-3">日時</div>
-                    <div className="col-span-5">当選アドレス</div>
+                    <div className="col-span-4">当選アドレス</div>
                     <div className="col-span-2 text-center">賞金</div>
-                    <div className="col-span-2 text-center">ステータス</div>
+                    <div className="col-span-3 text-center">ステータス</div>
                   </div>
                   
                   <div className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -477,14 +702,25 @@ export default function RaffleDapp() {
                           <div className="col-span-2 text-center font-medium">
                             {raffle.prize || "0 USDC"}
                           </div>
-                          <div className="col-span-2 flex justify-center items-center gap-1">
+                          <div className="col-span-3 flex justify-center items-center gap-1">
                             {raffle.isWinner && (
                               <Badge className="bg-green-500 text-white text-xs">当選</Badge>
                             )}
                             {raffle.jackpot && raffle.jackpot !== "なし" && (
                               <Badge className="bg-amber-500 text-white text-xs">JP</Badge>
                             )}
-                            {!raffle.isWinner && (!raffle.jackpot || raffle.jackpot === "なし") && (
+                            {raffle.txHash && (
+                              <button
+                                onClick={() => window.open(`https://sepolia.etherscan.io/tx/${raffle.txHash}`, '_blank')}
+                                className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-md text-xs flex items-center gap-1 hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors"
+                              >
+                                <span>Tx</span>
+                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M10 6H6C4.89543 6 4 6.89543 4 8V18C4 19.1046 4.89543 20 6 20H16C17.1046 20 18 19.1046 18 18V14M14 4H20M20 4V10M20 4L10 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              </button>
+                            )}
+                            {!raffle.isWinner && (!raffle.jackpot || raffle.jackpot === "なし") && !raffle.txHash && (
                               <span className="text-slate-400 text-xs">-</span>
                             )}
                           </div>
@@ -634,6 +870,48 @@ export default function RaffleDapp() {
             prize={prize}
             isJackpot={isJackpot}
           />
+        )}
+
+        {/* ネットワーク選択ドロップダウン - ページのルートに配置 */}
+        {showNetworkDropdown && (
+          <div 
+            id="network-dropdown"
+            className="fixed w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-[9999]"
+            style={{
+              top: `${buttonPosition.top}px`,
+              left: `${buttonPosition.left}px`,
+              transform: 'translateX(-50%)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="py-1">
+              {supportedChains.map((chain) => (
+                <button
+                  key={chain.id}
+                  className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${activeChain.id === chain.id 
+                    ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' 
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    console.log(`チェーン選択ボタンクリック: ${chain.name}`);
+                    // チェーン切り替え関数を直接実行
+                    handleChainChange(chain);
+                    setShowNetworkDropdown(false);
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${chain.color}`}></div>
+                    {chain.name}
+                  </div>
+                  {activeChain.id === chain.id && (
+                    <CheckCircle2 className="w-4 h-4 ml-auto text-indigo-500" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>
