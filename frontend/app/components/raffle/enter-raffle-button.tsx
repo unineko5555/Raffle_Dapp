@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 import { useRaffleContract } from "@/hooks/use-raffle-contract";
 import { RaffleABI, contractConfig, ERC20ABI } from "@/app/lib/contract-config";

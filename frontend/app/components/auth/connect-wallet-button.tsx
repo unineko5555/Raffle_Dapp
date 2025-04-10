@@ -20,7 +20,7 @@ import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { injected, metaMask, walletConnect } from "wagmi/connectors";
 import Image from "next/image";
 import { useWeb3Auth } from "@/hooks/use-web3auth";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 export function ConnectWalletButton() {
   const { address, isConnected } = useAccount()
   const { connect } = useConnect()

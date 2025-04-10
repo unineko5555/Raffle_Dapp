@@ -31,7 +31,7 @@ import { injected, metaMask, walletConnect } from "wagmi/connectors";
 import Image from "next/image";
 import { useWeb3Auth } from "@/hooks/use-web3auth";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 
 export function SmartWalletButton() {
   const { address, isConnected } = useAccount();

@@ -9,7 +9,7 @@ import {
   formatUserOperation,
   type UserOperationData
 } from '@/app/lib/alchemy/account-kit-config';
-import { useToast } from './use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
 // グローバルにデバッグモードを設定 (デフォルトはオフ)
 const DEBUG_MODE = false;

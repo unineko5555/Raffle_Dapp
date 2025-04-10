@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAccount, usePublicClient } from 'wagmi';
 import { useRaffleContract } from './use-raffle-contract';
-import { useToast } from './use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { formatUnits } from 'viem';
 
 export function useRaffleWinEvents() {
@@ -65,16 +65,27 @@ export function useRaffleWinEvents() {
             toast({
               title: jackpotWon ? '🎉 ジャックポット当選！！' : '🎊 当選おめでとうございます！',
               description: `${prizeFormatted} USDCが獲得されました！`,
-              variant: 'success',
-              duration: 10000
+              variant: 'default',
+              // 通知を長く表示
+              duration: 15000,
             });
+            
+            // コンソールでも確認
+            console.log('🎉 当選！', winner, amount.toString(), jackpotWon);
           } else if (winner) {
             // 他の人が当選した場合
-            toast({
-              title: 'ラッフル結果発表',
-              description: `${shortenAddress(winner)}さんが当選しました${jackpotWon ? '（ジャックポット）' : ''}`,
-              variant: 'default'
-            });
+            console.log('👉 他の人が当選:', winner, amount.toString(), jackpotWon);
+            
+            // 少し遅延してトーストを表示（他のトーストと重ならないように）
+            setTimeout(() => {
+              toast({
+                title: 'ラッフル結果発表',
+                description: `${shortenAddress(winner)}さんが当選しました${jackpotWon ? '（ジャックポット）' : ''}`,
+                variant: 'default',
+                // 通知を長く表示
+                duration: 10000,
+              });
+            }, 500);
           }
         }
       }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Trophy, Users, CheckCircle2, X, Zap, Sparkles, Shield, Wallet, CreditCard, Copy } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 
 import { AppHeader } from "./components/header/app-header"
 import OwnerAdminPanel from "./components/admin/owner-admin-panel"

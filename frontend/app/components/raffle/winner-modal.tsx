@@ -1,6 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import Confetti from 'react-confetti';
+import { formatAddress } from '@/app/utils/format-address';
 import {
   Dialog,
   DialogContent,
@@ -12,13 +13,14 @@ import {
 import { Button } from '@/components/ui/button';
 
 interface WinnerModalProps {
-  open: boolean;
+  isOpen: boolean;
   onClose: () => void;
+  winner: string;
   prize: string;
   isJackpot: boolean;
 }
 
-export function WinnerModal({ open, onClose, prize, isJackpot }: WinnerModalProps) {
+export function WinnerModal({ isOpen, onClose, winner, prize, isJackpot }: WinnerModalProps) {
   const formattedPrize = (Number(prize) / 1e6).toFixed(2);
   
   // confetti用の画面サイズを取得
@@ -43,9 +45,9 @@ export function WinnerModal({ open, onClose, prize, isJackpot }: WinnerModalProp
   
   return (
     <>
-      {open && <Confetti width={windowSize.width} height={windowSize.height} recycle={false} numberOfPieces={200} />}
+      {isOpen && <Confetti width={windowSize.width} height={windowSize.height} recycle={false} numberOfPieces={200} />}
       
-      <Dialog open={open} onOpenChange={onClose}>
+      <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-center text-2xl font-bold">
@@ -55,6 +57,9 @@ export function WinnerModal({ open, onClose, prize, isJackpot }: WinnerModalProp
               {isJackpot 
                 ? 'おめでとうございます！特別なジャックポットに当選しました！'
                 : 'おめでとうございます！ラッフルで当選しました！'}
+              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                当選アドレス: {formatAddress(winner)}
+              </div>
             </DialogDescription>
           </DialogHeader>
           
