@@ -66,7 +66,7 @@ export function WinnerModal({ isOpen, onClose, winner, prize, isJackpot }: Winne
           <div className="flex flex-col items-center justify-center py-4">
             <div className="relative w-40 h-40 mb-4">
               <Image
-                src={isJackpot ? '/placeholder.svg' : '/placeholder.svg'}
+                src={isJackpot ? '/jackpot-trophy.svg' : '/trophy.svg'}
                 alt={isJackpot ? "ジャックポットトロフィー" : "トロフィー"}
                 fill
                 className="object-contain"

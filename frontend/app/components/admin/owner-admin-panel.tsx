@@ -298,6 +298,7 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
               <ul className="list-disc list-inside mt-1 ml-2">
                 <li>プレイヤー数が最小人数（通常3人）以上</li>
                 <li>ラッフルがOPEN状態であること</li>
+                <li>参加から1分以上経過していること</li>
               </ul>
             </div>
             

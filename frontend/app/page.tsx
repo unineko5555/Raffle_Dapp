@@ -133,7 +133,7 @@ export default function RaffleDapp() {
       // Upkeep可能かチェック
       const automationStatus = await checkAutomationStatus();
       if (!automationStatus || !automationStatus.upkeepNeeded) {
-        alert('現在ラッフルを開始できません\n\n全ての条件が揃っているか確認してください。\n・最少参加者数を満たしている\n・ラッフルがオープン状態');
+        alert('現在ラッフルを開始できません\n\n全ての条件が揃っているか確認してください。\n・最少参加者数を満たしている\n・ラッフルがオープン状態\n・参加から1分以上経過している');
         setIsProcessing(false);
         return;
       }
