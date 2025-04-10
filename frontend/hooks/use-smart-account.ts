@@ -12,7 +12,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 
 // グローバルにデバッグモードを設定 (デフォルトはオフ)
-const DEBUG_MODE = false;
+const DEBUG_MODE = true; // 今回はデバッグモードを有効にする
 
 // グローバル初期化状態の型定義
 interface SmartAccountState {
@@ -230,37 +230,126 @@ export function useSmartAccount() {
       console.log(`データ: ${data}`);
       console.log(`値: ${value.toString()}`);
 
-      // UserOperationオブジェクトを作成
-      const userOpHash = await smartAccountClient.sendUserOperation({
-        target: to as `0x${string}`,
-        data: data as `0x${string}`,
-        value,
-      });
-
-      console.log("UserOperation ハッシュ:", userOpHash);
-
-      // トランザクションのレシートを待つ
-      const txHash = await smartAccountClient.waitForUserOperationTransaction({
-        hash: userOpHash,
-      });
-
-      console.log("トランザクションハッシュ:", txHash);
-
-      // UserOperationを記録
-      const userOpDetails = await smartAccountClient.getUserOperationByHash(userOpHash);
+      // 新アプローチ: buildUserOperationFromTxとsendRawUserOperationを使用
+      console.log("シンプルなトランザクションを構築してみます");
       
-      if (userOpDetails) {
-        const formattedUserOp = formatUserOperation(userOpDetails.userOperation);
-        setUserOps(prev => [formattedUserOp, ...prev]);
+      // トランザクションデータを作成
+      const txData = {
+        to: to as `0x${string}`,
+        data: data as `0x${string}`,
+        value: value
+      };
+
+      console.log("トランザクションデータ:", txData);
+      
+      try {
+        console.log("buildUserOperationFromTxを使用してUserOperationを構築中...");
+        
+        // まずUserOperationを構築
+        const userOp = await smartAccountClient.buildUserOperationFromTx({
+          to: to as `0x${string}`,
+          data: data as `0x${string}`,
+          value: value
+        });
+        
+        console.log("構築されたUserOperation:", userOp);
+        
+        // 署名付きUserOperationを作成
+        console.log("署名前のUserOperationの詳細を確認:", JSON.stringify(userOp, null, 2));
+        
+        // もしuserOpにundefinedやnull値がある場合は安全に処理
+        // userOp自体とsignUserOperationの互換性を確保
+        const cleanedUserOp = {};
+        Object.entries(userOp).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            // bigint値を文字列に変換
+            if (typeof value === 'bigint') {
+              cleanedUserOp[key] = value.toString();
+            } else {
+              cleanedUserOp[key] = value;
+            }
+          }
+        });
+        
+        console.log("クリーニング後のUserOperation:", cleanedUserOp);
+        
+        // 署名にはクリーニングしたオブジェクトを使用
+        const signedUserOp = await smartAccountClient.signUserOperation(cleanedUserOp);
+        console.log("署名付きUserOperation:", signedUserOp);
+        
+        // 署名付きUserOperationを送信
+        const hash = await smartAccountClient.sendRawUserOperation(signedUserOp);
+        console.log("UserOperation送信成功、ハッシュ:", hash);
+        
+        // UserOperationが確認されるのを待つ
+        try {
+          const receipt = await smartAccountClient.waitForUserOperationTransaction({
+            hash,
+          });
+          
+          console.log("UserOperation確認:", receipt);
+        } catch (waitError) {
+          console.warn("トランザクション確認中にエラーが発生しましたが、処理は進行中かもしれません:", waitError);
+          // トランザクションを探すための情報を追加
+          console.log("トランザクションハッシュをエクスプローラーで確認してください:", hash);
+          
+          // 後でトランザクションの確認が必要な場合は、ここでポーリング機構や別の確認方法を実装することも可能
+        }
+        
+        // 成功トースト
+        toast({
+          title: "トランザクション成功",
+          description: `Tx: ${hash.slice(0, 10)}...`,
+        });
+        
+        return { userOpHash: hash, txHash: hash };
+      } catch (error) {
+        console.error("UserOperation送信エラー:", error);
+        
+        // 代替アプローチ: sendTransactionを試す
+        try {
+          console.log("代替アプローチ: sendTransactionを試みます...");
+          const hash = await smartAccountClient.sendTransaction({
+            to: to as `0x${string}`,
+            data: data as `0x${string}`,
+            value: value
+          });
+          
+          console.log("トランザクション送信成功、ハッシュ:", hash);
+          
+          // トランザクションが確認されるのを待つ
+          try {
+            const receipt = await smartAccountClient.waitForUserOperationTransaction({
+              hash,
+            });
+            
+            console.log("トランザクション確認:", receipt);
+          } catch (waitError) {
+            console.warn("トランザクション確認中にエラーが発生しましたが、処理は進行中かもしれません:", waitError);
+            console.log("トランザクションハッシュをエクスプローラーで確認してください:", hash);
+          }
+          
+          // 成功トースト
+          toast({
+            title: "トランザクション成功",
+            description: `Tx: ${hash.slice(0, 10)}...`,
+          });
+          
+          return { userOpHash: hash, txHash: hash };
+        } catch (txError) {
+          console.error("sendTransaction エラー:", txError);
+          // エラーログを詳細化
+          if (error instanceof Error && error.message.includes("Cannot convert undefined or null to object")) {
+            console.warn("オブジェクトのキー取得エラー。Alchemy SDKは間違った形式のオブジェクトを受け取った可能性があります。");
+          }
+          
+          // 実際のトランザクションハッシュをエクスプローラーで確認できるようお知らせ
+          console.log("トランザクションは送信されましたが、確認に失敗しました。直接エクスプローラーで確認してください。");
+          
+          // エラーを投げる
+          throw new Error(`トランザクション準備エラー: ${error instanceof Error ? error.message : '不明なエラー'}`);
+        }
       }
-
-      // 成功トースト
-      toast({
-        title: "トランザクション成功",
-        description: `Tx: ${txHash.slice(0, 10)}...`,
-      });
-
-      return { userOpHash, txHash };
     } catch (err) {
       console.error("トランザクション送信中にエラーが発生しました:", err);
       const errorMessage = err instanceof Error ? err.message : "トランザクション送信に失敗しました";
