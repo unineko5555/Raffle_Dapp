@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRaffleContract } from '@/hooks/use-raffle-contract';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, X, AlertTriangle, Loader2 } from 'lucide-react';
+import { useSmartAccountContext } from '@/app/providers/smart-account-provider';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,11 +20,37 @@ const RaffleEntryStatus = () => {
     isPlayerEntered, 
     handleCancelEntry, 
     raffleData, 
-    isLoading 
+    isLoading,
+    checkPlayerEntered
   } = useRaffleContract();
+
+  // スマートアカウントの情報を取得
+  const { smartAccountAddress, isReadyToSendTx } = useSmartAccountContext();
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [showStatus, setShowStatus] = useState(false);
+
+  // スマートアカウントでの参加状態を確認
+  useEffect(() => {
+    const checkSmartAccountStatus = async () => {
+      if (smartAccountAddress && checkPlayerEntered) {
+        try {
+          // スマートアカウントアドレスで参加状態を確認
+          await checkPlayerEntered(smartAccountAddress);
+        } catch (error) {
+          console.error('スマートアカウント参加状態確認エラー:', error);
+        }
+      }
+    };
+
+    checkSmartAccountStatus();
+  }, [smartAccountAddress, checkPlayerEntered]);
+
+  // 表示条件を統合 (EOAまたはスマートアカウントでプレイヤーが参加している場合)
+  useEffect(() => {
+    setShowStatus(isPlayerEntered);
+  }, [isPlayerEntered]);
 
   // 参加取り消し処理
   const onCancelEntry = async () => {
@@ -63,7 +90,8 @@ const RaffleEntryStatus = () => {
     );
   }
 
-  if (!isPlayerEntered) {
+  // isPlayerEnteredは通常のEOAとスマートアカウントの両方が反映されるようになっている
+  if (!showStatus && !isPlayerEntered) {
     return null;
   }
 

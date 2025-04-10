@@ -369,7 +369,7 @@ export default function RaffleDapp() {
               </div>
             </div>
             
-            {isConnected && raffleData.numberOfPlayers >= 3 && (
+            {(isConnected || isReadyToSendTx) && raffleData.numberOfPlayers >= 3 && (
               <div className="mt-4">
                 <button
                   className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"

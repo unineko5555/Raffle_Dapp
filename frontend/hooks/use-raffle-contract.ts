@@ -14,6 +14,7 @@ import {
 import { formatUnits, parseUnits } from "viem";
 import { RaffleABI, ERC20ABI, contractConfig } from "@/app/lib/contract-config";
 import { createHandleCancelEntry } from "./cancel-entry";
+import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
 
 // checkUpkeepDebug用の型定義
 type UpkeepDebugInfo = {
@@ -50,6 +51,14 @@ export function useRaffleContract() {
     players: [],
     owner: null,
   });
+
+  // スマートアカウント機能を使用
+  const { 
+    smartAccountClient, 
+    smartAccountAddress, 
+    isReadyToSendTx,
+    sendUserOperation
+  } = useSmartAccountContext();
 
   // トークン残高情報
   const [tokenBalanceInfo, setTokenBalanceInfo] = useState<{
@@ -920,7 +929,7 @@ export function useRaffleContract() {
     };
   }, []);
 
-  // 参加取り消し関数を初期化
+  // 参加取り消し関数を初期化 - スマートアカウント対応を追加
   const cancelEntryHandler = createHandleCancelEntry(
     isConnected,
     address,
@@ -931,7 +940,13 @@ export function useRaffleContract() {
     setIsLoading,
     setError,
     updateRaffleData,
-    RaffleABI
+    RaffleABI,
+    // スマートアカウント対応パラメータを追加
+    {
+      smartAccountAddress,
+      isReadyToSendTx,
+      sendUserOperation
+    }
   );
   
   // ラッフル参加取り消し処理を拡張してデータ更新を確実にする
