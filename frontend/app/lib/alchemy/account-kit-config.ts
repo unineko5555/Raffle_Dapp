@@ -1,7 +1,7 @@
 "use client";
 
 // デバッグフラグ - ログが多すぎる場合はfalseに設定
-const DEBUG_MODE = false;
+const DEBUG_MODE = true;
 
 const debugLog = (message: string, ...args: any[]) => {
   if (DEBUG_MODE) {
@@ -9,9 +9,11 @@ const debugLog = (message: string, ...args: any[]) => {
   }
 };
 
-import { Chain, sepolia } from "viem/chains";
+import { type Chain, sepolia } from "viem/chains";
+import { http } from "viem";
 import { createPublicClient, custom, type SignableMessage } from "viem";
 import { type SmartAccountSigner } from "@alchemy/aa-core";
+import { createLightAccountAlchemyClient } from '@alchemy/aa-alchemy';
 
 // 環境変数からAPI Keyを取得
 const alchemyApiKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "demo";
@@ -218,190 +220,45 @@ export async function createLightSmartAccountClient(
   chainId: number = sepolia.id
 ): Promise<any> {
   try {
-    // 本番環境では実際のAlchemyクライアントを使用する
-    if (process.env.NEXT_PUBLIC_USE_REAL_TRANSACTIONS === "true") {
-      try {
-        console.log("実際のAlchemyクライアントの作成を試みます...");
-        
-        const { createLightAccountAlchemyClient } = await import('@alchemy/aa-alchemy');
-        const { sepolia } = await import('viem/chains');
-        
-        console.log("Alchemyモジュールインポート成功、シンプルな方法で初期化を試みます");
-        
-        // チェーンの設定
-        let chain;
-        if (chainId === sepolia.id) {
-          chain = sepolia;
-        } else {
-          console.warn(`チェーンID ${chainId} はサポートされていません。Sepoliaを使用します。`);
-          chain = sepolia;
-        }
-        
-        // API Keyを取得
-        const apiKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
-        if (!apiKey) {
-          throw new Error("Alchemy API Keyが設定されていません");
-        }
-        
-        console.log("Alchemyクライアント作成開始 - API Key確認:", apiKey ? "設定済み" : "未設定");
-        
-        try {
-          // シンプルな設定でLightAccountAlchemyClientを作成
-          console.log("シンプルな設定でcreateLightAccountAlchemyClientを使用します");
-          
-          // トランスポートオプションを含めずに最小限の必要なパラメータのみで初期化
-          const smartAccountClient = await createLightAccountAlchemyClient({
-            apiKey,
-            chain,
-            signer
-          });
-          
-          // アドレスを確認
-          const address = await smartAccountClient.getAddress();
-          console.log("LightAccountクライアント作成成功:", address);
-          
-          return smartAccountClient;
-        } catch (clientError) {
-          console.error("シンプルな設定でのAlchemyクライアント作成エラー:", clientError);
-          
-          // 代替手段として、permissionlessライブラリを使用した設定を試す
-          try {
-            console.log("permissionlessを使用した代替手段を試みます");
-            
-            // 必要なモジュールをインポート
-            const { http } = await import('viem/transports');
-            const { custom, createPublicClient } = await import('viem');
-            const { createLightAccount } = await import('@alchemy/aa-accounts');
-            const { createSmartAccountClient } = await import('permissionless');
-            
-            // RPCのURL設定
-            const rpcUrl = `https://eth-sepolia.g.alchemy.com/v2/${apiKey}`;
-            console.log("RPC URL設定:", rpcUrl.replace(apiKey, "***"));
-            
-            // トランスポートとPublicClientの設定
-            const transport = http(rpcUrl);
-            const publicClient = createPublicClient({
-              transport,
-              chain
-            });
-            
-            // アカウントを直接作成
-            const account = await createLightAccount({
-              chain,
-              signer,
-              publicClient,
-            });
-            
-            // カスタムクライアントの作成
-            const client = {
-              account,
-              getAddress: async () => account.address,
-              sendUserOperation: async (options: any) => {
-                console.log("UserOperation送信リクエスト (カスタム):", options);
-                // 実際のトランザクションの代わりにモックの結果を返す
-                return { hash: "0x" + "1".repeat(64) };
-              },
-              waitForUserOperationTransaction: async (hash: string) => {
-                console.log("トランザクション待機 (カスタム):", hash);
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                return "0x" + "2".repeat(64);
-              },
-              getUserOperationByHash: async (hash: string) => {
-                console.log("UserOperationをハッシュで取得 (カスタム):", hash);
-                return {
-                  userOperation: {
-                    sender: account.address,
-                    nonce: "0",
-                    initCode: "0x",
-                    callData: "0x",
-                    callGasLimit: "0",
-                    verificationGasLimit: "0",
-                    preVerificationGas: "0",
-                    maxFeePerGas: "0",
-                    maxPriorityFeePerGas: "0",
-                    paymasterAndData: "0x",
-                    signature: "0x",
-                  },
-                };
-              },
-            };
-            
-            console.log("カスタムSmartAccountClient作成成功:", account.address);
-            
-            return client;
-          } catch (permissionlessError) {
-            console.error("permissionlessを使用した代替手段も失敗:", permissionlessError);
-            throw permissionlessError;
-          }
-        }
-      } catch (error) {
-        console.error("実際のAlchemyクライアントの作成に失敗しました。モックを使用します:", error);
-        // 失敗した場合はモックにフォールバック
-      }
+    console.log("Alchemyクライアントの作成を開始します...");
+    
+    // チェーンの設定
+    let chain;
+    if (chainId === sepolia.id) {
+      chain = sepolia;
+    } else {
+      console.warn(`チェーンID ${chainId} はサポートされていません。Sepoliaを使用します。`);
+      chain = sepolia;
     }
     
-    // モードが設定されていないか、実際のクライアント作成に失敗した場合はモックを使用
-    console.log("モックのスマートアカウントクライアントを使用します");
-    const mockSmartAccountClient = {
-      getAddress: async () => signer.getAddress(),
-      sendUserOperation: async (options: any) => {
-        console.log("UserOperation送信リクエスト:", options);
-        // 詳細なログを出力
-        console.log("送信先アドレス:", options.target);
-        console.log("データ:", options.data);
-        console.log("値:", options.value?.toString() || "0");
-        return { hash: "0x" + "1".repeat(64) };
-      },
-      waitForUserOperationTransaction: async (hash: string) => {
-        console.log("トランザクション待機:", hash);
-        // シミュレーションとしての待機時間を設定
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return "0x" + "2".repeat(64);
-      },
-      getUserOperationByHash: async (hash: string) => {
-        console.log("UserOperationをハッシュで取得:", hash);
-        return {
-          userOperation: {
-            sender: await signer.getAddress(),
-            nonce: "0",
-            initCode: "0x",
-            callData: "0x",
-            callGasLimit: "0",
-            verificationGasLimit: "0",
-            preVerificationGas: "0",
-            maxFeePerGas: "0",
-            maxPriorityFeePerGas: "0",
-            paymasterAndData: "0x",
-            signature: "0x",
-          },
-        };
-      },
-    };
-
-    return mockSmartAccountClient;
+    // API Keyを取得
+    const apiKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
+    if (!apiKey) {
+      throw new Error("Alchemy API Keyが設定されていません");
+    }
+    
+    console.log("Alchemyクライアント作成開始 - API Key確認:", apiKey ? "設定済み" : "未設定");
+    
+    // RPC URLを直接指定する方法（成功パターン）
+    const rpcUrl = `https://eth-${chain.name}.g.alchemy.com/v2/${apiKey}`;
+    console.log("使用するRPC URL:", rpcUrl.replace(apiKey, "***"));
+    
+    const client = await createLightAccountAlchemyClient({
+      rpcUrl,
+      chain,
+      signer
+    } as any);
+    
+    console.log("Alchemyクライアントが正常に作成されました");
+    
+    // アドレスの取得
+    const address = await client.getAddress();
+    console.log("スマートアカウントアドレス:", address);
+    
+    return client;
   } catch (error) {
-    console.error("LightSmartAccountの作成中にエラーが発生しました:", error);
-    // エラーを返すよりもモックを返すことでUI処理を正常に進める
-    return {
-      getAddress: async () => signer.getAddress(),
-      sendUserOperation: async () => ({ hash: "0x" + "1".repeat(64) }),
-      waitForUserOperationTransaction: async () => "0x" + "2".repeat(64),
-      getUserOperationByHash: async () => ({
-        userOperation: {
-          sender: await signer.getAddress(),
-          nonce: "0",
-          initCode: "0x",
-          callData: "0x",
-          callGasLimit: "0",
-          verificationGasLimit: "0",
-          preVerificationGas: "0",
-          maxFeePerGas: "0",
-          maxPriorityFeePerGas: "0",
-          paymasterAndData: "0x",
-          signature: "0x",
-        },
-      }),
-    };
+    console.error("Alchemyクライアントの作成に失敗しました:", error);
+    throw error;
   }
 }
 
