@@ -14,8 +14,19 @@ import { useToast } from '@/components/ui/use-toast';
 // グローバルにデバッグモードを設定 (デフォルトはオフ)
 const DEBUG_MODE = false;
 
-// 開発者が必要な場合にデバッグモードを有効化する方法:
-// localStorage.setItem('debug_logs', 'true') をコンソールから実行
+// グローバル初期化状態の型定義
+interface SmartAccountState {
+  toastShown: boolean;
+  initialized: boolean;
+}
+
+// グローバル状態の初期化
+if (typeof window !== 'undefined' && !(window as any).SMART_ACCOUNT_STATE) {
+  (window as any).SMART_ACCOUNT_STATE = {
+    toastShown: false,
+    initialized: false
+  };
+}
 
 // デバッグログ関数
 const debugLog = (message: string, ...args: any[]) => {
@@ -50,6 +61,11 @@ export function useSmartAccount() {
   // デバッグログ用のチェーンID状態を追加
   const [currentChainId, setCurrentChainId] = useState<number>(sepolia.id);
 
+  // スマートアカウントの初期化状態を追跡
+  const [wasInitialized, setWasInitialized] = useState<boolean>(false);
+  // トーストが表示済みかどうかを追跡
+  const [toastShown, setToastShown] = useState<boolean>(false);
+
   // スマートアカウントクライアントの初期化
   const initializeSmartAccount = useCallback(async () => {
     // Web3Auth初期化チェック
@@ -64,6 +80,11 @@ export function useSmartAccount() {
       debugLog("Web3Authがまだ初期化されていないか、プロバイダーがありません");
       return;
     }
+
+    // グローバル状態を取得
+    const globalState = typeof window !== 'undefined' ? 
+      (window as any).SMART_ACCOUNT_STATE as SmartAccountState : 
+      { toastShown: false, initialized: false };
 
     debugLog("スマートアカウントを初期化中...");
     debugLog("使用するプロバイダー:", providerToUse ? "利用可能" : "利用不可");
@@ -111,15 +132,30 @@ export function useSmartAccount() {
         window.smartAccountClient = accountClient;
       }
       
-      // 成功トースト
-      toast({
-        title: "スマートアカウント準備完了",
-        description: `アドレス: ${address.slice(0, 6)}...${address.slice(-4)}`,
-      });
+      // グローバル状態で一度だけトースト表示
+      if (!globalState.toastShown) {
+        toast({
+          title: "スマートアカウント準備完了",
+          description: `アドレス: ${address.slice(0, 6)}...${address.slice(-4)}`,
+        });
+        
+        // グローバル状態を更新
+        if (typeof window !== 'undefined') {
+          (window as any).SMART_ACCOUNT_STATE.toastShown = true;
+        }
+        
+        // ローカル状態も更新
+        setToastShown(true);
+      }
 
       // Web3Auth連携: スマートアカウントアドレスをローカルストレージに保存
       if (saveSmartAccountAddress) {
         await saveSmartAccountAddress();
+      }
+      
+      // グローバル初期化状態を更新
+      if (typeof window !== 'undefined') {
+        (window as any).SMART_ACCOUNT_STATE.initialized = true;
       }
       
       return accountClient;
@@ -128,21 +164,24 @@ export function useSmartAccount() {
       const errorMessage = err instanceof Error ? err.message : "スマートアカウントの初期化に失敗しました";
       setError(errorMessage);
       
-      // エラートースト
-      toast({
-        title: "初期化エラー",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      // エラートースト - グローバル状態で管理
+      if (!globalState.toastShown) {
+        toast({
+          title: "初期化エラー",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        
+        if (typeof window !== 'undefined') {
+          (window as any).SMART_ACCOUNT_STATE.toastShown = true;
+        }
+      }
       
       return null;
     } finally {
       setIsLoading(false);
     }
   }, [web3AuthProvider, isWeb3AuthInitialized, isWeb3AuthLoading, toast, currentChainId, saveSmartAccountAddress]);
-
-  // スマートアカウントの初期化状態を追跡
-  const [wasInitialized, setWasInitialized] = useState<boolean>(false);
 
   // Web3Authプロバイダーが変更されたときにスマートアカウントを初期化
   useEffect(() => {
