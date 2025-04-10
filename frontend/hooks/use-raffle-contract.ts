@@ -11,7 +11,7 @@ import {
   useSimulateContract 
 } from "wagmi";
 
-import { formatUnits, parseUnits } from "viem";
+import { formatUnits, parseUnits, encodeFunctionData } from "viem";
 import { RaffleABI, ERC20ABI, contractConfig } from "@/app/lib/contract-config";
 import { createHandleCancelEntry } from "./cancel-entry";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
@@ -429,11 +429,14 @@ export function useRaffleContract() {
     }
   };
 
-  // 手動でUpkeepを実行するための関数
+  // 手動でUpkeepを実行するための関数 - スマートアカウント対応版
   const performManualUpkeep = async () => {
-    if (!isConnected || !address || !contractAddress || !publicClient || !writeContract) {
-      return;
+    if ((!isConnected && !isReadyToSendTx) || (!address && !smartAccountAddress) || !contractAddress) {
+      return null;
     }
+    
+    // スマートアカウントを使用するか判定
+    const useSmartAccount = isReadyToSendTx && smartAccountAddress && sendUserOperation;
     
     try {
       setIsLoading(true); // 処理中状態を設定
@@ -445,47 +448,96 @@ export function useRaffleContract() {
         setIsLoading(false);
         return null;
       }
+
+      let txHash = "";
       
-      const { request } = await publicClient.simulateContract({
-        address: contractAddress as `0x${string}`,
-        abi: RaffleABI,
-        functionName: "performUpkeep",
-        args: ["0x"],
-        account: address
-      });
-      
-      if (!request) {
-        throw new Error("リクエストの準備に失敗しました");
+      // スマートアカウントを使用する場合
+      if (useSmartAccount && sendUserOperation) {
+        try {
+          console.log('スマートアカウントで手動Upkeepを実行します...');
+          
+          // performUpkeep関数のエンコード
+          const performUpkeepCallData = encodeFunctionData({
+            abi: RaffleABI,
+            functionName: 'performUpkeep',
+            args: ["0x"]
+          });
+          
+          // UserOperationを送信
+          const upkeepResult = await sendUserOperation(
+            contractAddress as `0x${string}`,
+            performUpkeepCallData,
+            BigInt(0)
+          );
+          
+          txHash = upkeepResult.txHash;
+          console.log('スマートアカウント手動Upkeepトランザクションハッシュ:', txHash);
+          console.log('エクスプローラーで確認: https://sepolia.etherscan.io/tx/' + txHash);
+          
+          // しばらく待機して、トランザクションが確定するのを待つ
+          setTimeout(async () => {
+            // 少し遅延させてペンディング中のブロックチェーン更新が反映されるようにする
+            await updateRaffleData(true); // データを強制更新
+          }, 5000); // 5秒の遅延
+          
+          return txHash;
+        } catch (smartAccountError) {
+          console.error('スマートアカウント手動Upkeepエラー:', smartAccountError);
+          throw new Error(`スマートアカウントでの手動Upkeep実行に失敗しました: ${smartAccountError instanceof Error ? smartAccountError.message : '不明なエラー'}`);
+        }
       }
-      
-      const customRequest = {
-        ...request,
-        gas: BigInt(1000000)
-      };
-      
-      await writeContract(customRequest);
-      
-      // トランザクションハッシュが返されるのを待つ
-      if (contractWriteData) {
-         if (!publicClient) throw new Error("Public client is not available");
-         
-         try {
-           // トランザクションの確認を待つ
-           const receipt = await publicClient.waitForTransactionReceipt({ hash: contractWriteData });
-           
-           // トランザクション成功後、データを再取得して状態を更新
-           setTimeout(async () => {
-             // 少し遅延させてペンディング中のブロックチェーン更新が反映されるようにする
-             await updateRaffleData(true); // データを強制更新
-           }, 2000); // 2秒の遅延
-           
-           return contractWriteData;
-         } catch (error) {
-           console.error('トランザクション確認エラー:', error);
-           throw error;
-         }
+      // 通常のEOAを使用する場合
+      else if (isConnected && address && publicClient && writeContract) {
+        try {
+          const { request } = await publicClient.simulateContract({
+            address: contractAddress as `0x${string}`,
+            abi: RaffleABI,
+            functionName: "performUpkeep",
+            args: ["0x"],
+            account: address
+          });
+          
+          if (!request) {
+            throw new Error("リクエストの準備に失敗しました");
+          }
+          
+          const customRequest = {
+            ...request,
+            gas: BigInt(1000000)
+          };
+          
+          await writeContract(customRequest);
+          
+          // トランザクションハッシュが返されるのを待つ
+          if (contractWriteData) {
+             if (!publicClient) throw new Error("Public client is not available");
+             
+             try {
+               // トランザクションの確認を待つ
+               const receipt = await publicClient.waitForTransactionReceipt({ hash: contractWriteData });
+               
+               // トランザクション成功後、データを再取得して状態を更新
+               setTimeout(async () => {
+                 // 少し遅延させてペンディング中のブロックチェーン更新が反映されるようにする
+                 await updateRaffleData(true); // データを強制更新
+               }, 2000); // 2秒の遅延
+               
+               return contractWriteData;
+             } catch (error) {
+               console.error('トランザクション確認エラー:', error);
+               throw error;
+             }
+          }
+          return null;
+        } catch (error) {
+          console.error('手動Upkeep実行エラー:', error);
+          throw error;
+        }
+      } else {
+        // どちらの条件も満たさない場合
+        console.error('ウォレットが接続されていないか、スマートアカウントが準備できていません');
+        return null;
       }
-      return null;
     } catch (error) {
       console.error('手動Upkeep実行エラー:', error);
       throw error;

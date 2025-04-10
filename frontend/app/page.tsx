@@ -32,7 +32,8 @@ export default function RaffleDapp() {
   const { 
     smartAccountClient, 
     smartAccountAddress, 
-    isReadyToSendTx 
+    isReadyToSendTx,
+    isLoading: isSmartAccountLoading
   } = useSmartAccountContext();
   
   // ユーザーのラッフル履歴を取得
@@ -167,9 +168,17 @@ export default function RaffleDapp() {
           alert('ラッフル開始トランザクションが生成されましたが、結果が不明です。\n後ほど確認してください。');
         }
       } catch (upkeepError) {
-        console.error('手動Upkeep実行エラー:', upkeepError);
+        // エラーメッセージを改善
+        console.error('Upkeepエラー詳細:', upkeepError);
         const errorMessage = upkeepError instanceof Error ? upkeepError.message : '不明なエラー';
-        alert(`ラッフル開始中にエラーが発生しました: ${errorMessage}\n\nブロックチェーンが混雑しているか、ガス代が不足している可能性があります。`);
+        
+        // スマートアカウント特有のエラーかどうか確認
+        let displayMessage = errorMessage;
+        if (errorMessage.includes('スマートアカウントでの手動Upkeep実行に失敗しました')) {
+          displayMessage = 'スマートアカウントからのラッフル開始に失敗しました。\n\n詳細: ' + errorMessage;
+        }
+        
+        alert(`ラッフル開始中にエラーが発生しました: ${displayMessage}\n\nブロックチェーンが混雑しているか、ガス代が不足している可能性があります。`);
       }
     } catch (error) {
       console.error('ラッフル開始エラー:', error);
@@ -374,7 +383,7 @@ export default function RaffleDapp() {
                 <button
                   className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                   onClick={startRaffle}
-                  disabled={isProcessing || isLoading}
+                  disabled={isProcessing || isLoading || isSmartAccountLoading}
                 >
                   {isProcessing ? (
                     <>
