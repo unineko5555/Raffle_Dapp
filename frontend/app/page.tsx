@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Trophy, Users, CheckCircle2, X, Zap, Sparkles, Shield, Wallet, CreditCard, Copy } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { ToastIcon } from "@/components/ui/toast-icon"
 
 import { AppHeader } from "./components/header/app-header"
 import OwnerAdminPanel from "./components/admin/owner-admin-panel"
@@ -42,7 +43,6 @@ export default function RaffleDapp() {
   // 当選イベント監視フックを使用
   const { winner, prize, isJackpot, showModal, closeModal } = useRaffleWinEvents();
   
-  const [showNotification, setShowNotification] = useState(false)
   const [minutes, setMinutes] = useState(0)
   const [seconds, setSeconds] = useState(42)
   const [progress, setProgress] = useState(75)
@@ -146,7 +146,14 @@ export default function RaffleDapp() {
         
         if (upkeepResult) {
           setTxHash(upkeepResult);
-          setShowNotification(true);
+          
+          // トースト通知を使用
+          toast({
+            title: "ラッフル開始",
+            description: "ラッフルが開始されました！結果をお待ちください。",
+            variant: "default",
+            icon: <ToastIcon variant="default" icon={<Zap className="w-5 h-5" />} />
+          });
           
           // 成功メッセージ
           alert('ラッフルが開始されました！トランザクション: ' + upkeepResult);
@@ -227,9 +234,9 @@ export default function RaffleDapp() {
     return () => clearInterval(timer)
   }, [minutes, seconds])
 
-  // ラッフル参加成功時のコールバック
+  // ラッフル参加成功時のコールバック - トーストは表示しない
   const handleRaffleEntrySuccess = () => {
-    setShowNotification(true);
+    // EnterRaffleButton内でトーストを表示するので、ここではトースト表示しない
     
     // データを強制的に更新
     setTimeout(() => {
@@ -572,26 +579,6 @@ export default function RaffleDapp() {
             )}
           </div>
         </main>
-
-        {showNotification && (
-          <div className="fixed bottom-6 right-6 flex items-center gap-4 bg-white dark:bg-slate-800 border-l-4 border-indigo-500 rounded-lg shadow-xl p-4 max-w-md animate-slide-in-right z-50">
-            <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <div className="flex-1">
-              <div className="font-bold">参加完了</div>
-              <div className="text-sm text-slate-500 dark:text-slate-400">
-                ラッフルへの参加が確認されました。抽選をお待ちください。
-              </div>
-            </div>
-            <button
-              onClick={() => setShowNotification(false)}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        )}
 
         {/* 当選モーダル */}
         {winner && (

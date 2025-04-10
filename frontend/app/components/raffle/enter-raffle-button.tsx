@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Coins, CheckCircle2 } from "lucide-react";
+import { ToastIcon } from "@/components/ui/toast-icon";
 import { useRaffleContract } from "@/hooks/use-raffle-contract";
 import { RaffleABI, contractConfig, ERC20ABI } from "@/app/lib/contract-config";
 import { useAccount } from "wagmi";
@@ -79,7 +80,7 @@ export function EnterRaffleButton({
       toast({
         title: "エラー",
         description: "ラッフルが開催中でないか、ウォレットが接続されていません。",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -141,7 +142,9 @@ export function EnterRaffleButton({
           // 承認トランザクションが処理されるまで少し待機
           toast({
             title: "トークン承認中",
-            description: "トークン承認の処理中です。しばらくお待ちください...",
+            description: "最初の承認ステップ中です。しばらくお待ちください...",
+            variant: "token",
+            icon: <ToastIcon variant="token" icon={<Coins className="w-5 h-5" />} />
           });
           
           // 少し待機して承認トランザクションが処理されるのを待つ
@@ -258,15 +261,17 @@ export function EnterRaffleButton({
       console.log("トランザクションハッシュ:", txHash);
       
       if (success) {
+        // EnterRaffleButton内でトーストを表示
         toast({
           title: "ラッフル参加成功！",
           description: smartAccountClient 
             ? "スマートウォレットでラッフルに参加しました。" 
             : "ラッフルに参加しました。",
           variant: "default",
+          icon: <ToastIcon variant="default" icon={<CheckCircle2 className="w-5 h-5" />} />
         });
         
-        // 成功時のコールバック
+        // 成功時のコールバック（コールバック内ではトースト表示しない）
         if (onSuccess) {
           onSuccess();
         }
