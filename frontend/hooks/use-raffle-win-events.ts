@@ -3,9 +3,11 @@ import { useAccount, usePublicClient } from 'wagmi';
 import { useRaffleContract } from './use-raffle-contract';
 import { useToast } from '@/components/ui/use-toast';
 import { formatUnits } from 'viem';
+import { useSmartAccountContext } from '@/app/providers/smart-account-provider';
 
 export function useRaffleWinEvents() {
   const { address } = useAccount();
+  const { smartAccountAddress } = useSmartAccountContext();
   const publicClient = usePublicClient();
   const { contractAddress } = useRaffleContract();
   const { toast } = useToast();
@@ -18,6 +20,8 @@ export function useRaffleWinEvents() {
   });
   
   useEffect(() => {
+    //スマートアカウントがない場合も考慮
+    const currentAddress = smartAccountAddress || address;
     if (!contractAddress || !address || !publicClient) return;
     
     // WinnerPicked イベントのABIフラグメント
@@ -39,7 +43,6 @@ export function useRaffleWinEvents() {
       onLogs: (logs) => {
         if (logs.length > 0) {
           const log = logs[0];
-          
           // イベントパラメータを取得
           const winner = log.args.winner;
           const amount = log.args.amount || BigInt(0);
@@ -48,7 +51,7 @@ export function useRaffleWinEvents() {
           console.log("Winner picked event:", winner, amount.toString(), jackpotWon);
           
           // 自分が当選者かチェック
-          const isWinner = winner && winner.toLowerCase() === address.toLowerCase();
+          const isWinner = winner && currentAddress && winner.toLowerCase() === currentAddress.toLowerCase();
           
           if (isWinner) {
             // 自分が当選した場合
@@ -95,7 +98,7 @@ export function useRaffleWinEvents() {
       // クリーンアップでイベントウォッチを解除
       unwatch();
     };
-  }, [contractAddress, address, publicClient, toast]);
+  }, [contractAddress, address, smartAccountAddress, publicClient, toast]);
   
   // ヘルパー関数
   const shortenAddress = (addr) => {
