@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { SmartWalletButton } from "../auth/smart-wallet-button";
 import { NetworkSelector } from "../network/network-selector";
+import { TokenTransferButton } from "../wallet/token-transfer-button";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 export function AppHeader() {
@@ -21,6 +22,7 @@ export function AppHeader() {
         </Badge>
       </div>
       <div className="flex items-center gap-3">
+        <TokenTransferButton />
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
