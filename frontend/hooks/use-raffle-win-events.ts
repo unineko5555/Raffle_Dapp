@@ -22,7 +22,7 @@ export function useRaffleWinEvents() {
   useEffect(() => {
     //スマートアカウントがない場合も考慮
     const currentAddress = smartAccountAddress || address;
-    if (!contractAddress || !address || !publicClient) return;
+    if (!contractAddress || (!address && !smartAccountAddress) || !publicClient) return;
     
     // WinnerPicked イベントのABIフラグメント
     const winnerPickedEvent = {
