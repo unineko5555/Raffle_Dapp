@@ -9,7 +9,7 @@ const debugLog = (message: string, ...args: any[]) => {
   }
 };
 
-import { type Chain, sepolia } from "viem/chains";
+import { type Chain, sepolia, arbitrumSepolia, baseSepolia} from "viem/chains";
 import { http } from "viem";
 import { createPublicClient, custom, type SignableMessage } from "viem";
 import { type SmartAccountSigner } from "@alchemy/aa-core";
@@ -17,10 +17,13 @@ import { createLightAccountAlchemyClient } from '@alchemy/aa-alchemy';
 
 // 環境変数からAPI Keyを取得
 const alchemyApiKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "demo";
+const gasManagerPolicyId = process.env.NEXT_PUBLIC_ALCHEMY_GAS_MANAGER_POLICY_ID;
 
 // サポートされるチェーン
 export const supportedChains: { [chainId: number]: Chain } = {
   [sepolia.id]: sepolia,
+  [arbitrumSepolia.id]: arbitrumSepolia,
+  [baseSepolia.id]: baseSepolia,
 };
 
 // チェーンIDからRPC URLを取得する関数
@@ -28,7 +31,12 @@ export function getAlchemyRpcUrl(chainId: number): string {
   switch (chainId) {
     case sepolia.id:
       return `https://eth-sepolia.g.alchemy.com/v2/${alchemyApiKey}`;
+    case arbitrumSepolia.id:
+      return `https://arb-sepolia.g.alchemy.com/v2/${alchemyApiKey}`;
+    case baseSepolia.id:
+      return `https://base-sepolia.g.alchemy.com/v2/${alchemyApiKey}`;
     default:
+      console.warn(`チェーンID ${chainId} はサポートされていません。Sepoliaを使用します。`);
       return `https://eth-sepolia.g.alchemy.com/v2/${alchemyApiKey}`;
   }
 }
@@ -243,11 +251,23 @@ export async function createLightSmartAccountClient(
     const rpcUrl = `https://eth-${chain.name}.g.alchemy.com/v2/${apiKey}`;
     console.log("使用するRPC URL:", rpcUrl.replace(apiKey, "***"));
     
-    const client = await createLightAccountAlchemyClient({
+    // --- Gas Manager 設定 ---
+    let clientOptions: any = { // 型はSDKのバージョンに合わせて調整
       rpcUrl,
       chain,
-      signer
-    } as any);
+      signer,
+    };
+
+    if (gasManagerPolicyId) {
+        console.log(`Alchemy Gas Manager を使用します。Policy ID: ${gasManagerPolicyId}`);
+        clientOptions.gasManagerConfig = {
+            policyId: gasManagerPolicyId,
+        };
+    } else {
+        console.warn("Alchemy Gas Manager Policy IDが設定されていません。ガスレス機能は無効になります。");
+    }
+
+    const client = await createLightAccountAlchemyClient(clientOptions);
     
     console.log("Alchemyクライアントが正常に作成されました");
     
