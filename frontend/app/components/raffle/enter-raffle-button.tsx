@@ -163,7 +163,8 @@ export function EnterRaffleButton({
             
             // トランザクションハッシュを記録
             console.log("承認トランザクションハッシュ:", approveTxHash);
-            console.log("エクスプローラーで確認: https://sepolia.etherscan.io/tx/" + approveTxHash);
+            const explorerUrl = contractConfig[currentChainId]?.blockExplorer || "https://sepolia.etherscan.io";
+            console.log(`エクスプローラーで確認: ${explorerUrl}/tx/${approveTxHash}`);
             
             // 承認状況を確認するためのコードを追加
             try {
@@ -233,7 +234,8 @@ export function EnterRaffleButton({
             
             // エクスプローラーリンクを記録
             console.log("ラッフル参加トランザクションハッシュ:", txHash);
-            console.log("エクスプローラーで確認: https://sepolia.etherscan.io/tx/" + txHash);
+            const explorerUrl = contractConfig[currentChainId]?.blockExplorer || "https://sepolia.etherscan.io";
+            console.log(`エクスプローラーで確認: ${explorerUrl}/tx/${txHash}`);
             
             // トランザクションが完了するまで待機
             toast({
@@ -245,23 +247,44 @@ export function EnterRaffleButton({
             
             // トランザクションが確定するまで待機時間を長めに設定
             console.log('ラッフル参加トランザクション処理待ち...');
-            await new Promise(resolve => setTimeout(resolve, 8000)); // 待機時間を長くしてみる
+            toast({
+              title: "ブロックチェーン処理待ち",
+              description: "トランザクションを処理中です。これには時間がかかることがあります...",
+              variant: "default",
+              icon: <ToastIcon variant="default" icon={<Coins className="w-5 h-5" />} />
+            });
+
+            // 処理待ち時間を長くする
+            await new Promise(resolve => setTimeout(resolve, 20000)); // 20秒に増やす
             console.log('待機完了、参加状態を確認します');
             
-            // トランザクション完了後に参加状態をチェック
-            try {
-              if (typeof checkPlayerEntered === 'function') {
-                const isEntered = await checkPlayerEntered(smartAccountAddress);
-                console.log("プレイヤー参加状態確認結果:", isEntered);
-                success = true;
-              } else {
-                console.log('参加状態確認関数が定義されていませんが、トランザクションは成功したとみなします');  
-                success = true;
+            // 複数回参加状態確認を試みる
+            let isEntered = false;
+            let retries = 3;
+            while (retries > 0 && !isEntered) {
+              try {
+                if (typeof checkPlayerEntered === 'function') {
+                  isEntered = await checkPlayerEntered(smartAccountAddress);
+                  console.log(`プレイヤー参加状態確認結果(試行 ${4-retries}/3): ${isEntered}`);
+                  if (isEntered) break;
+                }
+              } catch (checkError) {
+                console.warn(`参加状態確認中にエラー(試行 ${4-retries}/3):`, checkError);
               }
-            } catch (checkError) {
-              console.warn('参加状態の確認中にエラーが発生しましたが、トランザクションは成功している可能性があります:', checkError);
-              // トランザクションは送信されたので、成功とみなす
+              
+              if (retries > 1) {
+                console.log("5秒後に再確認します...");
+                await new Promise(resolve => setTimeout(resolve, 5000));
+              }
+              retries--;
+            }
+
+            if (isEntered) {
               success = true;
+            } else {
+              // 参加は確認できなかったが、トランザクションは送信されたため一応成功とみなす
+              console.log("参加確認はできませんでしたが、トランザクションは送信されました。後ほど確認してください。");
+              success = true; // 楚観的にtrueを設定
             }
           } catch (enterError) {
             console.error("ラッフル参加トランザクションエラー:", enterError);

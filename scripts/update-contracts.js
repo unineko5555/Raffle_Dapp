@@ -205,7 +205,7 @@ export const contractConfig = {
     erc20Address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", // SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59", // SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia.etherscan.io",
-    rpcUrl: "\${NEXT_PUBLIC_SEPOLIA_RPC_URL}",
+    rpcUrl: process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL,
   },
   // Base Sepolia
   84532: {
@@ -214,7 +214,7 @@ export const contractConfig = {
     erc20Address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93", // Base SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia.basescan.org",
-    rpcUrl: "\${NEXT_PUBLIC_BASE_RPC_URL}",
+    rpcUrl: process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL,
   },
   // Arbitrum Sepolia
   421614: {
@@ -223,7 +223,7 @@ export const contractConfig = {
     erc20Address: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d", // Arbitrum SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165", // Arbitrum SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia-explorer.arbitrum.io",
-    rpcUrl: "\${NEXT_PUBLIC_ARBITRUM_RPC_URL}",
+    rpcUrl: process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_RPC_URL,
   },
 };
 

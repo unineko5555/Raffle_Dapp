@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { sepolia } from 'viem/chains';
+import { useWalletClient, useChainId } from 'wagmi';
+import { sepolia, arbitrumSepolia, baseSepolia } from 'viem/chains';
 import { useWeb3Auth } from './use-web3auth';
 import { 
   createWeb3AuthSigner, 
@@ -10,6 +11,7 @@ import {
   type UserOperationData
 } from '@/app/lib/alchemy/account-kit-config';
 import { useToast } from '@/components/ui/use-toast';
+import { type AlchemySmartAccountClient } from '@alchemy/aa-alchemy'; // 適切な型をインポート
 
 // グローバルにデバッグモードを設定 (デフォルトはオフ)
 const DEBUG_MODE = true; // 今回はデバッグモードを有効にする
@@ -51,7 +53,7 @@ export function useSmartAccount() {
   const { toast } = useToast();
 
   // スマートアカウントの状態
-  const [smartAccountClient, setSmartAccountClient] = useState<any>(null);
+  const [smartAccountClient, setSmartAccountClient] = useState<AlchemySmartAccountClient | null>(null);
   const [smartAccountAddress, setSmartAccountAddress] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [userOps, setUserOps] = useState<UserOperationData[]>([]);
@@ -181,7 +183,7 @@ export function useSmartAccount() {
     } finally {
       setIsLoading(false);
     }
-  }, [web3AuthProvider, isWeb3AuthInitialized, isWeb3AuthLoading, toast, currentChainId, saveSmartAccountAddress]);
+  }, [web3AuthProvider, isWeb3AuthInitialized, toast, currentChainId]);
 
   // Web3Authプロバイダーが変更されたときにスマートアカウントを初期化
   useEffect(() => {
@@ -228,31 +230,35 @@ export function useSmartAccount() {
     setError(null);
 
     try {
+      console.log(`現在のチェーンID: ${currentChainId}`);
       console.log(`トランザクション準備中: ${to}`);
       console.log(`データ: ${data}`);
       console.log(`値: ${value.toString()}`);
 
-      // トランザクションデータを作成
-      const txData = {
+      // L2用のガスパラメータを準備
+      let txOptions: any = {
         to: to as `0x${string}`,
         data: data as `0x${string}`,
         value: value
       };
-
-      console.log("トランザクションデータ:", txData);
       
-      // 直接sendTransactionを使用する方法 - マルチチェーンで動作する唐一の方法
-      console.log("トランザクション送信中...");
-      const hash = await smartAccountClient.sendTransaction({
-        to: to as `0x${string}`,
-        data: data as `0x${string}`,
-        value: value
-      });
+      // ガスパラメータは自動生成されるため、ハードコードした値を削除
+      // チェーンに応じたカスタマイズが必要な場合はここで行う
+      if (currentChainId === 84532 || currentChainId === 421614) {
+        console.log(`L2チェーンのガス設定を、SDKに任せます (チェーンID: ${currentChainId})`);
+      }
+
+      console.log(`チェーンID ${currentChainId} でトランザクションデータを送信:`, txOptions);
+      
+      // 直接sendTransactionを使用する方法
+      console.log(`チェーンID ${currentChainId} でトランザクション送信中...`);
+      const hash = await smartAccountClient.sendTransaction(txOptions);
       
       console.log("トランザクション送信成功、ハッシュ:", hash);
       
       // トランザクション確認はエラーが発生する可能性があるため、try-catchで安全に処理
       try {
+        console.log(`ユーザーオペレーションの確認中: ${hash}`);
         const receipt = await smartAccountClient.waitForUserOperationTransaction({
           hash,
         });
