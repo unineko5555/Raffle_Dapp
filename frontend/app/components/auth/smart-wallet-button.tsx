@@ -33,6 +33,8 @@ import { useWeb3Auth } from "@/hooks/use-web3auth";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
 import { useToast } from "@/components/ui/use-toast";
 
+import { WalletBalanceDisplay } from "../wallet/wallet-balance-display";
+
 export function SmartWalletButton() {
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
@@ -560,16 +562,21 @@ export function SmartWalletButton() {
         </Dialog>
       ) : (
         <div className="relative group">
-           <Button className="flex items-center gap-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 font-medium py-2.5 px-5 rounded-full transition-all duration-300">
-            <div className="w-6 h-6 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600"></div>
-            <span className="font-mono text-sm">{displayAddress || "Loading..."}</span>
-            {smartAccountInfo && (
-              <span className="ml-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded">
-                {smartAccountClient ? "Smart" : smartAccountInfo.provider === 'google' ? 'Google' : smartAccountInfo.provider === 'email_passwordless' ? 'メール' : 'ソーシャル'}
-              </span>
-            )}
-            <ChevronDown className="w-4 h-4 ml-1" />
-          </Button>
+           <div className="flex items-center gap-3">
+             {/* ウォレット残高表示 */}
+             {isLoggedIn && <WalletBalanceDisplay />}
+             
+             <Button className="flex items-center gap-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 font-medium py-2.5 px-5 rounded-full transition-all duration-300">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600"></div>
+              <span className="font-mono text-sm">{displayAddress || "Loading..."}</span>
+              {smartAccountInfo && (
+                <span className="ml-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded">
+                  {smartAccountClient ? "Smart" : smartAccountInfo.provider === 'google' ? 'Google' : smartAccountInfo.provider === 'email_passwordless' ? 'メール' : 'ソーシャル'}
+                </span>
+              )}
+              <ChevronDown className="w-4 h-4 ml-1" />
+            </Button>
+           </div>
           <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
             <div className="py-2">
               <button
