@@ -198,9 +198,10 @@ export function useSmartAccount() {
     if ((web3AuthProvider && isWeb3AuthInitialized) || hasGlobalProvider) {
       // 初期化フラグを立ててから初期化を実行
       setWasInitialized(true);
+      console.log(`チェーンID ${currentChainId} でスマートアカウントを初期化`);
       initializeSmartAccount();
     }
-  }, [web3AuthProvider, isWeb3AuthInitialized, initializeSmartAccount, smartAccountClient, wasInitialized]);
+  }, [web3AuthProvider, isWeb3AuthInitialized, initializeSmartAccount, smartAccountClient, wasInitialized, currentChainId]);
 
   // チェーンを変更する関数
   const switchChain = async (chainId: number) => {
@@ -209,11 +210,26 @@ export function useSmartAccount() {
       return;
     }
 
+    console.log(`チェーンを切り替え: ${currentChainId} → ${chainId}`);
+    
+    // チェーンが変更されたのでクライアントをリセット
+    setSmartAccountClient(null);
+    setIsReadyToSendTx(false);
+    setSmartAccountAddress(null);
+    
+    // 初期化フラグもリセット
+    setWasInitialized(false);
+    
+    // チェーンIDを更新
     setCurrentChainId(chainId);
     
     // Web3Authが初期化済みであれば、新しいチェーンでスマートアカウントを再初期化
     if (web3AuthProvider && isWeb3AuthInitialized && !isWeb3AuthLoading) {
-      await initializeSmartAccount();
+      // 少し待機してから初期化（UI更新が先に完了するように）
+      setTimeout(async () => {
+        console.log(`チェーンID ${chainId} でスマートアカウントを再初期化`);
+        await initializeSmartAccount();
+      }, 100);
     }
   };
 
