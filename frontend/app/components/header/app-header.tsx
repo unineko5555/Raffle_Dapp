@@ -6,6 +6,9 @@ import { SmartWalletButton } from "../auth/smart-wallet-button";
 import { NetworkSelector } from "../network/network-selector";
 import { TokenTransferButton } from "../wallet/token-transfer-button";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { ArrowRightLeft } from "lucide-react";
+import Link from "next/link";
 
 export function AppHeader() {
   return (
@@ -22,6 +25,21 @@ export function AppHeader() {
         </Badge>
       </div>
       <div className="flex items-center gap-3">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link href="/bridge">
+                <Button variant="outline" size="sm" className="flex items-center gap-1">
+                  <ArrowRightLeft className="h-4 w-4" />
+                  Bridge
+                </Button>
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>USDCをクロスチェーンでブリッジ</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <TokenTransferButton />
         <TooltipProvider>
           <Tooltip>
