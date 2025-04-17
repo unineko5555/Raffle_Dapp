@@ -21,6 +21,16 @@ import { useWeb3Auth } from "@/hooks/use-web3auth";
 import { useSmartAccountContext } from "./providers/smart-account-provider"
 import { useRaffleHistory } from "@/hooks/use-raffle-history"
 
+// 新しいコンポーネントのインポート
+import { ContractBalanceDisplay } from "./components/contract/contract-balance-display"
+import { RafflePrizeInfo } from "./components/raffle/raffle-prize-info"
+import { RaffleCountdown } from "./components/raffle/raffle-countdown"
+import { PlayersList } from "./components/raffle/players-list"
+import { StartRaffleButton } from "./components/raffle/start-raffle-button"
+import { RaffleHistory } from "./components/raffle/raffle-history"
+import { UserProfile } from "./components/user/user-profile"
+import { RaffleHeader } from "./components/raffle/raffle-header"
+
 export default function RaffleDapp() {
   const chainId = useChainId()
   const { switchChain } = useSwitchChain()
@@ -243,17 +253,16 @@ export default function RaffleDapp() {
     return () => clearInterval(timer)
   }, [minutes, seconds])
 
-  // ラッフル参加成功時のコールバック - トーストは表示しない
+  // ラッフル参加成功時のコールバック
   const handleRaffleEntrySuccess = () => {
-    // EnterRaffleButton内でトーストを表示するので、ここではトースト表示しない
-    
-    // データを強制的に更新
     setTimeout(() => {
       checkPlayerEntered();
       updateContractBalances();
       
       // ラッフルデータも強制更新
+      // @ts-ignore - メソッドが存在しない可能性があるのでignore
       if (typeof raffleContract.updateRaffleData === 'function') {
+        // @ts-ignore
         raffleContract.updateRaffleData(true);
       }
     }, 2000); // トランザクションの反映を待つために少し遅延
@@ -288,81 +297,21 @@ export default function RaffleDapp() {
 
         <main className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3">
-                <h2 className="text-2xl font-bold">進行中のラッフル</h2>
-                <Badge
-                  variant="outline"
-                  className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800"
-                >
-                  アクティブ
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-indigo-500" />
-                <span className="text-xs text-slate-500">スマートコントラクト検証済み</span>
-              </div>
-            </div>
+            <RaffleHeader />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 text-white text-center transform transition-transform hover:scale-[1.02] relative overflow-hidden group">
-                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <Sparkles className="w-6 h-6 mx-auto mb-2 text-white/80" />
-                <h3 className="text-lg font-medium opacity-90 mb-2">当選賞金</h3>
-                <div className="text-3xl font-bold">
-                  {isLoading ? "読み込み中..." : `${(Number(raffleData.numberOfPlayers) * 9).toFixed(2)} USDC`}
-                </div>
-                <div className="mt-2 text-xs text-white/70">
-                  ≈ {isLoading ? "..." : `${(Number(raffleData.numberOfPlayers) * 9 * 150).toFixed(0)}円`}
-                </div>
-              </div>
-              <div className="bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-6 text-white text-center transform transition-transform hover:scale-[1.02] relative overflow-hidden group">
-                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <Trophy className="w-6 h-6 mx-auto mb-2 text-white/80" />
-                <h3 className="text-lg font-medium opacity-90 mb-2">ジャックポット</h3>
-                <div className="text-3xl font-bold">
-                  {isLoading ? "読み込み中..." : `${(Number(raffleData.numberOfPlayers) * 1).toFixed(2)} USDC`}
-                </div>
-                <div className="mt-2 text-xs text-white/70">
-                  ≈ {isLoading ? "..." : `${(Number(raffleData.numberOfPlayers) * 1 * 150).toFixed(0)}円`}
-                </div>
-              </div>
-            </div>
+            <RafflePrizeInfo 
+              numberOfPlayers={raffleData.numberOfPlayers} 
+              isLoading={isLoading} 
+            />
 
-            <div className="mb-8">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">次回抽選まで</h3>
-                <span className="text-sm text-slate-500">
-                  {minutes}:{seconds.toString().padStart(2, "0")}
-                </span>
-              </div>
-              <Progress value={progress} className="h-2 mb-6" />
+            <RaffleCountdown initialMinutes={0} initialSeconds={42} />
 
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-indigo-500" />
-                  <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">参加者 (3/3必要)</h3>
-                </div>
-                <span className="text-sm text-slate-500">
-                  現在の参加者: {isLoading ? "読み込み中..." : raffleData.numberOfPlayers}人
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2 mb-6">
-                {isLoading ? (
-                  <div className="text-sm text-slate-500">プレイヤー情報を読み込み中...</div>
-                ) : (
-                  raffleData.players?.map((player, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 px-4 py-2 rounded-full"
-                    >
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600"></div>
-                      <span className="text-sm font-medium">{formatAddress(player)}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            <PlayersList 
+              players={raffleData.players || []}
+              numberOfPlayers={raffleData.numberOfPlayers}
+              isLoading={isLoading}
+              minPlayers={3}
+            />
 
             <div className="relative">
               <RaffleEntryStatus />
@@ -378,189 +327,32 @@ export default function RaffleDapp() {
               </div>
             </div>
             
-            {(isConnected || isReadyToSendTx) && raffleData.numberOfPlayers >= 3 && (
-              <div className="mt-4">
-                <button
-                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                  onClick={startRaffle}
-                  disabled={isProcessing || isLoading || isSmartAccountLoading}
-                >
-                  {isProcessing ? (
-                    <>
-                      <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
-                      処理中...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="w-5 h-5" />
-                      ラッフルを開始する (手動Upkeep)
-                    </>
-                  )}
-                </button>
-                <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 text-center">
-                  (テスト用: プレイヤーが3人以上の場合にラッフルを開始できます)
-                </div>
-              </div>
-            )}
+            <StartRaffleButton 
+              isConnected={isConnected}
+              isReadyToSendTx={isReadyToSendTx}
+              numberOfPlayers={raffleData.numberOfPlayers}
+              minPlayers={3}
+              isLoading={isLoading}
+              isSmartAccountLoading={isSmartAccountLoading}
+              onStartRaffle={startRaffle}
+            />
 
-            {/* 過去のラッフル履歴セクション - 改善バージョン */}
-            {!isHistoryLoading && pastRaffles && pastRaffles.length > 0 && (
-              <div className="mt-8 border-t border-slate-200 dark:border-slate-700 pt-6">
-                <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                  <Trophy className="w-5 h-5 text-amber-500" />
-                  過去のラッフル当選履歴
-                </h3>
-                
-                <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-3 border-b border-slate-200 dark:border-slate-700 grid grid-cols-12 text-xs font-medium text-slate-500 dark:text-slate-400">
-                    <div className="col-span-3">日時</div>
-                    <div className="col-span-5">当選アドレス</div>
-                    <div className="col-span-2 text-center">賞金</div>
-                    <div className="col-span-2 text-center">ステータス</div>
-                  </div>
-                  
-                  <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                    {pastRaffles.slice(0, 5).map((raffle, index) => {
-                      // 現在のウォレットアドレスと当選アドレスが一致するか確認
-                      const currentAddress = smartAccountAddress || address || "";
-                      const winnerAddress = raffle.winner || "";
-                      const isCurrentWalletWinner = winnerAddress && 
-                        currentAddress.toLowerCase() === winnerAddress.toLowerCase();
-                      
-                      return (
-                        <div key={index} className="grid grid-cols-12 p-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors">
-                          <div className="col-span-3 text-slate-600 dark:text-slate-300 font-mono text-xs">
-                            {raffle.time || "不明"}
-                          </div>
-                          <div className="col-span-5 font-mono text-xs">
-                            {winnerAddress ? (
-                              <div className="flex items-center gap-1">
-                                <span className={`${isCurrentWalletWinner ? "text-green-600 dark:text-green-400 font-medium" : "text-slate-600 dark:text-slate-300"}`}>
-                                  {formatAddress(winnerAddress)}
-                                </span>
-                                <button 
-                                  onClick={() => {
-                                    if (winnerAddress) {
-                                      navigator.clipboard.writeText(winnerAddress);
-                                      toast({
-                                        title: "コピー完了",
-                                        description: "アドレスがクリップボードにコピーされました",
-                                        variant: "default",
-                                      });
-                                    }
-                                  }}
-                                  className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
-                                >
-                                  <Copy className="w-3 h-3 text-slate-400" />
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-slate-400">不明</span>
-                            )}
-                          </div>
-                          <div className="col-span-2 text-center font-medium">
-                            {raffle.prize || "0 USDC"}
-                          </div>
-                          <div className="col-span-2 flex justify-center items-center gap-1">
-                            {isCurrentWalletWinner && (
-                              <Badge className="bg-green-500 text-white text-xs">当選</Badge>
-                            )}
-                            {raffle.jackpot && raffle.jackpot !== "なし" && (
-                              <Badge className="bg-amber-500 text-white text-xs">JP</Badge>
-                            )}
-                            {!isCurrentWalletWinner && (!raffle.jackpot || raffle.jackpot === "なし") && (
-                              <span className="text-slate-400 text-xs">-</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                
-                {pastRaffles.length > 5 && (
-                  <div className="mt-2 text-center">
-                    <button className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
-                      もっと見る ({pastRaffles.length - 5}件)
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+            <RaffleHistory 
+              pastRaffles={pastRaffles || []}
+              currentAddress={smartAccountAddress || address}
+              isLoading={isHistoryLoading}
+            />
           </div>
 
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">
-            <h3 className="text-xl font-bold mb-4">ユーザー情報</h3>
-            <div className="bg-slate-100 dark:bg-slate-700 p-3 rounded-xl font-mono text-sm mb-6 break-all flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {isConnected || smartAccountAddress ? (
-                  <span>{formatAddress(smartAccountAddress || address || user?.email || "N/A")}</span> // スマートアカウントアドレスを優先表示
-                ) : (
-                  <span className="text-slate-400">未接続</span>
-                )}
-                {(isConnected || smartAccountAddress) && (
-                  <button 
-                    onClick={() => {
-                      const addrToCopy = smartAccountAddress || address;
-                      if (addrToCopy) {
-                        navigator.clipboard.writeText(addrToCopy);
-                        toast({
-                          title: "コピー完了",
-                          description: "アドレスがクリップボードにコピーされました",
-                          variant: "default",
-                        });
-                      }
-                    }}
-                    className="ml-1 p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-full"
-                  >
-                    <Copy className="w-3.5 h-3.5 text-slate-500" />
-                  </button>
-                )}
-              </div>
-              {smartAccountAddress ? (
-                <Badge
-                  variant="outline"
-                  className="ml-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 cursor-pointer"
-                  onClick={() => window.open(`https://sepolia.etherscan.io/address/${smartAccountAddress}`, '_blank')}
-                >
-                  スマートアカウント
-                </Badge>
-              ) : isConnected ? (
-                <Badge
-                  variant="outline"
-                  className="ml-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800"
-                >
-                  EOA
-                </Badge>
-              ) : (
-                <Badge
-                  variant="outline"
-                  className="ml-2 bg-slate-100 dark:bg-slate-900/30 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800"
-                >
-                  未接続
-                </Badge>
-              )}
-            </div>
-
-            <div className="space-y-4 mb-8">
-              {isHistoryLoading ? (
-                <div className="py-8 text-center text-slate-500">ユーザー統計情報を読み込み中...</div>
-              ) : (
-                [
-                  { label: "総参加数", value: userStats.totalParticipations.toString(), icon: <Users className="w-4 h-4 text-slate-400" /> },
-                  { label: "勝利回数", value: userStats.totalWins.toString(), icon: <Trophy className="w-4 h-4 text-slate-400" /> },
-                  { label: "ジャックポット獲得", value: userStats.jackpotWins.toString(), icon: <Sparkles className="w-4 h-4 text-slate-400" /> }
-                ].map((item, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      {item.icon}
-                      <span className="text-sm">{item.label}</span>
-                    </div>
-                    <span className="font-bold">{item.value}</span>
-                  </div>
-                ))
-              )}
-            </div>
+            <UserProfile 
+              address={address}
+              smartAccountAddress={smartAccountAddress}
+              user={user}
+              userStats={userStats}
+              isLoading={isHistoryLoading}
+              isConnected={isConnected}
+            />
 
             {/* 管理パネル (オーナーまたはテストモードの場合のみ表示) */}
             {(isConnected || smartAccountAddress || user) && (
