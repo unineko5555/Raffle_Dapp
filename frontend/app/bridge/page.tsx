@@ -1,6 +1,7 @@
 "use client";
 
 import { TokenBridge } from "@/app/components/bridge/token-bridge";
+import { LiquidityManager } from "@/app/components/bridge/liquidity-manager";
 import { useAccount } from "wagmi";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
 
@@ -25,7 +26,10 @@ export default function BridgePage() {
           </div>
 
           {isWalletConnected ? (
-            <TokenBridge />
+            <>
+              <TokenBridge />
+              <LiquidityManager />
+            </>
           ) : (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-8 text-center">
               <h2 className="text-xl font-semibold mb-4">ウォレットを接続してください</h2>

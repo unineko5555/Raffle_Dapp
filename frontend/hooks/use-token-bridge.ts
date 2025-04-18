@@ -296,6 +296,146 @@ export function useTokenBridge() {
     }
   }, [activeAddress, currentChainId, writeContractAsync, publicClient, toast]);
   
+  // プール初期化
+  const initializePool = useCallback(async (amount: string) => {
+    if (!activeAddress || !writeContractAsync) {
+      toast({
+        title: "エラー",
+        description: "ウォレットが接続されていません",
+        variant: "destructive",
+      });
+      return null;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      const bridgeAddress = bridgeAddresses[currentChainId] as `0x${string}`;
+      if (!bridgeAddress || bridgeAddress === "0x0000000000000000000000000000000000000000") {
+        throw new Error(`ブリッジコントラクトアドレスが設定されていません: チェーンID ${currentChainId}`);
+      }
+      
+      const usdcAddress = contractConfig[currentChainId as keyof typeof contractConfig]?.erc20Address as `0x${string}`;
+      if (!usdcAddress) {
+        throw new Error(`USDCアドレスが見つかりません: チェーンID ${currentChainId}`);
+      }
+      
+      // USDC amount
+      const parsedAmount = parseUnits(amount, 6);
+      
+      // USDC承認
+      await approveUSDC(amount);
+      
+      // プール初期化
+      const tx = await writeContractAsync({
+        address: bridgeAddress,
+        abi: BRIDGE_ABI,
+        functionName: "initializePool",
+        args: [parsedAmount],
+      });
+      
+      toast({
+        title: "プール初期化送信",
+        description: `${amount} USDCでプールを初期化しました`,
+      });
+      
+      // トランザクション確認を待つ
+      await publicClient!.waitForTransactionReceipt({ hash: tx });
+      
+      toast({
+        title: "プール初期化完了",
+        description: "USDCプールの初期化が完了しました",
+      });
+      
+      // データを再取得
+      fetchBridgeData();
+      
+      return tx;
+    } catch (error) {
+      console.error("プール初期化エラー:", error);
+      
+      toast({
+        title: "初期化エラー",
+        description: error instanceof Error ? error.message : "不明なエラー",
+        variant: "destructive",
+      });
+      
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeAddress, currentChainId, writeContractAsync, publicClient, toast, approveUSDC, fetchBridgeData]);
+  
+  // プール補充
+  const replenishPool = useCallback(async (amount: string) => {
+    if (!activeAddress || !writeContractAsync) {
+      toast({
+        title: "エラー",
+        description: "ウォレットが接続されていません",
+        variant: "destructive",
+      });
+      return null;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      const bridgeAddress = bridgeAddresses[currentChainId] as `0x${string}`;
+      if (!bridgeAddress || bridgeAddress === "0x0000000000000000000000000000000000000000") {
+        throw new Error(`ブリッジコントラクトアドレスが設定されていません: チェーンID ${currentChainId}`);
+      }
+      
+      const usdcAddress = contractConfig[currentChainId as keyof typeof contractConfig]?.erc20Address as `0x${string}`;
+      if (!usdcAddress) {
+        throw new Error(`USDCアドレスが見つかりません: チェーンID ${currentChainId}`);
+      }
+      
+      // USDC amount
+      const parsedAmount = parseUnits(amount, 6);
+      
+      // USDC承認
+      await approveUSDC(amount);
+      
+      // プール補充
+      const tx = await writeContractAsync({
+        address: bridgeAddress,
+        abi: BRIDGE_ABI,
+        functionName: "replenishPool",
+        args: [parsedAmount],
+      });
+      
+      toast({
+        title: "プール補充送信",
+        description: `${amount} USDCでプールを補充しました`,
+      });
+      
+      // トランザクション確認を待つ
+      await publicClient!.waitForTransactionReceipt({ hash: tx });
+      
+      toast({
+        title: "プール補充完了",
+        description: "USDCプールの補充が完了しました",
+      });
+      
+      // データを再取得
+      fetchBridgeData();
+      
+      return tx;
+    } catch (error) {
+      console.error("プール補充エラー:", error);
+      
+      toast({
+        title: "補充エラー",
+        description: error instanceof Error ? error.message : "不明なエラー",
+        variant: "destructive",
+      });
+      
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeAddress, currentChainId, writeContractAsync, publicClient, toast, approveUSDC, fetchBridgeData]);
+  
   // Bridge USDC
   const bridgeUSDC = useCallback(async (
     destinationChainId: number,
@@ -477,6 +617,8 @@ export function useTokenBridge() {
     approveUSDC,
     bridgeUSDC,
     estimateBridgeFee,
-    fetchBridgeData
+    fetchBridgeData,
+    initializePool,
+    replenishPool
   };
 }
