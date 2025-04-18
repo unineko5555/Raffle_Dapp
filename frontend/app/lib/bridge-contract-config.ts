@@ -481,19 +481,19 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "networkId": 84532,
     "chainName": "base-sepolia",
     "ccipSelector": "5790810961207155433",
-    "bridgeAddress": "0xdc22e619ea119bfe0bb76ef614ab7ac395f32a56"
+    "bridgeAddress": "0x9c2c09314096ae6eb50e58b92e029d2629c5b710"
   },
   {
     "networkId": 421614,
     "chainName": "arbitrum-sepolia",
     "ccipSelector": "3478487238524512106",
-    "bridgeAddress": "0x6d883e78e54b1de4c276dc7b3b333a2ec3a5e201"
+    "bridgeAddress": "0xaa6686875c234dea499f952fe63be506706b3f51"
   },
   {
     "networkId": 11155111,
     "chainName": "sepolia",
     "ccipSelector": "16015286601757825753",
-    "bridgeAddress": "0x17c252fe7b61b8e46c33967757e5bfa35ab45e0c"
+    "bridgeAddress": "0xc97e56cd0f24caf76776128abca791a1eb6c68e9"
   }
 ];
 

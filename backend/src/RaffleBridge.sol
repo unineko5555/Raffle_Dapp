@@ -36,6 +36,9 @@ contract RaffleBridge {
     // チェーンごとのトークン流動性状態
     mapping(uint64 => bool) private s_chainPoolsLow;
     
+    // サポートされているチェーンセレクタの配列
+    uint64[] private s_supportedSelectorsArray;
+    
     // トークン流動性の閾値
     uint256 private s_minimumPoolThreshold;
     
@@ -99,6 +102,7 @@ contract RaffleBridge {
         s_minimumPoolThreshold = minimumPoolThreshold;
         
         // サポートチェーンの設定
+        s_supportedSelectorsArray = supportedChainSelectors;
         for (uint256 i = 0; i < supportedChainSelectors.length; i++) {
             s_supportedChains[supportedChainSelectors[i]] = true;
             s_destinationBridgeContracts[supportedChainSelectors[i]] = destinationBridgeContracts[i];
@@ -320,28 +324,7 @@ contract RaffleBridge {
      * @return supportedSelectors サポートされているチェーンセレクタの配列
      */
     function getSupportedChainSelectors() public view returns (uint64[] memory) {
-        uint256 count = 0;
-        
-        // まずサポートされているチェーンの数を数える
-        for (uint64 i = 0; i < 1000; i++) {
-            if (s_supportedChains[i]) {
-                count++;
-            }
-        }
-        
-        // 配列を初期化
-        uint64[] memory supportedSelectors = new uint64[](count);
-        
-        // 配列にセレクタを追加
-        uint256 index = 0;
-        for (uint64 i = 0; i < 1000; i++) {
-            if (s_supportedChains[i]) {
-                supportedSelectors[index] = i;
-                index++;
-            }
-        }
-        
-        return supportedSelectors;
+        return s_supportedSelectorsArray;
     }
 
     /**

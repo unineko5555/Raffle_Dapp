@@ -84,6 +84,13 @@ export function TokenBridge() {
   const handleDestinationChange = (value: string) => {
     setDestinationChainId(parseInt(value));
   };
+  
+  // 選択したチェーン名を取得する関数
+  const getChainName = (chainId: number | null) => {
+    if (!chainId) return null;
+    const chain = SUPPORTED_CHAINS.find(c => c.id === chainId);
+    return chain ? chain.name : null;
+  };
 
   // 金額変更ハンドラー
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,7 +168,11 @@ export function TokenBridge() {
             onValueChange={handleDestinationChange}
           >
             <SelectTrigger id="destination-chain">
-              <SelectValue placeholder="ブリッジ先のチェーンを選択" />
+              {destinationChainId ? (
+                <div>{getChainName(destinationChainId)}</div>
+              ) : (
+                <SelectValue placeholder="ブリッジ先のチェーンを選択" />
+              )}
             </SelectTrigger>
             <SelectContent>
               {SUPPORTED_CHAINS.map((chain) => (

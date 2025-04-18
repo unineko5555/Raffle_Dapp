@@ -232,40 +232,9 @@ function updateTokenBridgeHook(bridgeAbi, bridgeAddresses) {
             return;
         }
         
-        // Read the existing file content
-        const existingContent = fs.readFileSync(BRIDGE_TOKEN_HOOK_PATH, 'utf8');
+        // Token bridge hook uses imports from bridge-contract-config.ts, no need to modify
+        console.log(`${COLORS.fg.green}Token bridge hook is configured to import from bridge-contract-config.ts. No changes needed.${COLORS.reset}`);
         
-        // Generate new BridgeABI string
-        const newBridgeABI = `export const BridgeABI = ${JSON.stringify(bridgeAbi, null, 2)};`;
-        
-        // Generate new bridgeAddresses object string
-        let bridgeAddressesStr = 'const bridgeAddresses: Record<number, string> = {';
-        Object.entries(bridgeAddresses).forEach(([networkId, address]) => {
-            const networkName = NETWORK_MAPPING[Number(networkId)]?.name || 'Unknown';
-            bridgeAddressesStr += `\n  ${networkId}: "${address}", // ${networkName}`;
-        });
-        bridgeAddressesStr += '\n};';
-        
-        // Replace the existing BridgeABI in the file
-        let updatedContent = existingContent;
-        const abiRegex = /export\s+const\s+BridgeABI\s*=\s*\[[\s\S]*?\];/;
-        if (abiRegex.test(updatedContent)) {
-            updatedContent = updatedContent.replace(abiRegex, newBridgeABI);
-        } else {
-            console.warn(`${COLORS.fg.yellow}Warning: Could not find BridgeABI in token bridge hook file${COLORS.reset}`);
-        }
-        
-        // Replace the existing bridgeAddresses in the file
-        const addressesRegex = /const\s+bridgeAddresses\s*:\s*Record<number,\s*string>\s*=\s*{[\s\S]*?};/;
-        if (addressesRegex.test(updatedContent)) {
-            updatedContent = updatedContent.replace(addressesRegex, bridgeAddressesStr);
-        } else {
-            console.warn(`${COLORS.fg.yellow}Warning: Could not find bridgeAddresses in token bridge hook file${COLORS.reset}`);
-        }
-        
-        // Write the updated content back to the file
-        fs.writeFileSync(BRIDGE_TOKEN_HOOK_PATH, updatedContent);
-        console.log(`${COLORS.fg.green}Successfully updated token bridge hook at:${COLORS.reset} ${BRIDGE_TOKEN_HOOK_PATH}`);
     } catch (error) {
         console.error(`${COLORS.fg.red}Error updating token bridge hook:${COLORS.reset}`, error);
     }
