@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Cross-chain Raffle DApp with Chainlink VRF, Automation, and CCIP",
   "scripts": {
-    "update-contracts": "node scripts/update-contracts.js"
+    "update-contracts": "node scripts/update-contracts.js",
+    "update-bridge": "node scripts/update-bridge-config.js"
   },
   "dependencies": {},
   "devDependencies": {}
