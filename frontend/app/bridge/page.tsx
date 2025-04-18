@@ -2,10 +2,7 @@
 
 import { TokenBridge } from "@/app/components/bridge/token-bridge";
 import { useAccount } from "wagmi";
-import { Button } from "@/components/ui/button";
-import { Wallet } from "lucide-react";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export default function BridgePage() {
   const { isConnected } = useAccount();
@@ -34,13 +31,6 @@ export default function BridgePage() {
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               ブリッジ機能を使用するには、ウォレットを接続する必要があります。
             </p>
-            <Skeleton className="h-48 w-full bg-gray-100 dark:bg-gray-700 rounded-lg" />
-            <div className="mt-6">
-              <Button disabled className="mx-auto">
-                <Wallet className="mr-2 h-4 w-4" />
-                ウォレットを接続
-              </Button>
-            </div>
           </div>
         )}
         

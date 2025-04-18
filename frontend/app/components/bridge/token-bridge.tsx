@@ -27,6 +27,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { contractConfig } from "@/app/lib/contract-config";
 
+// チェーンの定義を追加
+const SUPPORTED_CHAINS = [
+  { id: 11155111, name: "Sepolia" },
+  { id: 84532, name: "Base Sepolia" },
+  { id: 421614, name: "Arbitrum Sepolia" }
+];
+
 export function TokenBridge() {
   const chainId = useChainId();
   const {
@@ -157,24 +164,18 @@ export function TokenBridge() {
               <SelectValue placeholder="ブリッジ先のチェーンを選択" />
             </SelectTrigger>
             <SelectContent>
-              {destinationChains.map((chain) => (
-                <SelectItem key={chain.chainId} value={chain.chainId.toString()}>
+              {SUPPORTED_CHAINS.map((chain) => (
+                <SelectItem 
+                  key={chain.id} 
+                  value={chain.id.toString()}
+                  disabled={chain.id === chainId}
+                >
                   {chain.name}
-                  {chain.poolLow && (
-                    <span className="ml-2 text-amber-500">⚠️</span>
-                  )}
+                  {chain.id === chainId && " (現在のチェーン)"}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          {destinationChainId && destinationChains.find(
-            (c) => c.chainId === destinationChainId
-          )?.poolLow && (
-            <p className="text-xs text-amber-500 flex items-center mt-1">
-              <AlertTriangle className="h-3 w-3 mr-1" /> 
-              このチェーンのプール残高が少なくなっています
-            </p>
-          )}
         </div>
 
         {/* 金額入力 */}
@@ -309,7 +310,7 @@ export function TokenBridge() {
                     <Badge
                       variant={
                         tx.status === "success"
-                          ? "success"
+                          ? "default"
                           : tx.status === "pending"
                           ? "outline"
                           : "destructive"
