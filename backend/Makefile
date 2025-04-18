@@ -1,6 +1,6 @@
 -include .env
 
-.PHONY: all test clean deploy-sepolia deploy-base-sepolia deploy-arb-sepolia deploy-sepolia-with-update deploy-base-sepolia-with-update deploy-arb-sepolia-with-update deploy-all deploy-all-with-update update-frontend help check-env format anvil install
+.PHONY: all test clean deploy-sepolia deploy-base-sepolia deploy-arb-sepolia deploy-sepolia-with-update deploy-base-sepolia-with-update deploy-arb-sepolia-with-update deploy-all deploy-all-with-update update-frontend deploy-bridge update-bridge help check-env format anvil install
 
 help:
 	@echo "Usage:"
@@ -23,6 +23,8 @@ help:
 	@echo "  make deploy-all                   - Deploy to all testnets"
 	@echo "  make deploy-all-with-update       - Deploy to all testnets and update frontend config"
 	@echo "  make update-frontend              - Update frontend contract configuration"
+	@echo "  make deploy-bridge                - Deploy bridge contracts to all testnets"
+	@echo "  make update-bridge                - Update bridge contract configuration"
 	@echo "  make verify-sepolia               - Verify contracts on Ethereum Sepolia"
 	@echo "  make verify-base-sepolia          - Verify contracts on Base Sepolia"
 	@echo "  make verify-arb-sepolia           - Verify contracts on Arbitrum Sepolia"
@@ -117,6 +119,30 @@ deploy-all: deploy-sepolia deploy-base-sepolia deploy-arb-sepolia
 deploy-all-with-update: deploy-all update-frontend
 
 # ==============================================================================
+# Bridge Deployment
+# ==============================================================================
+
+deploy-bridge-sepolia: check-env
+	@echo "Deploying Bridge to Ethereum Sepolia testnet..."
+	forge script script/RaffleBridgeDeployer.s.sol:RaffleBridgeDeployer --rpc-url $(SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
+
+deploy-bridge-base: check-env
+	@echo "Deploying Bridge to Base Sepolia testnet..."
+	forge script script/RaffleBridgeDeployer.s.sol:RaffleBridgeDeployer --rpc-url $(BASE_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
+
+deploy-bridge-arb: check-env
+	@echo "Deploying Bridge to Arbitrum Sepolia testnet..."
+	forge script script/RaffleBridgeDeployer.s.sol:RaffleBridgeDeployer --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
+
+deploy-bridge: deploy-bridge-sepolia deploy-bridge-base deploy-bridge-arb
+
+update-bridge:
+	@echo "Updating bridge contract configuration..."
+	cd .. && node scripts/update-bridge-config.js
+
+deploy-and-update-bridge: deploy-bridge update-bridge
+
+# ==============================================================================
 # MockVRF Deployment
 # ==============================================================================
 
@@ -154,3 +180,17 @@ verify-arb-sepolia:
 	@echo "Verifying contracts on Arbitrum Sepolia..."
 	forge verify-contract $(RAFFLE_IMPLEMENTATION_ADDRESS_ARB) src/RaffleImplementation.sol:RaffleImplementation --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
 	forge verify-contract $(RAFFLE_PROXY_ADDRESS_ARB) src/RaffleProxy.sol:RaffleProxy --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
+
+verify-bridge-sepolia:
+	@echo "Verifying Bridge contract on Ethereum Sepolia..."
+	forge verify-contract $(BRIDGE_ADDRESS) src/Bridge.sol:Bridge --chain sepolia --etherscan-api-key $(ETHERSCAN_API_KEY) 
+
+verify-bridge-base:
+	@echo "Verifying Bridge contract on Base Sepolia..."
+	forge verify-contract $(BRIDGE_ADDRESS_BASE) src/Bridge.sol:Bridge --chain base-sepolia --etherscan-api-key $(BASE_API_KEY)
+
+verify-bridge-arb:
+	@echo "Verifying Bridge contract on Arbitrum Sepolia..."
+	forge verify-contract $(BRIDGE_ADDRESS_ARB) src/Bridge.sol:Bridge --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
+
+verify-bridge: verify-bridge-sepolia verify-bridge-base verify-bridge-arb

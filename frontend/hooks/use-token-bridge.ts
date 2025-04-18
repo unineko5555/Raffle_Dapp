@@ -6,146 +6,22 @@ import { parseUnits, formatUnits } from "viem";
 import { contractConfig, ERC20ABI } from "@/app/lib/contract-config";
 import { useToast } from "@/components/ui/use-toast";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
+import useBridgeContractConfig, { BRIDGE_ABI, BRIDGE_CONFIGS } from "@/app/lib/bridge-contract-config";
 
-// ブリッジコントラクトのABI
-export const BridgeABI = [
-  {
-    "inputs": [
-      {
-        "internalType": "uint64",
-        "name": "destinationChainSelector",
-        "type": "uint64"
-      },
-      {
-        "internalType": "address",
-        "name": "receiver",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bool",
-        "name": "autoEnterRaffle",
-        "type": "bool"
-      }
-    ],
-    "name": "bridgeTokens",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint64",
-        "name": "destinationChainSelector",
-        "type": "uint64"
-      },
-      {
-        "internalType": "address",
-        "name": "receiver",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bool",
-        "name": "autoEnterRaffle",
-        "type": "bool"
-      }
-    ],
-    "name": "estimateFee",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "fee",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getPoolBalance",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getSupportedChainSelectors",
-    "outputs": [
-      {
-        "internalType": "uint64[]",
-        "name": "",
-        "type": "uint64[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint64",
-        "name": "chainSelector",
-        "type": "uint64"
-      }
-    ],
-    "name": "getDestinationChainInfo",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "supported",
-        "type": "bool"
-      },
-      {
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      },
-      {
-        "internalType": "address",
-        "name": "bridgeContract",
-        "type": "address"
-      },
-      {
-        "internalType": "bool",
-        "name": "poolLow",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  }
-];
 
 // チェーンIDとCCIPセレクタのマッピング
-const chainSelectors: Record<number, bigint> = {
-  11155111: 16015286601757825753n, // Sepolia
-  84532: 15971525489660198786n,    // Base Sepolia
-  421614: 3478487238524512106n,    // Arbitrum Sepolia
-};
+const chainSelectors: Record<number, bigint> = BRIDGE_CONFIGS.reduce((acc, config) => {
+  if (config.ccipSelector) {
+    acc[config.networkId] = BigInt(config.ccipSelector);
+  }
+  return acc;
+}, {} as Record<number, bigint>);
 
 // ブリッジコントラクトアドレス - 実際のデプロイ後に更新が必要
-const bridgeAddresses: Record<number, string> = {
-  11155111: "0x0000000000000000000000000000000000000000", // Sepolia
-  84532: "0x0000000000000000000000000000000000000000",    // Base Sepolia
-  421614: "0x0000000000000000000000000000000000000000",   // Arbitrum Sepolia
-};
+const bridgeAddresses: Record<number, string> = BRIDGE_CONFIGS.reduce((acc, config) => {
+  acc[config.networkId] = config.bridgeAddress;
+  return acc;
+}, {} as Record<number, string>);
 
 // チェーン名のマッピング
 const chainNames: Record<number, string> = {
@@ -231,7 +107,7 @@ export function useTokenBridge() {
       // プール残高を取得
       const poolBalanceResult = await publicClient.readContract({
         address: bridgeAddress,
-        abi: BridgeABI,
+        abi: BRIDGE_ABI,
         functionName: "getPoolBalance",
       });
       
@@ -265,7 +141,7 @@ export function useTokenBridge() {
       // 宛先チェーン情報を取得
       const supportedSelectorsResult = await publicClient.readContract({
         address: bridgeAddress,
-        abi: BridgeABI,
+        abi: BRIDGE_ABI,
         functionName: "getSupportedChainSelectors",
       });
       
@@ -281,7 +157,7 @@ export function useTokenBridge() {
         if (chainId) {
           const chainInfo = await publicClient.readContract({
             address: bridgeAddress,
-            abi: BridgeABI,
+            abi: BRIDGE_ABI,
             functionName: "getDestinationChainInfo",
             args: [selector],
           });
@@ -334,7 +210,7 @@ export function useTokenBridge() {
       // 手数料を見積もる
       const feeResult = await publicClient.readContract({
         address: bridgeAddress,
-        abi: BridgeABI,
+        abi: BRIDGE_ABI,
         functionName: "estimateFee",
         args: [destinationSelector, activeAddress, parsedAmount, autoEnterRaffle],
       });
@@ -461,7 +337,7 @@ export function useTokenBridge() {
       // ブリッジトランザクションを送信
       const tx = await writeContractAsync({
         address: bridgeAddress,
-        abi: BridgeABI,
+        abi: BRIDGE_ABI,
         functionName: "bridgeTokens",
         args: [destinationSelector, activeAddress, parsedAmount, autoEnterRaffle],
         value: fee,
