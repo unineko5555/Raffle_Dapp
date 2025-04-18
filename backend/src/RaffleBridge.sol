@@ -167,7 +167,7 @@ contract RaffleBridge {
         
         // メッセージ送信
         bytes32 messageId = s_router.ccipSend{value: fee}(
-            destinationChainSelector, 
+            uint256(destinationChainSelector), 
             message
         );
         
@@ -218,7 +218,7 @@ contract RaffleBridge {
         
         // イベント発行
         emit TokensReceived(
-            message.sourceChainSelector,
+            uint64(message.sourceChainSelector),
             receiver,
             amount,
             message.messageId,
@@ -429,7 +429,7 @@ contract RaffleBridge {
         });
         
         // 手数料を見積もる
-        return s_router.getFee(destinationChainSelector, message);
+        return s_router.getFee(uint256(destinationChainSelector), message);
     }
 
     /**

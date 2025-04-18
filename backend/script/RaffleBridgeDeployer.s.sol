@@ -98,10 +98,11 @@ contract RaffleBridgeDeployer is Script {
         }
         
         // 秘密鍵の取得
-        uint256 deployerKey = vm.envUint("PRIVATE_KEY");
+        // コマンドラインから--private-keyフラグで渡される秘密鍵を使用するため、
+        // 環境変数からの読み込みは不要
         
         // ブロードキャストの開始
-        vm.startBroadcast(deployerKey);
+        vm.startBroadcast();
         
         // RaffleBridgeコントラクトのデプロイ
         RaffleBridge bridge = new RaffleBridge(
