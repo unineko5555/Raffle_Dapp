@@ -131,12 +131,8 @@ contract RaffleBridge {
         // USDC Token
         IERC20 usdc = IERC20(s_usdcAddress);
         
-        // プール残高チェック
-        uint256 poolBalance = usdc.balanceOf(address(this));
-        if (poolBalance < s_minimumPoolThreshold) {
-            s_chainPoolsLow[destinationChainSelector] = true;
-            emit LowPoolAlert(poolBalance, s_minimumPoolThreshold);
-        }
+        // プール状態を更新
+        _updatePoolStatus();
         
         // トークン転送 (送信者からコントラクトへ)
         require(usdc.transferFrom(msg.sender, address(this), amount), "USDC transfer failed");
@@ -241,6 +237,9 @@ contract RaffleBridge {
         IERC20 usdc = IERC20(s_usdcAddress);
         require(usdc.transferFrom(msg.sender, address(this), amount), "USDC transfer failed");
         
+        // プール状態を更新
+        _updatePoolStatus();
+        
         // イベント発行
         emit PoolInitialized(amount);
     }
@@ -249,6 +248,24 @@ contract RaffleBridge {
      * @notice プールを補充する関数
      * @param amount 補充する量
      */
+    /**
+     * @dev プール状態を更新する内部関数
+     */
+    function _updatePoolStatus() internal {
+        IERC20 usdc = IERC20(s_usdcAddress);
+        uint256 currentBalance = usdc.balanceOf(address(this));
+        bool isLow = currentBalance < s_minimumPoolThreshold;
+        
+        // すべてのチェーンのプール状態を更新
+        for (uint256 i = 0; i < s_supportedSelectorsArray.length; i++) {
+            s_chainPoolsLow[s_supportedSelectorsArray[i]] = isLow;
+        }
+        
+        if (isLow) {
+            emit LowPoolAlert(currentBalance, s_minimumPoolThreshold);
+        }
+    }
+
     function replenishPool(uint256 amount) external onlyOwner {
         require(amount > 0, "Amount must be greater than 0");
         
@@ -256,15 +273,8 @@ contract RaffleBridge {
         IERC20 usdc = IERC20(s_usdcAddress);
         require(usdc.transferFrom(msg.sender, address(this), amount), "USDC transfer failed");
         
-        // チェーン流動性状態をリセット
-        uint256 newBalance = usdc.balanceOf(address(this));
-        if (newBalance >= s_minimumPoolThreshold) {
-            // すべてのチェーンのプール状態をリセット
-            uint64[] memory supportedSelectors = getSupportedChainSelectors();
-            for (uint256 i = 0; i < supportedSelectors.length; i++) {
-                s_chainPoolsLow[supportedSelectors[i]] = false;
-            }
-        }
+        // プール状態を更新
+        _updatePoolStatus();
         
         // イベント発行
         emit PoolReplenished(amount);
