@@ -186,14 +186,23 @@ export function LiquidityManager() {
                   <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
                 )}
                 <div>
-                  <div className="font-medium">{chain.name}</div>
+                  <div className="font-medium flex items-center gap-2">
+                    {chain.name}
+                    {chain.chainId === chainId && (
+                      <span className="ml-2 px-2 py-0.5 text-xs rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200">
+                        接続中
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     {chain.supported ? "サポート済" : "未サポート"} ・ 
                     {chain.poolLow ? "流動性不足" : "流動性十分"}
                   </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    プール残高: <span className="font-mono">{chain.poolBalance} USDC</span>
+                  </div>
                 </div>
               </div>
-              
               <Badge variant={chain.poolLow ? "destructive" : "outline"}>
                 {chain.poolLow ? "追加必要" : "正常"}
               </Badge>

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAccount, useChainId, usePublicClient, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseUnits, formatUnits } from "viem";
+import { parseUnits, formatUnits, createPublicClient, http } from "viem";
+import { sepolia, baseSepolia, arbitrumSepolia } from "viem/chains";
 import { contractConfig, ERC20ABI } from "@/app/lib/contract-config";
 import { useToast } from "@/components/ui/use-toast";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
@@ -30,6 +31,18 @@ const chainNames: Record<number, string> = {
   421614: "Arbitrum Sepolia",
 };
 
+const CHAIN_CONFIGS = {
+  11155111: sepolia,
+  84532: baseSepolia,
+  421614: arbitrumSepolia,
+};
+
+const getClientForChain = (chainId: number) => {
+  const chain = CHAIN_CONFIGS[chainId];
+  if (!chain) return null;
+  return createPublicClient({ chain, transport: http() });
+};
+
 export type BridgeTransaction = {
   txHash: string;
   timestamp: number;
@@ -47,7 +60,11 @@ export type DestinationChainInfo = {
   supported: boolean;
   bridgeContract: string;
   poolLow: boolean;
+  poolBalance: string; // プール残高
 };
+
+// 3チェーン分の流動性状態を常に表示するための補助関数
+const ALL_CHAIN_IDS = [11155111, 84532, 421614];
 
 export function useTokenBridge() {
   const { address, isConnected } = useAccount();
@@ -85,103 +102,177 @@ export function useTokenBridge() {
     enabled: !!activeAddress,
   });
   
-  // Load bridge data
+  // 各チェーンの残高を取得する関数
+  const fetchChainBalance = useCallback(async (chainId: number): Promise<{
+    chainId: number;
+    poolBalance: string;
+    poolLow: boolean;
+    supported: boolean;
+    name: string;
+    bridgeContract: string;
+    success: boolean;
+  }> => {
+    try {
+      // チェーンの基本情報を取得
+      const bridgeAddress = bridgeAddresses[chainId] as `0x${string}`;
+      const selector = chainSelectors[chainId];
+      const chain = CHAIN_CONFIGS[chainId as keyof typeof CHAIN_CONFIGS];
+      const chainName = chainNames[chainId] || "Unknown Chain";
+      
+      if (!bridgeAddress || !selector || !chain) {
+        console.warn(`チェーンID ${chainId} の基本情報が見つかりません`);
+        return {
+          chainId,
+          poolBalance: "0",
+          poolLow: false,
+          supported: false,
+          name: chainName,
+          bridgeContract: bridgeAddress || "",
+          success: false
+        };
+      }
+      
+      // 使用するクライアントを選択
+      let client;
+      
+      // 現在のチェーンならPublicClientを使用
+      if (chainId === currentChainId && publicClient) {
+        client = publicClient;
+      } else {
+        // それ以外は別のクライアントを作成
+        client = createPublicClient({
+          chain,
+          transport: http()
+        });
+      }
+      
+      // 並列で残高と流動性状態を取得
+      // 個別に実行して、いずれかが失敗しても続行できるようにする
+      let poolBalance = "0";
+      let supported = false;
+      let name = chainName;
+      let bridgeContract = bridgeAddress;
+      let poolLow = false;
+      
+      try {
+        const poolBalanceResult = await client.readContract({
+          address: bridgeAddress,
+          abi: BRIDGE_ABI,
+          functionName: "getPoolBalance",
+        });
+        poolBalance = formatUnits(poolBalanceResult as bigint, 6);
+      } catch (error) {
+        // エラー発生時は静かに失敗
+      }
+      
+      try {
+        const chainInfoResult = await client.readContract({
+          address: bridgeAddress,
+          abi: BRIDGE_ABI,
+          functionName: "getDestinationChainInfo",
+          args: [selector],
+        });
+        const info = chainInfoResult as [boolean, string, string, boolean];
+        supported = info[0];
+        name = info[1] || chainName;
+        bridgeContract = info[2];
+        poolLow = info[3];
+      } catch (error) {
+        // エラー発生時は静かに失敗
+      }
+      
+      return {
+        chainId,
+        poolBalance,
+        poolLow,
+        supported,
+        name,
+        bridgeContract,
+        success: true
+      };
+    } catch (error) {
+      return {
+        chainId,
+        poolBalance: "0", 
+        poolLow: false,
+        supported: false,
+        name: chainNames[chainId] || "Unknown Chain",
+        bridgeContract: bridgeAddresses[chainId] as string || "",
+        success: false
+      };
+    }
+  }, [currentChainId, publicClient]);
+  
+  // 全チェーンデータ取得の実装
   const fetchBridgeData = useCallback(async () => {
-    if (!activeAddress || !publicClient) return;
+    if (!activeAddress) return;
     
     try {
-      // 現在のチェーンのブリッジコントラクトアドレス
+      // 現在接続中のチェーンのブリッジアドレスとUSDCアドレスを取得
       const bridgeAddress = bridgeAddresses[currentChainId] as `0x${string}`;
-      if (!bridgeAddress || bridgeAddress === "0x0000000000000000000000000000000000000000") {
-        console.warn(`ブリッジコントラクトアドレスが設定されていません: チェーンID ${currentChainId}`);
-        return;
-      }
-      
-      // USDC addressを取得
       const usdcAddress = contractConfig[currentChainId as keyof typeof contractConfig]?.erc20Address as `0x${string}`;
-      if (!usdcAddress) {
-        console.warn(`USDCアドレスが見つかりません: チェーンID ${currentChainId}`);
-        return;
+      
+      // 並列処理を行う、publicClientがある場合のみアローワンスを取得
+      const fetchTasks = [];
+      
+      // アローワンス取得タスク
+      if (bridgeAddress && publicClient && usdcAddress && activeAddress) {
+        fetchTasks.push(
+          (async () => {
+            try {
+              const allowanceResult = await publicClient.readContract({
+                address: usdcAddress,
+                abi: ERC20ABI,
+                functionName: "allowance",
+                args: [activeAddress as `0x${string}`, bridgeAddress],
+              });
+              setAllowance(allowanceResult as bigint);
+            } catch (error) {
+              // エラー発生時は静かに失敗
+            }
+          })()
+        );
       }
       
-      // プール残高を取得
-      const poolBalanceResult = await publicClient.readContract({
-        address: bridgeAddress,
-        abi: BRIDGE_ABI,
-        functionName: "getPoolBalance",
-      });
-      
-      // USDCのデシマルを取得（デフォルトは6）
-      let usdcDecimals = 6;
-      try {
-        const decimalsResult = await publicClient.readContract({
-          address: usdcAddress,
-          abi: ERC20ABI,
-          functionName: "decimals",
-        });
-        usdcDecimals = Number(decimalsResult);
-      } catch (error) {
-        console.warn("USDCデシマル取得エラー:", error);
-      }
-      
-      // プール残高をフォーマット
-      const formattedPoolBalance = formatUnits(poolBalanceResult as bigint, usdcDecimals);
-      setPoolBalance(formattedPoolBalance);
-      
-      // アローワンスを取得
-      const allowanceResult = await publicClient.readContract({
-        address: usdcAddress,
-        abi: ERC20ABI,
-        functionName: "allowance",
-        args: [activeAddress as `0x${string}`, bridgeAddress],
-      });
-      
-      setAllowance(allowanceResult as bigint);
-      
-      // 宛先チェーン情報を取得
-      const supportedSelectorsResult = await publicClient.readContract({
-        address: bridgeAddress,
-        abi: BRIDGE_ABI,
-        functionName: "getSupportedChainSelectors",
-      });
-      
-      const supportedSelectors = supportedSelectorsResult as bigint[];
-      const destinationChainsInfo: DestinationChainInfo[] = [];
-      
-      for (const selector of supportedSelectors) {
-        // セレクタからチェーンIDを取得（逆マッピング）
-        const chainId = Object.entries(chainSelectors).find(
-          ([_, value]) => value === selector
-        )?.[0];
-        
-        if (chainId) {
-          const chainInfo = await publicClient.readContract({
-            address: bridgeAddress,
-            abi: BRIDGE_ABI,
-            functionName: "getDestinationChainInfo",
-            args: [selector],
-          });
+      // 全チェーンの残高を取得するタスク
+      const chainDataPromise = (async () => {
+        try {
+          const allChainPromises = ALL_CHAIN_IDS.map(chainId => fetchChainBalance(chainId));
+          const chainResults = await Promise.all(allChainPromises);
           
-          // 戻り値は [supported, name, bridgeContract, poolLow]
-          const [supported, name, bridgeContract, poolLow] = chainInfo as [boolean, string, string, boolean];
+          // 取得結果から有効なもののみを使用してDestinationChainInfoを構築
+          const validChainInfos = chainResults.map(result => ({
+            chainId: result.chainId,
+            name: result.name,
+            ccipSelector: chainSelectors[result.chainId] || BigInt(0),
+            supported: result.supported,
+            bridgeContract: result.bridgeContract,
+            poolLow: result.poolLow,
+            poolBalance: result.poolBalance
+          }));
           
-          destinationChainsInfo.push({
-            chainId: Number(chainId),
-            name: name || chainNames[Number(chainId)] || "Unknown Chain",
-            ccipSelector: selector,
-            supported,
-            bridgeContract,
-            poolLow,
-          });
+          // 接続中チェーンのプール残高をステートに設定
+          const currentChainInfo = validChainInfos.find(info => info.chainId === currentChainId);
+          if (currentChainInfo) {
+            setPoolBalance(currentChainInfo.poolBalance);
+          }
+          
+          setDestinationChains(validChainInfos);
+        } catch (error) {
+          // エラー発生時は静かに失敗
         }
-      }
+      })();
       
-      setDestinationChains(destinationChainsInfo);
+      // チェーンデータ取得タスクを追加
+      fetchTasks.push(chainDataPromise);
+      
+      // すべてのタスクを完了するまで待機
+      await Promise.all(fetchTasks);
       
     } catch (error) {
-      console.error("ブリッジデータ取得エラー:", error);
+      // エラー発生時は静かに失敗
     }
-  }, [activeAddress, currentChainId, publicClient]);
+  }, [activeAddress, currentChainId, publicClient, fetchChainBalance]);
   
   // Get estimated fee for bridging
   const estimateBridgeFee = useCallback(async (
@@ -581,10 +672,19 @@ export function useTokenBridge() {
     }
   }, []);
   
-  // Fetch bridge data on mount and when chain changes
+  // Fetch bridge data on mount, when chain changes, and periodically
   useEffect(() => {
     if (isConnected || isReadyToSendTx) {
+      // 初回ロード
       fetchBridgeData();
+      
+      // 10秒ごとにデータを自動更新
+      const intervalId = setInterval(() => {
+        fetchBridgeData();
+      }, 10000); // 10秒間隔で更新（実稼働時には15秒以上が推奨）
+      
+      // クリーンアップ関数
+      return () => clearInterval(intervalId);
     }
   }, [isConnected, isReadyToSendTx, currentChainId, fetchBridgeData]);
   
