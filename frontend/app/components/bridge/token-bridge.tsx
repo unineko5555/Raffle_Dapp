@@ -66,13 +66,22 @@ export function TokenBridge() {
         destinationChainId &&
         parseFloat(amount) > 0
       ) {
+        console.log("============ 手数料見積もり実行 ============");
+        console.log(`宛先チェーンID: ${destinationChainId}`);
+        console.log(`金額: ${amount}`);
+        console.log(`自動ラッフル参加: ${autoEnterRaffle}`);
+        
         const fee = await estimateBridgeFee(
           destinationChainId,
           amount,
           autoEnterRaffle
         );
+        
         if (fee) {
           setCurrentFee(formatEther(fee));
+          console.log(`見積もり手数料: ${formatEther(fee)} ETH`);
+        } else {
+          console.error("手数料の見積もりに失敗しました");
         }
       }
     };

@@ -295,6 +295,40 @@ export function useTokenBridge() {
         return null;
       }
       
+      // フロントエンド側で設定されている値をログ出力
+      console.log("============ フロントエンド側の設定値 ============");
+      console.log(`現在のチェーンID: ${currentChainId}`);
+      console.log(`現在のチェーンのブリッジアドレス: ${bridgeAddress}`);
+      console.log(`宛先チェーンID: ${destinationChainId}`);
+      console.log(`宛先チェーンセレクタ: ${destinationSelector}`);
+      console.log(`宛先チェーンのブリッジアドレス (フロントエンド設定): ${bridgeAddresses[destinationChainId]}`);
+      
+      // コントラクト内に設定されている値を取得
+      try {
+        const chainInfo = await publicClient.readContract({
+          address: bridgeAddress,
+          abi: BRIDGE_ABI,
+          functionName: "getDestinationChainInfo",
+          args: [destinationSelector],
+        });
+        
+        // コントラクト内の設定値をログ出力
+        console.log("============ コントラクト内の設定値 ============");
+        console.log("サポートされているか:", chainInfo[0]);
+        console.log("チェーン名:", chainInfo[1]);
+        console.log("ブリッジコントラクトアドレス:", chainInfo[2]);
+        console.log("プール残高不足フラグ:", chainInfo[3]);
+        
+        // 比較結果
+        console.log("============ 比較結果 ============");
+        console.log("フロントエンドとコントラクトのアドレス一致:", 
+                    bridgeAddresses[destinationChainId].toLowerCase() === chainInfo[2].toLowerCase());
+        console.log("不一致の場合、以下のコマンドで更新してください:");
+        console.log(`updateDestinationBridgeContract(${destinationSelector}n, "${bridgeAddresses[destinationChainId]}")`);
+      } catch (error) {
+        console.error("チェーン情報取得エラー:", error);
+      }
+      
       // USDC amount（デフォルトでは6デシマル）
       const parsedAmount = parseUnits(amount, 6);
       
