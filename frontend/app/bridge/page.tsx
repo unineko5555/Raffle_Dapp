@@ -2,7 +2,7 @@
 
 import { TokenBridge } from "@/app/components/bridge/token-bridge";
 import { LiquidityManager } from "@/app/components/bridge/liquidity-manager";
-import { BridgeConfig } from "@/app/components/bridge/bridge-config";
+// import { BridgeConfig } from "@/app/components/bridge/bridge-config";
 import { useAccount } from "wagmi";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
 import { useTokenBridge } from "@/hooks/use-token-bridge";
@@ -34,7 +34,6 @@ export default function BridgePage() {
             <>
               <TokenBridge />
               <LiquidityManager />
-              <BridgeConfig />
             </>
           ) : (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-8 text-center">
@@ -44,33 +43,6 @@ export default function BridgePage() {
               </p>
             </div>
           )}
-          
-          {/* 説明セクション */}
-          <div className="mt-12 grid md:grid-cols-3 gap-6">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
-              <h3 className="font-bold text-lg mb-3">高速クロスチェーン転送</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Chainlink CCIPを使用して、数分でチェーン間のUSDC転送を実現します。
-                トランザクションはセキュアで信頼性の高いCCIPネットワークによって処理されます。
-              </p>
-            </div>
-            
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
-              <h3 className="font-bold text-lg mb-3">複数チェーンサポート</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Sepolia、Base Sepolia、Arbitrum Sepoliaの間でシームレスに資金を移動できます。
-                各チェーンのラッフルに参加するための資金を簡単に準備できます。
-              </p>
-            </div>
-            
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
-              <h3 className="font-bold text-lg mb-3">自動ラッフル参加</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                ブリッジした資金で自動的にラッフルに参加するオプションも用意されています。
-                一度の操作で資金移動とラッフル参加を完了させることができます。
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     </div>
