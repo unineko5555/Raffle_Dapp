@@ -111,7 +111,16 @@ export function LiquidityManager() {
       <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
         <div className="flex justify-between text-sm mb-1">
           <span className="text-gray-600 dark:text-gray-400">現在の残高:</span>
-          <span className="font-medium">{poolBalance} USDC</span>
+          {/* 現在のチェーン情報を検索して条件付きスタイルを適用 */}
+          {(() => {
+            const currentChain = destinationChains.find(chain => chain.chainId === chainId);
+            const isLow = currentChain?.poolLow || false;
+            return (
+              <span className={`font-medium ${isLow ? 'text-red-600 dark:text-red-400 font-bold' : ''}`}>
+                {poolBalance} USDC {isLow && <AlertCircle className="inline h-4 w-4 ml-1" />}
+              </span>
+            );
+          })()}
         </div>
         <div className="text-xs text-gray-500 dark:text-gray-400">
           各チェーンにUSDCを供給して、クロスチェーンブリッジを機能させる
@@ -199,7 +208,7 @@ export function LiquidityManager() {
                     {chain.poolLow ? "流動性不足" : "流動性十分"}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
-                    プール残高: <span className="font-mono">{chain.poolBalance} USDC</span>
+                    プール残高: <span className={`font-mono ${chain.poolLow ? 'text-red-600 dark:text-red-400 font-bold' : ''}`}>{chain.poolBalance} USDC</span>
                   </div>
                 </div>
               </div>

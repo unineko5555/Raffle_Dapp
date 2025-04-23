@@ -31,6 +31,20 @@ const chainNames: Record<number, string> = {
   421614: "Arbitrum Sepolia",
 };
 
+// 環境変数からRPC URLを取得する関数
+const getRpcUrl = (chainId: number): string => {
+  switch (chainId) {
+    case 11155111: // Sepolia
+      return process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || "https://rpc.sepolia.org";
+    case 84532: // Base Sepolia
+      return process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org";
+    case 421614: // Arbitrum Sepolia
+      return process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_RPC_URL || "https://sepolia-rollup.arbitrum.io/rpc";
+    default:
+      return "https://rpc.sepolia.org";
+  }
+};
+
 const CHAIN_CONFIGS = {
   11155111: sepolia,
   84532: baseSepolia,
@@ -40,7 +54,12 @@ const CHAIN_CONFIGS = {
 const getClientForChain = (chainId: number) => {
   const chain = CHAIN_CONFIGS[chainId];
   if (!chain) return null;
-  return createPublicClient({ chain, transport: http() });
+  // 環境変数からRPC URLを取得して使用
+  const rpcUrl = getRpcUrl(chainId);
+  return createPublicClient({ 
+    chain, 
+    transport: http(rpcUrl)
+  });
 };
 
 export type BridgeTransaction = {
@@ -139,10 +158,11 @@ export function useTokenBridge() {
       if (chainId === currentChainId && publicClient) {
         client = publicClient;
       } else {
-        // それ以外は別のクライアントを作成
+        // それ以外は環境変数から取得したRPC URLを使用して別のクライアントを作成
+        const rpcUrl = getRpcUrl(chainId);
         client = createPublicClient({
           chain,
-          transport: http()
+          transport: http(rpcUrl)
         });
       }
       
