@@ -18,7 +18,7 @@ contract RaffleBridgeDeployer is Script {
 
     // CCIP chain selectors
     uint64 private constant SEPOLIA_CHAIN_SELECTOR = 16015286601757825753;
-    uint64 private constant BASE_SEPOLIA_CHAIN_SELECTOR = 15971525489660198786;
+    uint64 private constant BASE_SEPOLIA_CHAIN_SELECTOR = 10344971235874465080; 
     uint64 private constant ARBITRUM_SEPOLIA_CHAIN_SELECTOR = 3478487238524512106;
 
     // CCIP router addresses
@@ -44,14 +44,28 @@ contract RaffleBridgeDeployer is Script {
         console.log("Current chain ID:", chainId);
         
         // 対応するルーター、USDC、その他のパラメータを設定
-        address router;
+        address defaultRouter;
         address usdc;
         uint64[] memory supportedChainSelectors = new uint64[](2);
         address[] memory destinationBridgeContracts = new address[](2);
         string[] memory chainNames = new string[](2);
         
+        // チェーン別ルーターアドレスとセレクタの設定
+        address[] memory routerAddresses = new address[](3);
+        uint64[] memory routerChainSelectors = new uint64[](3);
+        
+        // 全チェーンのルーターアドレスとセレクタを設定
+        routerAddresses[0] = SEPOLIA_ROUTER;
+        routerChainSelectors[0] = SEPOLIA_CHAIN_SELECTOR;
+        
+        routerAddresses[1] = BASE_SEPOLIA_ROUTER;
+        routerChainSelectors[1] = BASE_SEPOLIA_CHAIN_SELECTOR;
+        
+        routerAddresses[2] = ARBITRUM_SEPOLIA_ROUTER;
+        routerChainSelectors[2] = ARBITRUM_SEPOLIA_CHAIN_SELECTOR;
+        
         if (chainId == SEPOLIA_CHAIN_ID) {
-            router = SEPOLIA_ROUTER;
+            defaultRouter = SEPOLIA_ROUTER;
             usdc = SEPOLIA_USDC;
             
             // Sepolia -> Arbitrum Sepolia, Base Sepolia
@@ -66,7 +80,7 @@ contract RaffleBridgeDeployer is Script {
             chainNames[1] = "Base Sepolia";
         } 
         else if (chainId == BASE_SEPOLIA_CHAIN_ID) {
-            router = BASE_SEPOLIA_ROUTER;
+            defaultRouter = BASE_SEPOLIA_ROUTER;
             usdc = BASE_SEPOLIA_USDC;
             
             // Base Sepolia -> Sepolia, Arbitrum Sepolia
@@ -80,7 +94,7 @@ contract RaffleBridgeDeployer is Script {
             chainNames[1] = "Arbitrum Sepolia";
         }
         else if (chainId == ARBITRUM_SEPOLIA_CHAIN_ID) {
-            router = ARBITRUM_SEPOLIA_ROUTER;
+            defaultRouter = ARBITRUM_SEPOLIA_ROUTER;
             usdc = ARBITRUM_SEPOLIA_USDC;
             
             // Arbitrum Sepolia -> Sepolia, Base Sepolia
@@ -106,7 +120,9 @@ contract RaffleBridgeDeployer is Script {
         
         // RaffleBridgeコントラクトのデプロイ
         RaffleBridge bridge = new RaffleBridge(
-            router,
+            defaultRouter,
+            routerAddresses,
+            routerChainSelectors,
             usdc,
             supportedChainSelectors,
             destinationBridgeContracts,

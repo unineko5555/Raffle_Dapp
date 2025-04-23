@@ -13,7 +13,10 @@ import "./interfaces/CCIPInterface.sol";
 contract RaffleBridge {
     /* 状態変数 */
     // CCIP Router
-    CCIPInterface private immutable s_router;
+    address private immutable s_defaultRouter;
+    
+    // チェーンごとのルーターアドレスのマッピング
+    mapping(uint64 => address) private s_chainRouters;
     
     // USDC Token
     address private immutable s_usdcAddress;
@@ -72,8 +75,34 @@ contract RaffleBridge {
     }
 
     /**
+     * @notice チェーンセレクタに対応するルーターアドレスを取得する内部関数
+     * @param chainSelector チェーンセレクタ
+     * @return ルーターアドレス
+     */
+    function _getRouterForChain(uint64 chainSelector) internal view returns (address) {
+        address router = s_chainRouters[chainSelector];
+        // チェーン特有のルーターが設定されていない場合はデフォルトを使用
+        if (router == address(0)) {
+            return s_defaultRouter;
+        }
+        return router;
+    }
+
+    /**
+     * @notice チェーンのルーターアドレスを設定する関数
+     * @param chainSelector チェーンセレクタ
+     * @param routerAddress ルーターアドレス
+     */
+    function setChainRouter(uint64 chainSelector, address routerAddress) external onlyOwner {
+        require(routerAddress != address(0), "Router address cannot be zero");
+        s_chainRouters[chainSelector] = routerAddress;
+    }
+
+    /**
      * @notice コンストラクタ
-     * @param router CCIPルーターのアドレス
+     * @param router デフォルトのCCIPルーターのアドレス
+     * @param routerAddresses 宛先チェーンのルーターアドレスの配列
+     * @param routerChainSelectors ルーターに対応するチェーンセレクタの配列
      * @param usdcAddress USDCトークンのアドレス
      * @param supportedChainSelectors サポートする宛先チェーンのセレクタ配列
      * @param destinationBridgeContracts 宛先チェーンの対応するブリッジコントラクト配列
@@ -82,6 +111,8 @@ contract RaffleBridge {
      */
     constructor(
         address router,
+        address[] memory routerAddresses,
+        uint64[] memory routerChainSelectors,
         address usdcAddress,
         uint64[] memory supportedChainSelectors,
         address[] memory destinationBridgeContracts,
@@ -95,8 +126,12 @@ contract RaffleBridge {
             supportedChainSelectors.length == chainNames.length,
             "Array length mismatch"
         );
+        require(
+            routerAddresses.length == routerChainSelectors.length,
+            "Router arrays length mismatch"
+        );
         
-        s_router = CCIPInterface(router);
+        s_defaultRouter = router;
         s_usdcAddress = usdcAddress;
         s_owner = msg.sender;
         s_minimumPoolThreshold = minimumPoolThreshold;
@@ -107,6 +142,11 @@ contract RaffleBridge {
             s_supportedChains[supportedChainSelectors[i]] = true;
             s_destinationBridgeContracts[supportedChainSelectors[i]] = destinationBridgeContracts[i];
             s_chainNames[supportedChainSelectors[i]] = chainNames[i];
+        }
+        
+        // チェーンごとのルーターアドレスの設定
+        for (uint256 i = 0; i < routerChainSelectors.length; i++) {
+            s_chainRouters[routerChainSelectors[i]] = routerAddresses[i];
         }
     }
 
@@ -152,6 +192,9 @@ contract RaffleBridge {
             amount: amount
         });
         
+        // 宛先チェーン用のルーターアドレスを取得
+        address routerAddress = _getRouterForChain(destinationChainSelector);
+        
         // CCIPメッセージを準備
         CCIPInterface.EVM2AnyMessage memory message = CCIPInterface.EVM2AnyMessage({
             receiver: abi.encode(s_destinationBridgeContracts[destinationChainSelector]),
@@ -162,11 +205,11 @@ contract RaffleBridge {
         });
         
         // 手数料を計算
-        uint256 fee = s_router.getFee(destinationChainSelector, message);
+        uint256 fee = CCIPInterface(routerAddress).getFee(destinationChainSelector, message);
         require(msg.value >= fee, "Insufficient fee");
         
         // メッセージ送信
-        bytes32 messageId = s_router.ccipSend{value: fee}(
+        bytes32 messageId = CCIPInterface(routerAddress).ccipSend{value: fee}(
             uint256(destinationChainSelector), 
             message
         );
@@ -194,15 +237,17 @@ contract RaffleBridge {
      */
     function ccipReceive(CCIPInterface.Any2EVMMessage memory message) external {
         // メッセージを処理前に送信元を検証
-        require(msg.sender == address(s_router), "Only router can call ccipReceive");
+        // ソースチェーンのルーターを使用
+        uint64 sourceChainSelector = uint64(message.sourceChainSelector);
+        address routerAddress = _getRouterForChain(sourceChainSelector);
+        require(msg.sender == routerAddress, "Only router can call ccipReceive");
         
         // メッセージデータをデコード
         (
             address receiver,
             uint256 amount,
-            bool autoEnterRaffle,
-            uint256 timestamp
-        ) = abi.decode(message.data, (address, uint256, bool, uint256));
+            bool autoEnterRaffle
+        ) = abi.decode(message.data, (address, uint256, bool));
         
         // USDC Token
         IERC20 usdc = IERC20(s_usdcAddress);
@@ -218,7 +263,7 @@ contract RaffleBridge {
         
         // イベント発行
         emit TokensReceived(
-            uint64(message.sourceChainSelector),
+            sourceChainSelector,
             receiver,
             amount,
             message.messageId,
@@ -245,10 +290,6 @@ contract RaffleBridge {
     }
 
     /**
-     * @notice プールを補充する関数
-     * @param amount 補充する量
-     */
-    /**
      * @dev プール状態を更新する内部関数
      */
     function _updatePoolStatus() internal {
@@ -266,6 +307,10 @@ contract RaffleBridge {
         }
     }
 
+    /**
+     * @notice プールを補充する関数
+     * @param amount 補充する量
+     */
     function replenishPool(uint256 amount) external onlyOwner {
         require(amount > 0, "Amount must be greater than 0");
         
@@ -360,6 +405,15 @@ contract RaffleBridge {
     }
 
     /**
+     * @notice チェーンのルーターアドレスを取得する関数
+     * @param chainSelector チェーンセレクタ
+     * @return router ルーターアドレス
+     */
+    function getChainRouter(uint64 chainSelector) external view returns (address router) {
+        return _getRouterForChain(chainSelector);
+    }
+
+    /**
      * @notice 基本情報を取得する関数
      * @return usdcAddress USDCアドレス
      * @return raffleAddress ラッフルアドレス
@@ -412,6 +466,9 @@ contract RaffleBridge {
             amount: amount
         });
         
+        // 宛先チェーン用のルーターアドレスを取得
+        address routerAddress = _getRouterForChain(destinationChainSelector);
+        
         // CCIPメッセージを準備
         CCIPInterface.EVM2AnyMessage memory message = CCIPInterface.EVM2AnyMessage({
             receiver: abi.encode(s_destinationBridgeContracts[destinationChainSelector]),
@@ -422,7 +479,7 @@ contract RaffleBridge {
         });
         
         // 手数料を見積もる
-        return s_router.getFee(uint256(destinationChainSelector), message);
+        return CCIPInterface(routerAddress).getFee(destinationChainSelector, message);
     }
 
     /**
