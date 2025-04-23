@@ -35,7 +35,7 @@ const NETWORK_MAPPING = {
     },
     84532: {
         name: 'base-sepolia',
-        ccipSelector: '5790810961207155433',
+        ccipSelector: '10344971235874465080',
     },
     168587773: {
         name: 'blast-sepolia',

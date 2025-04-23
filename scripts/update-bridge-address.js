@@ -50,14 +50,8 @@ const abi = [
 // チェーンセレクタの対応
 const CHAIN_SELECTOR_MAP = {
   "sepolia": "16015286601757825753",
-  "base-sepolia": "5790810961207155433", // bridge-contract-config.tsと一致させる
+  "base-sepolia": "5790810961207155433",
   "arbitrum-sepolia": "3478487238524512106"
-};
-
-// Arbitrum SepoliaとSepoliaへのBase Sepoliaブリッジのために別のセレクタを使用
-const SPECIAL_CHAIN_SELECTOR_MAP = {
-  "base-sepolia-for-arbitrum": "15971525489660198786", // Arbitrum SepoliaからBase Sepoliaへの設定用
-  "base-sepolia-for-sepolia": "15971525489660198786"  // SepoliaからBase Sepoliaへの設定用
 };
 
 
@@ -149,42 +143,25 @@ async function main() {
       for (const destChain of destinationChains) {
         const destChainName = destChain.chainName;
         const destBridgeAddress = destChain.bridgeAddress;
-        
-        // 特別な場合を処理する
-        let destChainSelector;
-        if (sourceChainName === 'arbitrum-sepolia' && destChainName === 'base-sepolia') {
-          destChainSelector = SPECIAL_CHAIN_SELECTOR_MAP['base-sepolia-for-arbitrum'];
-          console.log(`  特別なチェーンセレクタを使用します: ${destChainSelector}`);
-        } else if (sourceChainName === 'sepolia' && destChainName === 'base-sepolia') {
-          destChainSelector = SPECIAL_CHAIN_SELECTOR_MAP['base-sepolia-for-sepolia'];
-          console.log(`  特別なチェーンセレクタを使用します: ${destChainSelector}`);
-        } else {
-          destChainSelector = destChain.ccipSelector || CHAIN_SELECTOR_MAP[destChainName];
-        }
+        const destChainSelector = destChain.ccipSelector || CHAIN_SELECTOR_MAP[destChainName];
         
         console.log(`  宛先チェーン ${destChainName} のブリッジアドレス ${destBridgeAddress} をセットします... (チェーンセレクタ: ${destChainSelector})`);
 
+
         
         try {
-          // ガス見積もりを試みるが、失敗した場合は固定ガス制限を使用する
-          let gasLimit;
-          try {
-            const gasEstimate = await contract.estimateGas.updateDestinationBridgeContract(
-              destChainSelector,
-              destBridgeAddress
-            );
-            gasLimit = gasEstimate.mul(120).div(100); // 20%増し
-          } catch (gasError) {
-            console.log(`  ガス見積もりに失敗しました。固定ガス制限(100000)を使用します...`);
-            gasLimit = 100000; // 固定ガス制限
-          }
-
+          // ガス見積もり
+          const gasEstimate = await contract.estimateGas.updateDestinationBridgeContract(
+            destChainSelector,
+            destBridgeAddress
+          );
+          
           // トランザクションの送信
           const tx = await contract.updateDestinationBridgeContract(
             destChainSelector,
             destBridgeAddress,
             {
-              gasLimit: gasLimit
+              gasLimit: gasEstimate.mul(120).div(100) // 20%増し
             }
           );
           
