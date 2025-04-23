@@ -1,6 +1,6 @@
 -include .env
 
-.PHONY: all test clean deploy-sepolia deploy-base-sepolia deploy-arb-sepolia deploy-sepolia-with-update deploy-base-sepolia-with-update deploy-arb-sepolia-with-update deploy-all deploy-all-with-update update-frontend deploy-bridge update-bridge help check-env format anvil install
+.PHONY: all test clean deploy-sepolia deploy-base-sepolia deploy-arb-sepolia deploy-sepolia-with-update deploy-base-sepolia-with-update deploy-arb-sepolia-with-update deploy-all deploy-all-with-update update-frontend deploy-bridge update-bridge update-bridge-addresses deploy-and-update-bridge-full help check-env format anvil install
 
 help:
 	@echo "Usage:"
@@ -25,6 +25,8 @@ help:
 	@echo "  make update-frontend              - Update frontend contract configuration"
 	@echo "  make deploy-bridge                - Deploy bridge contracts to all testnets"
 	@echo "  make update-bridge                - Update bridge contract configuration"
+	@echo "  make update-bridge-addresses       - Update bridge destination addresses across networks"
+	@echo "  make deploy-and-update-bridge-full - Deploy bridge, update addresses and configuration"
 	@echo "  make verify-sepolia               - Verify contracts on Ethereum Sepolia"
 	@echo "  make verify-base-sepolia          - Verify contracts on Base Sepolia"
 	@echo "  make verify-arb-sepolia           - Verify contracts on Arbitrum Sepolia"
@@ -140,7 +142,12 @@ update-bridge:
 	@echo "Updating bridge contract configuration..."
 	cd .. && node scripts/update-bridge-config.js
 
-deploy-and-update-bridge: deploy-bridge update-bridge
+update-bridge-addresses: check-env
+	@echo "Updating bridge destination addresses across all networks..."
+	cd .. && PRIVATE_KEY=$(PRIVATE_KEY) SEPOLIA_RPC_URL=$(SEPOLIA_RPC_URL) BASE_SEPOLIA_RPC_URL=$(BASE_SEPOLIA_RPC_URL) ARBITRUM_SEPOLIA_RPC_URL=$(ARBITRUM_SEPOLIA_RPC_URL) node scripts/update-bridge-address.js
+
+deploy-and-update-bridge-full: deploy-bridge update-bridge-addresses update-bridge
+
 
 # ==============================================================================
 # MockVRF Deployment
