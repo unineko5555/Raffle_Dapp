@@ -114,7 +114,7 @@ export function LiquidityManager() {
           {/* 現在のチェーン情報を検索して条件付きスタイルを適用 */}
           {(() => {
             const currentChain = destinationChains.find(chain => chain.chainId === chainId);
-            const isLow = currentChain?.poolLow || false;
+            const isLow = currentChain?.poolLow || parseFloat(poolBalance) === 0;
             return (
               <span className={`font-medium ${isLow ? 'text-red-600 dark:text-red-400 font-bold' : ''}`}>
                 {poolBalance} USDC {isLow && <AlertCircle className="inline h-4 w-4 ml-1" />}
@@ -186,10 +186,10 @@ export function LiquidityManager() {
             <div
               key={chain.chainId}
               className={`p-3 rounded-lg flex justify-between items-center
-                ${chain.poolLow ? 'bg-red-50 dark:bg-red-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}
+                ${chain.poolLow || parseFloat(chain.poolBalance) === 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}
             >
               <div className="flex items-center">
-                {chain.poolLow ? (
+                {chain.poolLow || parseFloat(chain.poolBalance) === 0 ? (
                   <AlertCircle className="h-4 w-4 text-red-500 mr-2" />
                 ) : (
                   <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
@@ -205,15 +205,15 @@ export function LiquidityManager() {
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     {chain.supported ? "サポート済" : "未サポート"} ・ 
-                    {chain.poolLow ? "流動性不足" : "流動性十分"}
+                    {chain.poolLow || parseFloat(chain.poolBalance) === 0 ? "流動性不足" : "流動性十分"}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
-                    プール残高: <span className={`font-mono ${chain.poolLow ? 'text-red-600 dark:text-red-400 font-bold' : ''}`}>{chain.poolBalance} USDC</span>
+                    プール残高: <span className={`font-mono ${chain.poolLow || parseFloat(chain.poolBalance) === 0 ? 'text-red-600 dark:text-red-400 font-bold' : ''}`}>{chain.poolBalance} USDC</span>
                   </div>
                 </div>
               </div>
-              <Badge variant={chain.poolLow ? "destructive" : "outline"}>
-                {chain.poolLow ? "追加必要" : "正常"}
+              <Badge variant={chain.poolLow || parseFloat(chain.poolBalance) === 0 ? "destructive" : "outline"}>
+                {chain.poolLow || parseFloat(chain.poolBalance) === 0 ? "追加必要" : "正常"}
               </Badge>
             </div>
           ))}

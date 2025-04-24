@@ -20,6 +20,16 @@ export const BRIDGE_ABI = [
         "internalType": "address"
       },
       {
+        "name": "routerAddresses",
+        "type": "address[]",
+        "internalType": "address[]"
+      },
+      {
+        "name": "routerChainSelectors",
+        "type": "uint64[]",
+        "internalType": "uint64[]"
+      },
+      {
         "name": "usdcAddress",
         "type": "address",
         "internalType": "address"
@@ -167,6 +177,25 @@ export const BRIDGE_ABI = [
   },
   {
     "type": "function",
+    "name": "getChainRouter",
+    "inputs": [
+      {
+        "name": "chainSelector",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "router",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getDestinationChainInfo",
     "inputs": [
       {
@@ -274,6 +303,24 @@ export const BRIDGE_ABI = [
         "name": "amount",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setChainRouter",
+    "inputs": [
+      {
+        "name": "chainSelector",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "routerAddress",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -480,20 +527,20 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
   {
     "networkId": 84532,
     "chainName": "base-sepolia",
-    "ccipSelector": "5790810961207155433",
-    "bridgeAddress": "0x9c2c09314096ae6eb50e58b92e029d2629c5b710"
+    "ccipSelector": "10344971235874465080",
+    "bridgeAddress": "0xf228b41b14119d79a07a4ac1737103d9097b7073"
   },
   {
     "networkId": 421614,
     "chainName": "arbitrum-sepolia",
     "ccipSelector": "3478487238524512106",
-    "bridgeAddress": "0xaa6686875c234dea499f952fe63be506706b3f51"
+    "bridgeAddress": "0x8ab90ab3013df24bdf7adcea73706c62b311cc67"
   },
   {
     "networkId": 11155111,
     "chainName": "sepolia",
     "ccipSelector": "16015286601757825753",
-    "bridgeAddress": "0xc97e56cd0f24caf76776128abca791a1eb6c68e9"
+    "bridgeAddress": "0xc7846429630c382dafed1e0135498d7e0ee5e2b3"
   }
 ];
 

@@ -50,7 +50,7 @@ const abi = [
 // チェーンセレクタの対応
 const CHAIN_SELECTOR_MAP = {
   "sepolia": "16015286601757825753",
-  "base-sepolia": "5790810961207155433",
+  "base-sepolia": "10344971235874465080",
   "arbitrum-sepolia": "3478487238524512106"
 };
 

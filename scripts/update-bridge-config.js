@@ -36,14 +36,6 @@ const NETWORK_MAPPING = {
     84532: {
         name: 'base-sepolia',
         ccipSelector: '10344971235874465080',
-    },
-    168587773: {
-        name: 'blast-sepolia',
-        ccipSelector: null, // Add when available
-    },
-    44787: {
-        name: 'celo-alfajores',
-        ccipSelector: null, // Add when available
     }
 };
 
