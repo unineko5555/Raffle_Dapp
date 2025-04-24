@@ -23,10 +23,15 @@ help:
 	@echo "  make deploy-all                   - Deploy to all testnets"
 	@echo "  make deploy-all-with-update       - Deploy to all testnets and update frontend config"
 	@echo "  make update-frontend              - Update frontend contract configuration"
-	@echo "  make deploy-bridge                - Deploy bridge contracts to all testnets"
+	@echo "  make deploy-bridge-proxy          - Deploy bridge proxy contracts to all testnets"
+	@echo "  make deploy-bridge-proxy-sepolia  - Deploy bridge proxy to Ethereum Sepolia"
+	@echo "  make deploy-bridge-proxy-base     - Deploy bridge proxy to Base Sepolia"
+	@echo "  make deploy-bridge-proxy-arb      - Deploy bridge proxy to Arbitrum Sepolia"
+	@echo "  make deploy-bridge                - Deploy legacy bridge contracts to all testnets (non-proxy)"
 	@echo "  make update-bridge                - Update bridge contract configuration"
 	@echo "  make update-bridge-addresses       - Update bridge destination addresses across networks"
 	@echo "  make deploy-and-update-bridge-full - Deploy bridge, update addresses and configuration"
+	@echo "  make deploy-proxy-and-update-bridge-full - Deploy bridge proxy, update addresses and configuration"
 	@echo "  make verify-sepolia               - Verify contracts on Ethereum Sepolia"
 	@echo "  make verify-base-sepolia          - Verify contracts on Base Sepolia"
 	@echo "  make verify-arb-sepolia           - Verify contracts on Arbitrum Sepolia"
@@ -121,9 +126,24 @@ deploy-all: deploy-sepolia deploy-base-sepolia deploy-arb-sepolia
 deploy-all-with-update: deploy-all update-frontend
 
 # ==============================================================================
-# Bridge Deployment
+# Bridge Proxy Deployment
 # ==============================================================================
 
+deploy-bridge-proxy-sepolia: check-env
+	@echo "Deploying Bridge Proxy to Ethereum Sepolia testnet..."
+	ETH_GAS_PRICE=50000000000 forge script script/RaffleBridgeProxyDeployer.s.sol:RaffleBridgeProxyDeployer --rpc-url $(SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
+
+deploy-bridge-proxy-base: check-env
+	@echo "Deploying Bridge Proxy to Base Sepolia testnet..."
+	forge script script/RaffleBridgeProxyDeployer.s.sol:RaffleBridgeProxyDeployer --rpc-url $(BASE_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
+
+deploy-bridge-proxy-arb: check-env
+	@echo "Deploying Bridge Proxy to Arbitrum Sepolia testnet..."
+	forge script script/RaffleBridgeProxyDeployer.s.sol:RaffleBridgeProxyDeployer --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
+
+deploy-bridge-proxy: deploy-bridge-proxy-sepolia deploy-bridge-proxy-base deploy-bridge-proxy-arb
+
+# Legacy bridge deployment (non-proxy)
 deploy-bridge-sepolia: check-env
 	@echo "Deploying Bridge to Ethereum Sepolia testnet..."
 	forge script script/RaffleBridgeDeployer.s.sol:RaffleBridgeDeployer --rpc-url $(SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
@@ -147,6 +167,8 @@ update-bridge-addresses: check-env
 	cd .. && PRIVATE_KEY=$(PRIVATE_KEY) SEPOLIA_RPC_URL=$(SEPOLIA_RPC_URL) BASE_SEPOLIA_RPC_URL=$(BASE_SEPOLIA_RPC_URL) ARBITRUM_SEPOLIA_RPC_URL=$(ARBITRUM_SEPOLIA_RPC_URL) node scripts/update-bridge-address.js
 
 deploy-and-update-bridge-full: deploy-bridge update-bridge-addresses update-bridge
+
+deploy-proxy-and-update-bridge-full: deploy-bridge-proxy update-bridge-addresses update-bridge
 
 
 # ==============================================================================
@@ -201,3 +223,21 @@ verify-bridge-arb:
 	forge verify-contract $(BRIDGE_ADDRESS_ARB) src/Bridge.sol:Bridge --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
 
 verify-bridge: verify-bridge-sepolia verify-bridge-base verify-bridge-arb
+
+# Bridge Proxy Verification
+verify-bridge-proxy-sepolia:
+	@echo "Verifying Bridge Proxy on Ethereum Sepolia..."
+	forge verify-contract $(BRIDGE_IMPLEMENTATION_ADDRESS) src/RaffleBridgeImplementation.sol:RaffleBridgeImplementation --chain sepolia --etherscan-api-key $(ETHERSCAN_API_KEY)
+	forge verify-contract $(BRIDGE_PROXY_ADDRESS) src/RaffleBridgeProxy.sol:RaffleBridgeProxy --chain sepolia --etherscan-api-key $(ETHERSCAN_API_KEY)
+
+verify-bridge-proxy-base:
+	@echo "Verifying Bridge Proxy on Base Sepolia..."
+	forge verify-contract $(BRIDGE_IMPLEMENTATION_ADDRESS_BASE) src/RaffleBridgeImplementation.sol:RaffleBridgeImplementation --chain base-sepolia --etherscan-api-key $(BASE_API_KEY)
+	forge verify-contract $(BRIDGE_PROXY_ADDRESS_BASE) src/RaffleBridgeProxy.sol:RaffleBridgeProxy --chain base-sepolia --etherscan-api-key $(BASE_API_KEY)
+
+verify-bridge-proxy-arb:
+	@echo "Verifying Bridge Proxy on Arbitrum Sepolia..."
+	forge verify-contract $(BRIDGE_IMPLEMENTATION_ADDRESS_ARB) src/RaffleBridgeImplementation.sol:RaffleBridgeImplementation --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
+	forge verify-contract $(BRIDGE_PROXY_ADDRESS_ARB) src/RaffleBridgeProxy.sol:RaffleBridgeProxy --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
+
+verify-bridge-proxy: verify-bridge-proxy-sepolia verify-bridge-proxy-base verify-bridge-proxy-arb

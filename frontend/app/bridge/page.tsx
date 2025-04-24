@@ -10,13 +10,13 @@ import { useTokenBridge } from "@/hooks/use-token-bridge";
 export default function BridgePage() {
   const { isConnected, address } = useAccount();
   const { isReadyToSendTx } = useSmartAccountContext();
-  const { bridgeInfo, activeAddress } = useTokenBridge();
-  
+const { bridgeInfo, activeAddress } = useTokenBridge();
+    
   // ウォレット接続状態を確認
   const isWalletConnected = isConnected || isReadyToSendTx;
-  
+
   // テスト環境のため、管理者チェックを削除し全ユーザーに表示
-  
+    
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 text-slate-900 dark:text-slate-100">
       <div className="container mx-auto py-8 px-4">
@@ -43,7 +43,7 @@ export default function BridgePage() {
               </p>
             </div>
           )}
-        </div>
+   </div>
       </div>
     </div>
   );

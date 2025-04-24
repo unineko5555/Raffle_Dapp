@@ -131,7 +131,8 @@ function findBridgeTransaction(runDir, networkId) {
             const txs = runData.transactions || [];
             
             for (const tx of txs) {
-                if (tx.contractName === 'RaffleBridge') {
+                // Check for both RaffleBridgeProxy and RaffleBridge for backward compatibility
+                if (tx.contractName === 'RaffleBridgeProxy' || tx.contractName === 'RaffleBridge') {
                     const timestamp = new Date(runData.timestamp || 0).getTime();
                     
                     if (timestamp > latestTimestamp) {
@@ -238,9 +239,18 @@ function updateTokenBridgeHook(bridgeAbi, bridgeAddresses) {
 async function main() {
     console.log(`${COLORS.fg.blue}Updating bridge contract configurations...${COLORS.reset}`);
     
-    // Load Bridge ABI
+    // Load Bridge ABI (using implementation contract for ABI)
     console.log(`${COLORS.fg.blue}Loading Bridge ABI...${COLORS.reset}`);
-    const bridgeAbi = loadABI('RaffleBridge');
+    
+    // Try to load RaffleBridgeImplementation ABI first, fallback to RaffleBridge if not found
+    let bridgeAbi;
+    try {
+        bridgeAbi = loadABI('RaffleBridgeImplementation');
+        console.log(`${COLORS.fg.green}Loaded RaffleBridgeImplementation ABI${COLORS.reset}`);
+    } catch (error) {
+        console.log(`${COLORS.fg.yellow}RaffleBridgeImplementation ABI not found, falling back to RaffleBridge ABI${COLORS.reset}`);
+        bridgeAbi = loadABI('RaffleBridge');
+    }
     
     // Get Bridge contract addresses
     console.log(`${COLORS.fg.blue}Retrieving Bridge contract addresses...${COLORS.reset}`);

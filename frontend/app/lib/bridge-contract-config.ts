@@ -12,52 +12,6 @@ export interface BridgeContractConfig {
 
 export const BRIDGE_ABI = [
   {
-    "type": "constructor",
-    "inputs": [
-      {
-        "name": "router",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "routerAddresses",
-        "type": "address[]",
-        "internalType": "address[]"
-      },
-      {
-        "name": "routerChainSelectors",
-        "type": "uint64[]",
-        "internalType": "uint64[]"
-      },
-      {
-        "name": "usdcAddress",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "supportedChainSelectors",
-        "type": "uint64[]",
-        "internalType": "uint64[]"
-      },
-      {
-        "name": "destinationBridgeContracts",
-        "type": "address[]",
-        "internalType": "address[]"
-      },
-      {
-        "name": "chainNames",
-        "type": "string[]",
-        "internalType": "string[]"
-      },
-      {
-        "name": "minimumPoolThreshold",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
     "type": "receive",
     "stateMutability": "payable"
   },
@@ -284,6 +238,54 @@ export const BRIDGE_ABI = [
   },
   {
     "type": "function",
+    "name": "initialize",
+    "inputs": [
+      {
+        "name": "router",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "routerAddresses",
+        "type": "address[]",
+        "internalType": "address[]"
+      },
+      {
+        "name": "routerChainSelectors",
+        "type": "uint64[]",
+        "internalType": "uint64[]"
+      },
+      {
+        "name": "usdcAddress",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "supportedChainSelectors",
+        "type": "uint64[]",
+        "internalType": "uint64[]"
+      },
+      {
+        "name": "destinationBridgeContracts",
+        "type": "address[]",
+        "internalType": "address[]"
+      },
+      {
+        "name": "chainNames",
+        "type": "string[]",
+        "internalType": "string[]"
+      },
+      {
+        "name": "minimumPoolThreshold",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "initializePool",
     "inputs": [
       {
@@ -382,6 +384,37 @@ export const BRIDGE_ABI = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "upgradeTo",
+    "inputs": [
+      {
+        "name": "newImplementation",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "upgradeToAndCall",
+    "inputs": [
+      {
+        "name": "newImplementation",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "data",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
   },
   {
     "type": "event",
@@ -520,6 +553,19 @@ export const BRIDGE_ABI = [
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Upgraded",
+    "inputs": [
+      {
+        "name": "newImplementation",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
   }
 ] as const;
 
@@ -528,19 +574,19 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "networkId": 84532,
     "chainName": "base-sepolia",
     "ccipSelector": "10344971235874465080",
-    "bridgeAddress": "0xf228b41b14119d79a07a4ac1737103d9097b7073"
+    "bridgeAddress": "0x8ab90ab3013df24bdf7adcea73706c62b311cc67"
   },
   {
     "networkId": 421614,
     "chainName": "arbitrum-sepolia",
     "ccipSelector": "3478487238524512106",
-    "bridgeAddress": "0x8ab90ab3013df24bdf7adcea73706c62b311cc67"
+    "bridgeAddress": "0xf786e2292cfc0d8dabed7d59b636c16289753e1c"
   },
   {
     "networkId": 11155111,
     "chainName": "sepolia",
     "ccipSelector": "16015286601757825753",
-    "bridgeAddress": "0xc7846429630c382dafed1e0135498d7e0ee5e2b3"
+    "bridgeAddress": "0x6f801df32713c7f33acef6318b92cd16829ad17e"
   }
 ];
 
