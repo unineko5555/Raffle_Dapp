@@ -105,6 +105,10 @@ update-frontend:
 	@echo "Updating frontend contract configuration..."
 	cd .. && npm run update-contracts
 
+update-frontend-upgrade:
+	@echo "Updating frontend contract configuration (ABI only)..."
+	cd .. && npm run update-contracts-upgrade
+
 deploy-raffle-proxy-sepolia: check-env
 	@echo "Deploying Raffle Proxy to Ethereum Sepolia testnet..."
 	forge script script/RaffleProxyDeployer.s.sol:DeployRaffle --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY)
@@ -197,7 +201,7 @@ upgrade-raffle-arb: check-env
 	@echo "Upgrading Raffle on Arbitrum Sepolia testnet..."
 	RAFFLE_PROXY_ADDRESS=$(RAFFLE_PROXY_ADDRESS_ARB) forge script script/RaffleUpgrader.s.sol:RaffleUpgrader --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
 
-upgrade-raffle: upgrade-raffle-sepolia upgrade-raffle-base upgrade-raffle-arb update-frontend
+upgrade-raffle: upgrade-raffle-sepolia upgrade-raffle-base upgrade-raffle-arb update-frontend-upgrade
 
 upgrade-raffle-with-data-sepolia: check-env
 	@echo "Upgrading Raffle with data on Ethereum Sepolia testnet..."

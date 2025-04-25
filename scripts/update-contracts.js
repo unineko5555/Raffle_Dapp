@@ -3,6 +3,10 @@
 const fs = require('fs');
 const path = require('path');
 
+// コマンドライン引数から実行モードを判断
+const args = process.argv.slice(2);
+const isUpgradeMode = args.includes('--upgrade');
+
 // ネットワークIDとチェーン名のマッピング
 const NETWORK_MAP = {
   '11155111': 'sepolia',
@@ -17,7 +21,7 @@ const BROADCAST_PATH = path.resolve(BACKEND_PATH, 'broadcast');
 const ABI_PATH = path.resolve(BACKEND_PATH, 'out/RaffleImplementation.sol/RaffleImplementation.json');
 const CONFIG_PATH = path.resolve(PROJECT_ROOT, 'frontend/app/lib/contract-config.ts');
 
-console.log('スクリプト実行開始: デプロイ情報を更新します...');
+console.log(`スクリプト実行開始: ${isUpgradeMode ? 'ABIのみを更新します...' : 'デプロイ情報を更新します...'}`);
 console.log(`ABIパス: ${ABI_PATH}`);
 console.log(`設定ファイルパス: ${CONFIG_PATH}`);
 
@@ -84,14 +88,10 @@ const getDeployedAddresses = () => {
     }
   });
   
-  // デプロイ情報が見つからない場合はデフォルト値を使用
+  // デプロイ情報が見つからない場合
   if (!foundDeployments) {
-    console.log('デプロイ情報が見つからなかったため、デフォルト値を使用します');
-    return {
-      sepolia: '0x659F54928a0Ac9EA822C356D05Ec53925A0228E8',
-      arbitrumSepolia: '0x0573F6fE1cf8F169181eEc83Ae65BEa5502b3162',
-      baseSepolia: '0xEEd88f19b0951a7BeE1B52F83Afd333eCdBB6e96'
-    };
+    console.log('デプロイ情報が見つかりませんでした');
+    return {};
   }
   
   return addresses;
@@ -164,7 +164,7 @@ const loadExistingConfig = () => {
 };
 
 // contract-config.tsを更新する関数
-const updateContractConfig = (newAddresses, abi) => {
+const updateContractConfig = (newAddresses, abi, isUpgrade = false) => {
   try {
     // 既存の設定を読み込む
     const existingAddresses = loadExistingConfig();
@@ -187,7 +187,7 @@ const updateContractConfig = (newAddresses, abi) => {
     }
     
     // 新形式の場合は単純なマージ
-    const mergedAddresses = { ...existingAddresses, ...newAddresses };
+    const mergedAddresses = isUpgrade ? existingAddresses : { ...existingAddresses, ...newAddresses };
     
     // 形式を確認して適切な設定ファイルを作成
     let configContent;
@@ -201,7 +201,7 @@ export const contractConfig = {
   // Ethereum Sepolia
   11155111: {
     name: "Ethereum Sepolia",
-    raffleProxy: "${newAddresses.sepolia || existingAddresses.sepolia || '0x659F54928a0Ac9EA822C356D05Ec53925A0228E8'}", // Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "${isUpgrade ? existingAddresses.sepolia : (newAddresses.sepolia || existingAddresses.sepolia || '0x659F54928a0Ac9EA822C356D05Ec53925A0228E8')}", // Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", // SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59", // SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia.etherscan.io",
@@ -210,7 +210,7 @@ export const contractConfig = {
   // Base Sepolia
   84532: {
     name: "Base Sepolia",
-    raffleProxy: "${newAddresses.baseSepolia || existingAddresses.baseSepolia || '0xEEd88f19b0951a7BeE1B52F83Afd333eCdBB6e96'}", // Base Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "${isUpgrade ? existingAddresses.baseSepolia : (newAddresses.baseSepolia || existingAddresses.baseSepolia || '0xEEd88f19b0951a7BeE1B52F83Afd333eCdBB6e96')}", // Base Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93", // Base SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia.basescan.org",
@@ -219,7 +219,7 @@ export const contractConfig = {
   // Arbitrum Sepolia
   421614: {
     name: "Arbitrum Sepolia",
-    raffleProxy: "${newAddresses.arbitrumSepolia || existingAddresses.arbitrumSepolia || '0x0573F6fE1cf8F169181eEc83Ae65BEa5502b3162'}", // Arbitrum Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "${isUpgrade ? existingAddresses.arbitrumSepolia : (newAddresses.arbitrumSepolia || existingAddresses.arbitrumSepolia || '0x0573F6fE1cf8F169181eEc83Ae65BEa5502b3162')}", // Arbitrum Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d", // Arbitrum SepoliaのUSDC (またはモックトークン) アドレス
     ccipRouter: "0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165", // Arbitrum SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia-explorer.arbitrum.io",
@@ -503,17 +503,24 @@ export const ERC20ABI = [
     const oldAddressFormat = existingContent.includes('export const contractConfig = {');
     
     if (oldAddressFormat) {
-      console.log('- sepolia: ' + (newAddresses.sepolia || existingAddresses.sepolia || '0x659F54928a0Ac9EA822C356D05Ec53925A0228E8') + 
-        (newAddresses.sepolia ? ' (新規追加/更新)' : ''));
-      console.log('- arbitrumSepolia: ' + (newAddresses.arbitrumSepolia || existingAddresses.arbitrumSepolia || '0x0573F6fE1cf8F169181eEc83Ae65BEa5502b3162') + 
-        (newAddresses.arbitrumSepolia ? ' (新規追加/更新)' : ''));
-      console.log('- baseSepolia: ' + (newAddresses.baseSepolia || existingAddresses.baseSepolia || '0xEEd88f19b0951a7BeE1B52F83Afd333eCdBB6e96') + 
-        (newAddresses.baseSepolia ? ' (新規追加/更新)' : ''));
+      console.log('- sepolia: ' + (isUpgrade ? existingAddresses.sepolia : (newAddresses.sepolia || existingAddresses.sepolia || '0x659F54928a0Ac9EA822C356D05Ec53925A0228E8')) + 
+        (isUpgrade ? '' : (newAddresses.sepolia ? ' (新規追加/更新)' : '')));
+      console.log('- arbitrumSepolia: ' + (isUpgrade ? existingAddresses.arbitrumSepolia : (newAddresses.arbitrumSepolia || existingAddresses.arbitrumSepolia || '0x0573F6fE1cf8F169181eEc83Ae65BEa5502b3162')) + 
+        (isUpgrade ? '' : (newAddresses.arbitrumSepolia ? ' (新規追加/更新)' : '')));
+      console.log('- baseSepolia: ' + (isUpgrade ? existingAddresses.baseSepolia : (newAddresses.baseSepolia || existingAddresses.baseSepolia || '0xEEd88f19b0951a7BeE1B52F83Afd333eCdBB6e96')) + 
+        (isUpgrade ? '' : (newAddresses.baseSepolia ? ' (新規追加/更新)' : '')));
     } else {
-      Object.entries(mergedAddresses).forEach(([network, address]) => {
-        const isNew = newAddresses[network] === address;
-        console.log(`- ${network}: ${address}${isNew ? ' (新規追加/更新)' : ''}`);
-      });
+      if (isUpgrade) {
+        console.log('アップグレードモード: ABIのみを更新しました。アドレスは維持されています。');
+        Object.entries(mergedAddresses).forEach(([network, address]) => {
+          console.log(`- ${network}: ${address}`);
+        });
+      } else {
+        Object.entries(mergedAddresses).forEach(([network, address]) => {
+          const isNew = newAddresses[network] === address;
+          console.log(`- ${network}: ${address}${isNew ? ' (新規追加/更新)' : ''}`);
+        });
+      }
     }
   } catch (error) {
     console.error('設定ファイルの更新中にエラーが発生しました:', error);
@@ -523,13 +530,19 @@ export const ERC20ABI = [
 // メイン処理
 const main = () => {
   const abi = loadAbi();
-  const addresses = getDeployedAddresses();
+  let addresses = {};
   
-  if (Object.keys(addresses).length === 0) {
+  if (!isUpgradeMode) {
+    addresses = getDeployedAddresses();
+  } else {
+    console.log('アップグレードモード: プロキシアドレスは更新しません');
+  }
+  
+  if (!isUpgradeMode && Object.keys(addresses).length === 0) {
     console.warn('新しくデプロイされたアドレスが見つかりませんでした。既存の設定を保持します。');
   }
   
-  updateContractConfig(addresses, abi);
+  updateContractConfig(addresses, abi, isUpgradeMode);
   console.log('処理が完了しました。');
 };
 
