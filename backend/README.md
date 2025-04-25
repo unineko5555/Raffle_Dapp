@@ -98,7 +98,7 @@
 
 ### デプロイスクリプト
 
-- **DeployRaffle.s.sol**
+- **RaffleProxyDeployer.s.sol**
   - コントラクトデプロイ用スクリプト
 
 - **HelperConfig.s.sol**

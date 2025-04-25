@@ -45,8 +45,8 @@ const getDeployedAddresses = () => {
   // 各チェーンID毎に処理
   Object.entries(NETWORK_MAP).forEach(([chainId, networkName]) => {
     try {
-      // DeployRaffle.s.sol/[chainId] のフォルダパス
-      const deployPath = path.join(BROADCAST_PATH, 'DeployRaffle.s.sol', chainId);
+      // RaffleProxyDeployer.s.sol/[chainId] のフォルダパス
+      const deployPath = path.join(BROADCAST_PATH, 'RaffleProxyDeployer.s.sol', chainId);
       console.log(`${networkName}のデプロイパスをチェック: ${deployPath}`);
       
       if (fs.existsSync(deployPath)) {

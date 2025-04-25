@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import {Test, console} from "forge-std/Test.sol";
-import {DeployRaffle} from "../../script/DeployRaffle.s.sol";
+import {DeployRaffle} from "../../script/RaffleProxyDeployer.s.sol";
 import {RaffleImplementation} from "../../src/RaffleImplementation.sol";
 import {RaffleProxy} from "../../src/RaffleProxy.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
