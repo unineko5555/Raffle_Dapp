@@ -34,11 +34,11 @@ library RaffleLib {
 
     /**
      * @dev ジャックポット当選確率を計算する関数
-     * 基本確率: 1%
+     * 基本確率: 35%
      * @return probability 当選確率（10000ベース）
      */
     function getJackpotProbability() internal pure returns (uint256 probability) {
-        return 100; // 1%
+        return 3500; // 35%
     }
 
     /**
