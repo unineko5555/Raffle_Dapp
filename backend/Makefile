@@ -1,6 +1,6 @@
 -include .env
 
-.PHONY: all test clean deploy-sepolia deploy-base-sepolia deploy-arb-sepolia deploy-sepolia-with-update deploy-base-sepolia-with-update deploy-arb-sepolia-with-update deploy-all deploy-all-with-update update-frontend deploy-bridge update-bridge update-bridge-addresses deploy-and-update-bridge-full help check-env format anvil install
+.PHONY: all test clean deploy-raffle-proxy-sepolia deploy-raffle-proxy-base deploy-raffle-proxy-arb deploy-raffle-proxy deploy-raffle-proxy-with-update update-frontend deploy-bridge-proxy update-bridge update-bridge-addresses deploy-proxy-and-update-bridge-full help check-env format anvil install
 
 help:
 	@echo "Usage:"
@@ -9,29 +9,31 @@ help:
 	@echo "  make test                         - Run all tests"
 	@echo "  make test-unit                    - Run unit tests only"
 	@echo "  make test-integration             - Run integration tests only"
-	@echo "  make deploy-with-mock-vrf          - Deploy with Mock VRF enabled"
-	@echo "  make deploy-all-with-mock-vrf      - Deploy to all testnets with Mock VRF"
-	@echo "  make deploy-all-with-mock-vrf-update - Deploy to all testnets with Mock VRF and update frontend"
 	@echo "  make anvil                        - Run Anvil local chain"
 	@echo "  make deploy-anvil                 - Deploy to Anvil local chain"
-	@echo "  make deploy-sepolia               - Deploy to Ethereum Sepolia testnet"
-	@echo "  make deploy-base-sepolia          - Deploy to Base Sepolia testnet"
-	@echo "  make deploy-arb-sepolia           - Deploy to Arbitrum Sepolia testnet"
-	@echo "  make deploy-sepolia-with-update   - Deploy to Sepolia and update frontend config"
-	@echo "  make deploy-base-sepolia-with-update - Deploy to Base Sepolia and update frontend config"
-	@echo "  make deploy-arb-sepolia-with-update  - Deploy to Arbitrum Sepolia and update frontend config"
-	@echo "  make deploy-all                   - Deploy to all testnets"
-	@echo "  make deploy-all-with-update       - Deploy to all testnets and update frontend config"
+	@echo "  make deploy-raffle-proxy-sepolia  - Deploy Raffle Proxy to Ethereum Sepolia"
+	@echo "  make deploy-raffle-proxy-base     - Deploy Raffle Proxy to Base Sepolia"
+	@echo "  make deploy-raffle-proxy-arb      - Deploy Raffle Proxy to Arbitrum Sepolia"
+	@echo "  make deploy-raffle-proxy          - Deploy Raffle Proxy to all testnets"
+	@echo "  make deploy-raffle-proxy-with-update - Deploy Raffle Proxy and update frontend"
 	@echo "  make update-frontend              - Update frontend contract configuration"
 	@echo "  make deploy-bridge-proxy          - Deploy bridge proxy contracts to all testnets"
 	@echo "  make deploy-bridge-proxy-sepolia  - Deploy bridge proxy to Ethereum Sepolia"
 	@echo "  make deploy-bridge-proxy-base     - Deploy bridge proxy to Base Sepolia"
 	@echo "  make deploy-bridge-proxy-arb      - Deploy bridge proxy to Arbitrum Sepolia"
-	@echo "  make deploy-bridge                - Deploy legacy bridge contracts to all testnets (non-proxy)"
 	@echo "  make update-bridge                - Update bridge contract configuration"
-	@echo "  make update-bridge-addresses       - Update bridge destination addresses across networks"
-	@echo "  make deploy-and-update-bridge-full - Deploy bridge, update addresses and configuration"
+	@echo "  make update-bridge-addresses      - Update bridge destination addresses across networks"
 	@echo "  make deploy-proxy-and-update-bridge-full - Deploy bridge proxy, update addresses and configuration"
+	@echo "  make upgrade-bridge-proxy         - Upgrade bridge proxy implementation on all networks"
+	@echo "  make upgrade-bridge-proxy-sepolia - Upgrade bridge proxy on Ethereum Sepolia"
+	@echo "  make upgrade-bridge-proxy-base    - Upgrade bridge proxy on Base Sepolia"
+	@echo "  make upgrade-bridge-proxy-arb     - Upgrade bridge proxy on Arbitrum Sepolia"
+	@echo "  make upgrade-bridge-proxy-with-data - Upgrade bridge proxy with data on all networks"
+	@echo "  make upgrade-raffle               - Upgrade Raffle implementation on all networks"
+	@echo "  make upgrade-raffle-sepolia       - Upgrade Raffle on Ethereum Sepolia"
+	@echo "  make upgrade-raffle-base          - Upgrade Raffle on Base Sepolia"
+	@echo "  make upgrade-raffle-arb           - Upgrade Raffle on Arbitrum Sepolia"
+	@echo "  make upgrade-raffle-with-data     - Upgrade Raffle with data on all networks"
 	@echo "  make verify-sepolia               - Verify contracts on Ethereum Sepolia"
 	@echo "  make verify-base-sepolia          - Verify contracts on Base Sepolia"
 	@echo "  make verify-arb-sepolia           - Verify contracts on Arbitrum Sepolia"
@@ -90,10 +92,10 @@ anvil:
 
 deploy-anvil:
 	@echo "Deploying to Anvil local chain..."
-	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+	forge script script/RaffleProxyDeployer.s.sol:DeployRaffle --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
 # ==============================================================================
-# Testnet Deployments
+# Raffle Proxy Deployments
 # ==============================================================================
 
 check-env:
@@ -103,27 +105,21 @@ update-frontend:
 	@echo "Updating frontend contract configuration..."
 	cd .. && npm run update-contracts
 
-deploy-sepolia: check-env
-	@echo "Deploying to Ethereum Sepolia testnet..."
-	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY)
+deploy-raffle-proxy-sepolia: check-env
+	@echo "Deploying Raffle Proxy to Ethereum Sepolia testnet..."
+	forge script script/RaffleProxyDeployer.s.sol:DeployRaffle --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY)
 
-deploy-sepolia-with-update: deploy-sepolia update-frontend
+deploy-raffle-proxy-base: check-env
+	@echo "Deploying Raffle Proxy to Base Sepolia testnet..."
+	forge script script/RaffleProxyDeployer.s.sol:DeployRaffle --rpc-url $(BASE_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(BASE_API_KEY)
 
-deploy-base-sepolia: check-env
-	@echo "Deploying to Base Sepolia testnet..."
-	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(BASE_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(BASE_API_KEY)
+deploy-raffle-proxy-arb: check-env
+	@echo "Deploying Raffle Proxy to Arbitrum Sepolia testnet..."
+	forge script script/RaffleProxyDeployer.s.sol:DeployRaffle --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ARBISCAN_API_KEY)
 
-deploy-base-sepolia-with-update: deploy-base-sepolia update-frontend
+deploy-raffle-proxy: deploy-raffle-proxy-sepolia deploy-raffle-proxy-base deploy-raffle-proxy-arb
 
-deploy-arb-sepolia: check-env
-	@echo "Deploying to Arbitrum Sepolia testnet..."
-	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ARBISCAN_API_KEY)
-
-deploy-arb-sepolia-with-update: deploy-arb-sepolia update-frontend
-
-deploy-all: deploy-sepolia deploy-base-sepolia deploy-arb-sepolia
-
-deploy-all-with-update: deploy-all update-frontend
+deploy-raffle-proxy-with-update: deploy-raffle-proxy update-frontend
 
 # ==============================================================================
 # Bridge Proxy Deployment
@@ -143,21 +139,6 @@ deploy-bridge-proxy-arb: check-env
 
 deploy-bridge-proxy: deploy-bridge-proxy-sepolia deploy-bridge-proxy-base deploy-bridge-proxy-arb
 
-# Legacy bridge deployment (non-proxy)
-deploy-bridge-sepolia: check-env
-	@echo "Deploying Bridge to Ethereum Sepolia testnet..."
-	forge script script/RaffleBridgeDeployer.s.sol:RaffleBridgeDeployer --rpc-url $(SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
-
-deploy-bridge-base: check-env
-	@echo "Deploying Bridge to Base Sepolia testnet..."
-	forge script script/RaffleBridgeDeployer.s.sol:RaffleBridgeDeployer --rpc-url $(BASE_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
-
-deploy-bridge-arb: check-env
-	@echo "Deploying Bridge to Arbitrum Sepolia testnet..."
-	forge script script/RaffleBridgeDeployer.s.sol:RaffleBridgeDeployer --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
-
-deploy-bridge: deploy-bridge-sepolia deploy-bridge-base deploy-bridge-arb
-
 update-bridge:
 	@echo "Updating bridge contract configuration..."
 	cd .. && node scripts/update-bridge-config.js
@@ -166,30 +147,71 @@ update-bridge-addresses: check-env
 	@echo "Updating bridge destination addresses across all networks..."
 	cd .. && PRIVATE_KEY=$(PRIVATE_KEY) SEPOLIA_RPC_URL=$(SEPOLIA_RPC_URL) BASE_SEPOLIA_RPC_URL=$(BASE_SEPOLIA_RPC_URL) ARBITRUM_SEPOLIA_RPC_URL=$(ARBITRUM_SEPOLIA_RPC_URL) node scripts/update-bridge-address.js
 
-deploy-and-update-bridge-full: deploy-bridge update-bridge-addresses update-bridge
-
 deploy-proxy-and-update-bridge-full: deploy-bridge-proxy update-bridge-addresses update-bridge
 
+# ==============================================================================
+# Bridge Upgrade
+# ==============================================================================
+
+upgrade-bridge-proxy-sepolia: check-env
+	@echo "Upgrading Bridge Proxy on Ethereum Sepolia testnet..."
+	BRIDGE_PROXY_ADDRESS=$(BRIDGE_PROXY_ADDRESS) forge script script/RaffleBridgeUpgrader.s.sol:RaffleBridgeUpgrader --rpc-url $(SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
+
+upgrade-bridge-proxy-base: check-env
+	@echo "Upgrading Bridge Proxy on Base Sepolia testnet..."
+	BRIDGE_PROXY_ADDRESS=$(BRIDGE_PROXY_ADDRESS_BASE) forge script script/RaffleBridgeUpgrader.s.sol:RaffleBridgeUpgrader --rpc-url $(BASE_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
+
+upgrade-bridge-proxy-arb: check-env
+	@echo "Upgrading Bridge Proxy on Arbitrum Sepolia testnet..."
+	BRIDGE_PROXY_ADDRESS=$(BRIDGE_PROXY_ADDRESS_ARB) forge script script/RaffleBridgeUpgrader.s.sol:RaffleBridgeUpgrader --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
+
+upgrade-bridge-proxy: upgrade-bridge-proxy-sepolia upgrade-bridge-proxy-base upgrade-bridge-proxy-arb update-bridge
+
+upgrade-bridge-proxy-with-data-sepolia: check-env
+	@echo "Upgrading Bridge Proxy with data on Ethereum Sepolia testnet..."
+	BRIDGE_PROXY_ADDRESS=$(BRIDGE_PROXY_ADDRESS) forge script script/RaffleBridgeUpgrader.s.sol:RaffleBridgeUpgrader --sig "upgradeWithData()" --rpc-url $(SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
+
+upgrade-bridge-proxy-with-data-base: check-env
+	@echo "Upgrading Bridge Proxy with data on Base Sepolia testnet..."
+	BRIDGE_PROXY_ADDRESS=$(BRIDGE_PROXY_ADDRESS_BASE) forge script script/RaffleBridgeUpgrader.s.sol:RaffleBridgeUpgrader --sig "upgradeWithData()" --rpc-url $(BASE_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
+
+upgrade-bridge-proxy-with-data-arb: check-env
+	@echo "Upgrading Bridge Proxy with data on Arbitrum Sepolia testnet..."
+	BRIDGE_PROXY_ADDRESS=$(BRIDGE_PROXY_ADDRESS_ARB) forge script script/RaffleBridgeUpgrader.s.sol:RaffleBridgeUpgrader --sig "upgradeWithData()" --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
+
+upgrade-bridge-proxy-with-data: upgrade-bridge-proxy-with-data-sepolia upgrade-bridge-proxy-with-data-base upgrade-bridge-proxy-with-data-arb update-bridge
 
 # ==============================================================================
-# MockVRF Deployment
+# Raffle Upgrade
 # ==============================================================================
 
-deploy-with-mock-vrf: check-env
-	@echo "Deploying to testnet with MockVRF enabled..."
-	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast -vvvv
+upgrade-raffle-sepolia: check-env
+	@echo "Upgrading Raffle on Ethereum Sepolia testnet..."
+	RAFFLE_PROXY_ADDRESS=$(RAFFLE_PROXY_ADDRESS) forge script script/RaffleUpgrader.s.sol:RaffleUpgrader --rpc-url $(SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
 
-deploy-base-with-mock-vrf: check-env
-	@echo "Deploying to Base Sepolia with MockVRF enabled..."
-	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(BASE_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast -vvvv
+upgrade-raffle-base: check-env
+	@echo "Upgrading Raffle on Base Sepolia testnet..."
+	RAFFLE_PROXY_ADDRESS=$(RAFFLE_PROXY_ADDRESS_BASE) forge script script/RaffleUpgrader.s.sol:RaffleUpgrader --rpc-url $(BASE_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
 
-deploy-arb-with-mock-vrf: check-env
-	@echo "Deploying to Arbitrum Sepolia with MockVRF enabled..."
-	forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast -vvvv
+upgrade-raffle-arb: check-env
+	@echo "Upgrading Raffle on Arbitrum Sepolia testnet..."
+	RAFFLE_PROXY_ADDRESS=$(RAFFLE_PROXY_ADDRESS_ARB) forge script script/RaffleUpgrader.s.sol:RaffleUpgrader --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
 
-deploy-all-with-mock-vrf: deploy-with-mock-vrf deploy-base-with-mock-vrf deploy-arb-with-mock-vrf
+upgrade-raffle: upgrade-raffle-sepolia upgrade-raffle-base upgrade-raffle-arb update-frontend
 
-deploy-all-with-mock-vrf-update: deploy-all-with-mock-vrf update-frontend
+upgrade-raffle-with-data-sepolia: check-env
+	@echo "Upgrading Raffle with data on Ethereum Sepolia testnet..."
+	RAFFLE_PROXY_ADDRESS=$(RAFFLE_PROXY_ADDRESS) forge script script/RaffleUpgrader.s.sol:RaffleUpgrader --sig "upgradeWithData()" --rpc-url $(SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
+
+upgrade-raffle-with-data-base: check-env
+	@echo "Upgrading Raffle with data on Base Sepolia testnet..."
+	RAFFLE_PROXY_ADDRESS=$(RAFFLE_PROXY_ADDRESS_BASE) forge script script/RaffleUpgrader.s.sol:RaffleUpgrader --sig "upgradeWithData()" --rpc-url $(BASE_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
+
+upgrade-raffle-with-data-arb: check-env
+	@echo "Upgrading Raffle with data on Arbitrum Sepolia testnet..."
+	RAFFLE_PROXY_ADDRESS=$(RAFFLE_PROXY_ADDRESS_ARB) forge script script/RaffleUpgrader.s.sol:RaffleUpgrader --sig "upgradeWithData()" --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
+
+upgrade-raffle-with-data: upgrade-raffle-with-data-sepolia upgrade-raffle-with-data-base upgrade-raffle-with-data-arb update-frontend
 
 # ==============================================================================
 # Contract Verification
@@ -209,20 +231,6 @@ verify-arb-sepolia:
 	@echo "Verifying contracts on Arbitrum Sepolia..."
 	forge verify-contract $(RAFFLE_IMPLEMENTATION_ADDRESS_ARB) src/RaffleImplementation.sol:RaffleImplementation --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
 	forge verify-contract $(RAFFLE_PROXY_ADDRESS_ARB) src/RaffleProxy.sol:RaffleProxy --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
-
-verify-bridge-sepolia:
-	@echo "Verifying Bridge contract on Ethereum Sepolia..."
-	forge verify-contract $(BRIDGE_ADDRESS) src/Bridge.sol:Bridge --chain sepolia --etherscan-api-key $(ETHERSCAN_API_KEY) 
-
-verify-bridge-base:
-	@echo "Verifying Bridge contract on Base Sepolia..."
-	forge verify-contract $(BRIDGE_ADDRESS_BASE) src/Bridge.sol:Bridge --chain base-sepolia --etherscan-api-key $(BASE_API_KEY)
-
-verify-bridge-arb:
-	@echo "Verifying Bridge contract on Arbitrum Sepolia..."
-	forge verify-contract $(BRIDGE_ADDRESS_ARB) src/Bridge.sol:Bridge --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
-
-verify-bridge: verify-bridge-sepolia verify-bridge-base verify-bridge-arb
 
 # Bridge Proxy Verification
 verify-bridge-proxy-sepolia:
