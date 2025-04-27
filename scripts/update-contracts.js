@@ -119,15 +119,35 @@ const loadExistingConfig = () => {
     
     // 設定ファイルの形式を確認
     if (configContent.includes('export const contractConfig = {')) {
-      // 旧形式の場合はそのまま返す
+      // 旧形式の場合、実際の値を解析
       console.log('既存の設定ファイル（旧形式）を読み込みました');
       
-      // これは結果が既存設定と同じになるよう処理
-      return {
-        sepolia: '0x659F54928a0Ac9EA822C356D05Ec53925A0228E8',
-        arbitrumSepolia: '0x0573F6fE1cf8F169181eEc83Ae65BEa5502b3162',
-        baseSepolia: '0xEEd88f19b0951a7BeE1B52F83Afd333eCdBB6e96'
-      };
+      const addresses = {};
+      
+      // SepoliaのraffleProxyを探す
+      const sepoliaMatch = configContent.match(/11155111:\s*{[^}]+raffleProxy:\s*"([0-9a-fA-Fx]+)"/s);
+      if (sepoliaMatch) {
+        addresses.sepolia = sepoliaMatch[1];
+      }
+      
+      // Base SepoliaのraffleProxyを探す
+      const baseMatch = configContent.match(/84532:\s*{[^}]+raffleProxy:\s*"([0-9a-fA-Fx]+)"/s);
+      if (baseMatch) {
+        addresses.baseSepolia = baseMatch[1];
+      }
+      
+      // Arbitrum SepoliaのraffleProxyを探す
+      const arbMatch = configContent.match(/421614:\s*{[^}]+raffleProxy:\s*"([0-9a-fA-Fx]+)"/s);
+      if (arbMatch) {
+        addresses.arbitrumSepolia = arbMatch[1];
+      }
+      
+      console.log('既存の設定から以下のアドレスを読み込みました:');
+      Object.entries(addresses).forEach(([network, address]) => {
+        console.log(`- ${network}: ${address}`);
+      });
+      
+      return addresses;
     }
     
     // 新形式（contractAddresses）を探す
