@@ -236,6 +236,9 @@ verify-arb-sepolia:
 	forge verify-contract $(RAFFLE_IMPLEMENTATION_ADDRESS_ARB) src/RaffleImplementation.sol:RaffleImplementation --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
 	forge verify-contract $(RAFFLE_PROXY_ADDRESS_ARB) src/RaffleProxy.sol:RaffleProxy --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
 
+verify-raffle: verify-sepolia verify-base-sepolia verify-arb-sepolia
+	@echo "Verifying Raffle on all networks..."
+
 # Bridge Proxy Verification
 verify-bridge-proxy-sepolia:
 	@echo "Verifying Bridge Proxy on Ethereum Sepolia..."
@@ -252,4 +255,5 @@ verify-bridge-proxy-arb:
 	forge verify-contract $(BRIDGE_IMPLEMENTATION_ADDRESS_ARB) src/RaffleBridgeImplementation.sol:RaffleBridgeImplementation --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
 	forge verify-contract $(BRIDGE_PROXY_ADDRESS_ARB) src/RaffleBridgeProxy.sol:RaffleBridgeProxy --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
 
-verify-bridge-proxy: verify-bridge-proxy-sepolia verify-bridge-proxy-base verify-bridge-proxy-arb
+verify-bridge: verify-bridge-proxy-sepolia verify-bridge-proxy-base verify-bridge-proxy-arb
+	@echo "Verifying Bridge Proxy on all networks..."
