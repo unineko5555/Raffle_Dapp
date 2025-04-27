@@ -6,14 +6,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 interface JackpotInfoProps {
   jackpotAmount?: number | bigint;
   entranceFee?: number;
-  jackpotProbability?: number; // 百分率表記（例: 1は1%）
+  jackpotProbability?: number; // 百分率表記（例: 35は35%）
   contributionRate?: number; // 百分率表記（例: 10は10%）
 }
 
 const JackpotInfo = ({ 
   jackpotAmount = 0,
   entranceFee = 10,
-  jackpotProbability = 1, // 百分率表記（例: 1は1%）
+  jackpotProbability = 35, // 百分率表記（例: 35は35%）
   contributionRate = 10 // 百分率表記（例: 10は10%）
 }: JackpotInfoProps) => {
   // USDCの6桁小数点を考慮してフォーマット
@@ -52,27 +52,19 @@ const JackpotInfo = ({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="left" className="max-w-sm">
-                <p>ジャックポットは全参加者の参加料の一部が蓄積される特別賞金です。約1%の確率で当選すると、通常の賞金に加えてジャックポット全額が獲得できます。当選しなかった場合、ジャックポットは次回に繰り越されます。</p>
+                <p>ジャックポットは全参加者の参加料の一部が蓄積される特別賞金です。約35%の確率で当選すると、通常の賞金に加えてジャックポット全額が獲得できます。当選しなかった場合、ジャックポットは次回に繰り越されます。</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
       </CardHeader>
       <CardContent className="p-4 space-y-4">
-        <div className="flex justify-between items-center p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-          <div className="flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-amber-500" />
-            <span className="font-medium">現在のジャックポット額</span>
-          </div>
-          <div className="text-xl font-bold">{formatUSDC(jackpotAmount)} USDC</div>
-        </div>
-        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex items-start gap-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
             <Info className="w-5 h-5 text-slate-400 mt-0.5" />
             <div>
               <p className="font-medium">ジャックポット蓄積方法</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">参加料の{contributionRate}%（{formatUSDC(entranceFee * contributionRate / 100)} USDC）がジャックポットに蓄積されます</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">参加料の{contributionRate}%がジャックポットに蓄積されます</p>
             </div>
           </div>
           

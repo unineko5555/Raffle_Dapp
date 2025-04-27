@@ -30,6 +30,7 @@ import { StartRaffleButton } from "./components/raffle/start-raffle-button"
 import { RaffleHistory } from "./components/raffle/raffle-history"
 import { UserProfile } from "./components/user/user-profile"
 import { RaffleHeader } from "./components/raffle/raffle-header"
+import JackpotInfo from "./components/raffle/jackpot-info"
 
 export default function RaffleDapp() {
   const chainId = useChainId()
@@ -302,6 +303,13 @@ export default function RaffleDapp() {
             <RafflePrizeInfo 
               numberOfPlayers={raffleData.numberOfPlayers} 
               isLoading={isLoading} 
+            />
+
+            <JackpotInfo 
+              jackpotAmount={BigInt(raffleData.jackpotAmount || "0")}
+              entranceFee={10}
+              jackpotProbability={35} // バックエンドのRaffleLib.solの通り35%
+              contributionRate={10} // 参加料の10%がジャックポットに蓄積
             />
 
             <RaffleCountdown initialMinutes={0} initialSeconds={42} />
