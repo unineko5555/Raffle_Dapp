@@ -64,9 +64,7 @@ interface OwnerAdminPanelProps {
       decimals: number;
     };
   }[];
-  onWithdraw: (token: any) => void;
   onChangeOwner: (newOwner: any) => void;
-  onSendCrossChain: (chainId: any, winner: any, prize: any, isJackpot: any) => void;
   onUpgradeContract: (newImplementation: any, initData: any) => void;
   onManualPerformUpkeep: () => void;
   isLoading: boolean;
@@ -80,15 +78,12 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
   jackpotAmount,
   ownerAddress,
   supportedChains,
-  onWithdraw,
   onChangeOwner,
-  onSendCrossChain,
   onUpgradeContract,
   onManualPerformUpkeep,
   isLoading,
 }: OwnerAdminPanelProps) => {
   const [copied, setCopied] = useState(false);
-  const [selectedChain, setSelectedChain] = useState(supportedChains.length > 0 ? supportedChains[0].id : "");
   const [newOwnerAddress, setNewOwnerAddress] = useState("");
   const [newImplementationAddress, setNewImplementationAddress] = useState("");
   const [upgradeInitData, setUpgradeInitData] = useState("");
@@ -157,12 +152,7 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
         <Tabs defaultValue="overview" className="flex flex-col gap-6">
           <TabsList className="grid grid-cols-3 gap-2">
             <TabsTrigger value="overview" className="text-sm py-2">概要</TabsTrigger>
-            <TabsTrigger value="finance" className="text-sm py-2">資金管理</TabsTrigger>
             <TabsTrigger value="manual" className="text-sm py-2">手動実行</TabsTrigger>
-          </TabsList>
-          
-          <TabsList className="grid grid-cols-2 gap-2">
-            <TabsTrigger value="crosschain" className="text-sm py-2">クロスチェーン</TabsTrigger>
             <TabsTrigger value="upgrade" className="text-sm py-2">アップグレード</TabsTrigger>
           </TabsList>
           
@@ -224,65 +214,6 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
                   Explorer
                 </Button>
               </div>
-            </div>
-          </TabsContent>
-          
-          {/* 資金管理タブ */}
-          <TabsContent value="finance" className="space-y-6">
-            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-md">
-              <div className="flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-slate-500" />
-                <span className="text-sm">ETH残高</span>
-              </div>
-              <div className="text-sm font-bold">{(typeof balance === "string" ? parseFloat(balance) : balance).toFixed(6)} ETH</div>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-md">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-slate-500" />
-                <span className="text-sm">USDC残高（引き出し可能）</span>
-              </div>
-              <div className="text-sm font-bold">{formatUSDC((typeof usdcBalance === "string" ? parseFloat(usdcBalance) : usdcBalance) - (typeof jackpotAmount === "string" ? parseFloat(jackpotAmount) : jackpotAmount))} USDC</div>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-md">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-amber-600" />
-                <span className="text-sm text-amber-600">ジャックポット残高（引き出し不可）</span>
-              </div>
-              <div className="text-sm font-bold text-amber-600">{formatUSDC(jackpotAmount)} USDC</div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              <Button
-                onClick={() => onWithdraw("0x0000000000000000000000000000000000000000")}
-                disabled={(typeof balance === "string" ? parseFloat(balance) : balance) <= 0 || isLoading}
-                className="w-full"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <ArrowDownToLine className="w-4 h-4 mr-2" />
-                )}
-                ETHを引き出す
-              </Button>
-              
-              <Button
-                onClick={() => onWithdraw("usdc")}
-                disabled={(typeof usdcBalance === "string" ? parseFloat(usdcBalance) : usdcBalance) <= (typeof jackpotAmount === "string" ? parseFloat(jackpotAmount) : jackpotAmount) || isLoading}
-                className="w-full"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <ArrowDownToLine className="w-4 h-4 mr-2" />
-                )}
-                USDCを引き出す
-              </Button>
-            </div>
-            
-            <div className="text-xs text-slate-500 mt-2">
-              ※ジャックポット分のUSDCは引き出すことができません
             </div>
           </TabsContent>
           
@@ -359,82 +290,6 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
             
             <div className="text-xs text-slate-500 mt-2">
               ※この機能はChainlink AutomationやKeepersが正常に動作しない場合のバックアップです
-            </div>
-          </TabsContent>
-          
-          {/* クロスチェーンタブ */}
-          <TabsContent value="crosschain" className="space-y-6">
-            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-md">
-              <Label className="text-sm">送信先チェーン</Label>
-              <Select value={selectedChain as string} onValueChange={setSelectedChain}>
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="チェーンを選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  {supportedChains.map((chain) => (
-                    <SelectItem key={chain.id} value={chain.id.toString()}>
-                      {chain.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  className="w-full"
-                  disabled={!selectedChain || isLoading}
-                >
-                  {isLoading ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Link className="w-4 h-4 mr-2" />
-                  )}
-                  クロスチェーンメッセージを送信
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>クロスチェーンメッセージ送信の確認</DialogTitle>
-                  <DialogDescription>
-                    このアクションはChainlink CCIPを使用して異なるチェーンにメッセージを送信します。
-                    少量の手数料が発生します。
-                  </DialogDescription>
-                </DialogHeader>
-                
-                <div className="space-y-3 py-4">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-600 dark:text-slate-400">送信先チェーン</span>
-                    <span className="font-medium">
-                      {supportedChains.find(c => c.id.toString() === selectedChain)?.name || "不明"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-600 dark:text-slate-400">推定手数料</span>
-                    <span className="font-medium">~0.01 ETH</span>
-                  </div>
-                </div>
-                
-                <DialogFooter>
-                  <Button variant="outline" className="w-full sm:w-auto">キャンセル</Button>
-                  <Button 
-                    onClick={() => onSendCrossChain(parseInt(selectedChain as string, 10), null, 0, false)}
-                    className="w-full sm:w-auto"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      "送信する"
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            
-            <div className="text-xs text-slate-500 mt-2">
-              ※クロスチェーンメッセージの送信にはETH残高が必要です
             </div>
           </TabsContent>
           

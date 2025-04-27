@@ -373,11 +373,7 @@ export default function RaffleDapp() {
                   jackpotAmount={raffleData.jackpotAmount || "0"}
                   ownerAddress={raffleData.owner || ""}
                   supportedChains={supportedChains}
-                  onWithdraw={(token) => console.log("Withdraw", token)}
                   onChangeOwner={(newOwner) => console.log("Change owner", newOwner)}
-                  onSendCrossChain={(chainId, winner, prize, isJackpot) => 
-                    console.log("Send cross chain", chainId, winner, prize, isJackpot)
-                  }
                   onUpgradeContract={(newImplementation, initData) => 
                     console.log("Upgrade contract", newImplementation, initData)
                   }
