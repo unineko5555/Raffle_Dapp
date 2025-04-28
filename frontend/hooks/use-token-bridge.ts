@@ -52,7 +52,7 @@ const CHAIN_CONFIGS = {
 };
 
 const getClientForChain = (chainId: number) => {
-  const chain = CHAIN_CONFIGS[chainId];
+  const chain = CHAIN_CONFIGS[chainId as keyof typeof CHAIN_CONFIGS];
   if (!chain) return null;
   // 環境変数からRPC URLを取得して使用
   const rpcUrl = getRpcUrl(chainId);
@@ -113,13 +113,14 @@ export function useTokenBridge() {
   });
   
   // Get USDC balance
-  const { data: usdcBalance } = useReadContract({
-    address: contractConfig[currentChainId as keyof typeof contractConfig]?.erc20Address as `0x${string}`,
-    abi: ERC20ABI,
-    functionName: "balanceOf",
-    args: [activeAddress as `0x${string}`],
-    enabled: !!activeAddress,
-  });
+  const { data: usdcBalance } = useReadContract(
+    activeAddress ? {
+      address: contractConfig[currentChainId as keyof typeof contractConfig]?.erc20Address as `0x${string}`,
+      abi: ERC20ABI,
+      functionName: "balanceOf",
+      args: [activeAddress as `0x${string}`],
+    } : { abi: ERC20ABI, functionName: "balanceOf" }
+  );
   
   // 各チェーンの残高を取得する関数
   const fetchChainBalance = useCallback(async (chainId: number): Promise<{
@@ -195,7 +196,7 @@ export function useTokenBridge() {
         const info = chainInfoResult as [boolean, string, string, boolean];
         supported = info[0];
         name = info[1] || chainName;
-        bridgeContract = info[2];
+        bridgeContract = info[2] as `0x${string}`;
         poolLow = info[3];
       } catch (error) {
         // エラー発生時は静かに失敗
@@ -357,7 +358,7 @@ export function useTokenBridge() {
         address: bridgeAddress,
         abi: BRIDGE_ABI,
         functionName: "estimateFee",
-        args: [destinationSelector, activeAddress, parsedAmount, autoEnterRaffle],
+        args: [destinationSelector, activeAddress as `0x${string}`, parsedAmount, autoEnterRaffle],
       });
       
       setEstimatedFee(feeResult as bigint);
@@ -624,7 +625,7 @@ export function useTokenBridge() {
         address: bridgeAddress,
         abi: BRIDGE_ABI,
         functionName: "bridgeTokens",
-        args: [destinationSelector, activeAddress, parsedAmount, autoEnterRaffle],
+        args: [destinationSelector, activeAddress as `0x${string}`, parsedAmount, autoEnterRaffle],
         value: fee,
       });
       

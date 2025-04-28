@@ -52,8 +52,7 @@ export function EnterRaffleButton({
     handleCancelEntry,
     checkTokenBalanceWithInfo,
     raffleData,
-    checkPlayerEntered,
-    updateRaffleData
+    checkPlayerEntered
   } = useRaffleContract();
   
   // トークン残高チェック
@@ -100,9 +99,9 @@ export function EnterRaffleButton({
         console.log("現在のチェーンID:", currentChainId);
         
         // コントラクト設定から直接ERC20アドレスを取得
-        const erc20Address = contractConfig[currentChainId]?.erc20Address;
+        const erc20Address = contractConfig[currentChainId as keyof typeof contractConfig]?.erc20Address;
         
-        console.log("契約設定:", JSON.stringify(contractConfig[currentChainId] || {}));
+        console.log("契約設定:", JSON.stringify(contractConfig[currentChainId as keyof typeof contractConfig] || {}));
         
         if (!erc20Address) {
           throw new Error(`チェーンID ${currentChainId} のERC20アドレスが見つかりません`);
@@ -163,7 +162,7 @@ export function EnterRaffleButton({
             
             // トランザクションハッシュを記録
             console.log("承認トランザクションハッシュ:", approveTxHash);
-            const explorerUrl = contractConfig[currentChainId]?.blockExplorer || "https://sepolia.etherscan.io";
+            const explorerUrl = contractConfig[currentChainId as keyof typeof contractConfig]?.blockExplorer || "https://sepolia.etherscan.io";
             console.log(`エクスプローラーで確認: ${explorerUrl}/tx/${approveTxHash}`);
             
             // 承認状況を確認するためのコードを追加
@@ -234,7 +233,7 @@ export function EnterRaffleButton({
             
             // エクスプローラーリンクを記録
             console.log("ラッフル参加トランザクションハッシュ:", txHash);
-            const explorerUrl = contractConfig[currentChainId]?.blockExplorer || "https://sepolia.etherscan.io";
+            const explorerUrl = contractConfig[currentChainId as keyof typeof contractConfig]?.blockExplorer || "https://sepolia.etherscan.io";
             console.log(`エクスプローラーで確認: ${explorerUrl}/tx/${txHash}`);
             
             // トランザクションが完了するまで待機
@@ -317,12 +316,12 @@ export function EnterRaffleButton({
         
         try {
           // handleEnterRaffle関数を使用してラッフルに参加
-          const result = await handleEnterRaffle(smartAccountAddress);
+          const result = await handleEnterRaffle(smartAccountAddress || undefined);
           console.log("ラッフル参加結果:", result);
           
           if (result && result.success) {
             // hashプロパティをtxHashとして使用
-            txHash = result.hash || result.txHash;
+            txHash = result.hash || "";
             
             // 少し待機してブロックチェーンの状態が更新されるのを待つ
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -340,15 +339,10 @@ export function EnterRaffleButton({
             
             // ラッフルデータを更新しようとしてエラーハンドリング
             try {
-              // 関数が正しく渡されているかチェック
-              if (typeof updateRaffleData === 'function') {
-                await updateRaffleData(true);
-              } else {
-                // updateRaffleDataがない場合は成功コールバックを使用
-                console.log('コールバックを使用して表示を更新します');
-                if (onSuccess) {
-                  onSuccess();
-                }
+              // 関数が存在しないため、成功コールバックを使用
+              console.log('コールバックを使用して表示を更新します');
+              if (onSuccess) {
+                onSuccess();
               }
             } catch (updateError) {
               console.log('データ更新エラーですが、参加は成功しています:', updateError);
@@ -374,7 +368,9 @@ export function EnterRaffleButton({
             console.log("トランザクションエラーが報告されましたが、ユーザーはラッフルに参加しています");
             success = true;
             // ラッフルデータを強制的に更新
-            await updateRaffleData(true);
+            if (onSuccess) {
+              onSuccess();
+            }
           } else {
             throw error; // 本当に失敗した場合は再スロー
           }
@@ -403,10 +399,10 @@ export function EnterRaffleButton({
         
         // ラッフルデータを更新
         try {
-          if (typeof updateRaffleData === 'function') {
-            await updateRaffleData(true);
-          } else {
-            console.log('ラッフルデータ更新関数が定義されていません');
+          // 関数が存在しないため、成功コールバックを使用
+          console.log('コールバックを使用して表示を更新します');
+          if (onSuccess) {
+            onSuccess();
           }
         } catch (updateError) {
           console.warn('リスト更新エラーが発生しましたが、参加は成功しました:', updateError);

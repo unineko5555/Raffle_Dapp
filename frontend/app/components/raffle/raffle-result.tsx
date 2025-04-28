@@ -40,8 +40,9 @@ export function RaffleResult() {
       
       {/* 当選モーダル */}
       <WinnerModal 
-        open={showModal} 
+        isOpen={showModal} 
         onClose={closeModal} 
+        winner={winner || ''} 
         prize={prize} 
         isJackpot={isJackpot} 
       />

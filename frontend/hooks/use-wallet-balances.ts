@@ -27,11 +27,12 @@ export function useWalletBalances() {
   const usdcAddress = contractConfig[activeChainId as keyof typeof contractConfig]?.erc20Address || null;
   
   // Wagmiを使ったETH残高取得
-  const { data: ethBalanceData, isLoading: isEthLoading } = useBalance({
-    address: activeAddress as `0x${string}`,
-    chainId: activeChainId,
-    enabled: !!activeAddress
-  });
+  const { data: ethBalanceData, isLoading: isEthLoading } = useBalance(
+    activeAddress ? {
+      address: activeAddress as `0x${string}`,
+      chainId: activeChainId
+    } : undefined
+  );
   
   // USDC残高の取得
   const { data: usdcBalanceData, isLoading: isUsdcLoading } = useReadContract(
@@ -41,7 +42,7 @@ export function useWalletBalances() {
       functionName: "balanceOf",
       args: [activeAddress as `0x${string}`],
       chainId: activeChainId,
-    } : { enabled: false }
+    } : { abi: ERC20ABI, functionName: "balanceOf" }
   );
   
   // ブロック更新時に残高を取得（オプション）

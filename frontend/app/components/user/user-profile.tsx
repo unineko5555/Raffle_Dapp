@@ -7,7 +7,7 @@ import { formatAddress } from "@/app/utils/format-address";
 
 interface UserProfileProps {
   address?: string;
-  smartAccountAddress?: string;
+  smartAccountAddress: string | null;
   user?: { email?: string };
   userStats: {
     totalParticipations: number;

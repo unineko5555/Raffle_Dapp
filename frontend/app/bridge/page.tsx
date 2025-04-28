@@ -10,7 +10,7 @@ import { useTokenBridge } from "@/hooks/use-token-bridge";
 export default function BridgePage() {
   const { isConnected, address } = useAccount();
   const { isReadyToSendTx } = useSmartAccountContext();
-const { bridgeInfo, activeAddress } = useTokenBridge();
+const { activeAddress } = useTokenBridge();
     
   // ウォレット接続状態を確認
   const isWalletConnected = isConnected || isReadyToSendTx;

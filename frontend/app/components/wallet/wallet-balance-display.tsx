@@ -38,7 +38,7 @@ export const WalletBalanceDisplay = memo(function WalletBalanceDisplay() {
   }
   
   // アドレスの表示を短くする
-  const shortenAddress = (address: string | null) => {
+  const shortenAddress = (address: string | null | undefined) => {
     if (!address) return "";
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };

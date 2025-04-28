@@ -100,9 +100,9 @@ export async function createWeb3AuthSigner(provider: any): Promise<SmartAccountS
         
         // チェーンIDに対応するチェーン設定を使用
         if (chainId === baseSepolia.id) {
-          currentChain = baseSepolia;
+          currentChain = baseSepolia as unknown as typeof sepolia;
         } else if (chainId === arbitrumSepolia.id) {
-          currentChain = arbitrumSepolia;
+          currentChain = arbitrumSepolia as unknown as typeof sepolia;
         } else if (chainId === sepolia.id) {
           currentChain = sepolia;
         }
@@ -280,10 +280,10 @@ export async function createLightSmartAccountClient(
       chain = sepolia;
       console.log('Ethereum Sepolia チェーンを使用します');
     } else if (chainId === baseSepolia.id) {
-      chain = baseSepolia;
+      chain = baseSepolia as unknown as typeof sepolia;
       console.log('Base Sepolia チェーンを使用します');
     } else if (chainId === arbitrumSepolia.id) {
-      chain = arbitrumSepolia;
+      chain = arbitrumSepolia as unknown as typeof sepolia;
       console.log('Arbitrum Sepolia チェーンを使用します');
     } else {
       console.warn(`チェーンID ${chainId} はサポートされていません。Sepoliaを使用します。`);

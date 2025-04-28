@@ -37,16 +37,17 @@ export function useRaffleWinEvents() {
     
     // イベントのウォッチを設定
     const unwatch = publicClient.watchContractEvent({
-      address: contractAddress,
+      address: contractAddress as `0x${string}`,
       abi: [winnerPickedEvent],
       eventName: 'WinnerPicked',
       onLogs: (logs) => {
         if (logs.length > 0) {
           const log = logs[0];
           // イベントパラメータを取得
-          const winner = log.args.winner;
-          const amount = log.args.amount || BigInt(0);
-          const jackpotWon = log.args.isJackpot || false;
+          // 型アサーションを使用してargsにアクセス
+          const winner = (log as any).args?.winner;
+          const amount = (log as any).args?.amount || BigInt(0);
+          const jackpotWon = (log as any).args?.isJackpot || false;
           
           console.log("Winner picked event:", winner, amount.toString(), jackpotWon);
           
@@ -101,7 +102,7 @@ export function useRaffleWinEvents() {
   }, [contractAddress, address, smartAccountAddress, publicClient, toast]);
   
   // ヘルパー関数
-  const shortenAddress = (addr) => {
+  const shortenAddress = (addr: string) => {
     return addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '';
   };
   

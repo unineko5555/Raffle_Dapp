@@ -74,7 +74,7 @@ export function TokenTransferButton() {
 
     try {
       // コントラクト設定からERC20アドレスを取得
-      const erc20Address = contractConfig[currentChainId]?.erc20Address;
+      const erc20Address = contractConfig[currentChainId as keyof typeof contractConfig]?.erc20Address;
       
       if (!erc20Address) {
         throw new Error(`チェーンID ${currentChainId} のERC20アドレスが見つかりません`);
