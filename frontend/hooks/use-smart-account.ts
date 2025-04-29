@@ -14,7 +14,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { type AlchemySmartAccountClient } from '@alchemy/aa-alchemy'; // 適切な型をインポート
 
 // グローバルにデバッグモードを設定 (デフォルトはオフ)
-const DEBUG_MODE = true; // 今回はデバッグモードを有効にする
+const DEBUG_MODE = false; // デバッグモードを無効化
 
 // グローバル初期化状態の型定義
 interface SmartAccountState {
@@ -279,10 +279,7 @@ export function useSmartAccount() {
         // 確認処理が失敗してもエラーを無視する
         await smartAccountClient.waitForUserOperationTransaction({
           hash,
-        }).catch(e => {
-          // エラーをログに出して無視する
-          console.debug("UserOperationトランザクション確認エラーを無視:", e);
-        });
+        }).catch(() => {});
         
         // レシートは初期化済みなので更新しない
       } catch (err) {
@@ -321,11 +318,12 @@ export function useSmartAccount() {
     }
 
     try {
-      // ここでAPIを使用してUserOperationの履歴を取得する実装を追加できます
-      // 現在は、ローカルで記録したUserOpsを返します
+      // 実装予定部分
       return userOps;
     } catch (err) {
-      console.error("UserOperation履歴の取得中にエラーが発生しました:", err);
+      if (DEBUG_MODE) {
+        console.error("UserOperation履歴の取得中にエラーが発生しました:", err);
+      }
       return [];
     }
   };

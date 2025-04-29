@@ -234,12 +234,16 @@ export function useRaffleContract() {
         // 状態変更時間を更新
         setLastStateChange(Date.now());
         
-        console.log('参加状態変更:', {
-          targetAddress,
-          prevState: prevIsPlayerEntered,
-          newState: isEntered,
-          playerCount: players.length
-        });
+        // 最近のログ出力から3秒以上経過していればログを出力
+        const now = Date.now();
+        if (now - lastStateChange > 3000) {
+          console.log('参加状態変更:', {
+            targetAddress,
+            prevState: prevIsPlayerEntered,
+            newState: isEntered,
+            playerCount: players.length
+          });
+        }
       }
       
       // 状態を更新
@@ -305,11 +309,16 @@ export function useRaffleContract() {
           }
 
           // プレイヤー数と取得できたプレイヤーのチェック
-          console.log('プレイヤーリスト取得結果:', {
-            expectedCount: Number(currentPlayerCount),
-            actualCount: players.length,
-            players: players.map(p => p.substring(0, 6) + '...' + p.substring(p.length - 4))
-          });
+          // 弾常なログ出力を抑制
+          const isDetailedDebug = false; // 詳細なデバッグログを表示するかどうか
+          
+          if (isDetailedDebug) {
+            console.log('プレイヤーリスト取得結果:', {
+              expectedCount: Number(currentPlayerCount),
+              actualCount: players.length,
+              players: players.map(p => p.substring(0, 6) + '...' + p.substring(p.length - 4))
+            });
+          }
           
           // プレイヤー参加状態を確認
           if (isConnected && address) {
@@ -334,8 +343,8 @@ export function useRaffleContract() {
           
           // データ更新前にデバッグログ出力
           const now = Date.now();
-          // 前回の更新から5秒以上経過している場合のみログを出力
-          if (now - lastStateChange > 5000) {
+          // 前回の更新から10秒以上経過している場合のみログを出力
+          if (now - lastStateChange > 10000) {
             console.log('ラッフル状態更新:', {
               currentPlayers: players.length,
               isPlayerEntered: isPlayerEntered,
