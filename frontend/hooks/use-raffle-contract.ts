@@ -25,6 +25,22 @@ type UpkeepDebugInfo = {
   requiredTime: bigint;
   playerCount: bigint;
 };
+
+// ラッフル履歴エントリーの型定義
+type RaffleHistoryEntry = {
+  winner: string;
+  prize: bigint;
+  jackpotWon: boolean;
+  timestamp: bigint;
+  playerCount: bigint;
+};
+
+// ユーザー統計情報の型定義
+type UserStats = {
+  entryCount: bigint;
+  winCount: bigint;
+  jackpotCount: bigint;
+};
 // contractConfigのキーの型を定義
 type SupportedChainId = keyof typeof contractConfig;
 
@@ -428,6 +444,36 @@ export function useRaffleContract() {
       return null;
     }
   };
+  
+  // より詳細なUpkeep条件チェック (デバッグ用)
+  const checkUpkeepDebug = async (): Promise<UpkeepDebugInfo | null> => {
+    if (!contractAddress || !publicClient) return null;
+    
+    try {
+      const result = await publicClient.readContract({
+        address: contractAddress as `0x${string}`,
+        abi: RaffleABI,
+        functionName: "checkUpkeepDebug"
+      });
+      
+      if (!result || !Array.isArray(result) || result.length < 6) {
+        throw new Error("不正なcheckUpkeepDebug結果");
+      }
+      
+      // 結果をUpkeepDebugInfo型にマッピング
+      return {
+        isOpen: result[0] as boolean,
+        hasPlayers: result[1] as boolean,
+        hasTimePassed: result[2] as boolean,
+        timeSinceMinPlayers: BigInt(result[3].toString()),
+        requiredTime: BigInt(result[4].toString()),
+        playerCount: BigInt(result[5].toString())
+      };
+    } catch (error) {
+      console.error('詳細Automation状態確認エラー:', error);
+      return null;
+    }
+  };
 
   // 手動でUpkeepを実行するための関数 - スマートアカウント対応版
   const performManualUpkeep = async () => {
@@ -474,7 +520,8 @@ export function useRaffleContract() {
           console.log('スマートアカウント手動Upkeepトランザクションハッシュ:', txHash);
           console.log('エクスプローラーで確認: https://sepolia.etherscan.io/tx/' + txHash);
           
-          // しばらく待機して、トランザクションが確定するのを待つ
+          // トランザクションを成功とみなす
+          // 少し遅延させて、トランザクションが確定するのを待つ
           setTimeout(async () => {
             // 少し遅延させてペンディング中のブロックチェーン更新が反映されるようにする
             await updateRaffleData(true); // データを強制更新
@@ -482,8 +529,28 @@ export function useRaffleContract() {
           
           return txHash;
         } catch (smartAccountError) {
+          // sendUserOperationのエラーをキャッチしても、トランザクション自体が送信完了している可能性がある
           console.error('スマートアカウント手動Upkeepエラー:', smartAccountError);
-          throw new Error(`スマートアカウントでの手動Upkeep実行に失敗しました: ${smartAccountError instanceof Error ? smartAccountError.message : '不明なエラー'}`);
+          
+          // エラーメッセージを構成
+          const errorMsg = smartAccountError instanceof Error ? smartAccountError.message : '不明なエラー';
+          
+          // トランザクションハッシュがエラーメッセージに含まれているか確認
+          const txHashMatch = errorMsg.match(/0x[a-fA-F0-9]{64}/);
+          if (txHashMatch) {
+            // トランザクションハッシュを取得できた場合は成功とみなす
+            txHash = txHashMatch[0];
+            console.log('エラー内でトランザクションハッシュを発見:', txHash);
+            
+            // データを強制更新
+            setTimeout(async () => {
+              await updateRaffleData(true);
+            }, 5000);
+            
+            return txHash;
+          }
+          
+          throw new Error(`スマートアカウントでの手動Upkeep実行に失敗しました: ${errorMsg}`);
         }
       }
       // 通常のEOAを使用する場合
@@ -1038,6 +1105,150 @@ export function useRaffleContract() {
     }
   };
 
+  // ラッフル履歴を取得する関数
+  const getRaffleHistory = async (count = 5): Promise<RaffleHistoryEntry[]> => {
+    if (!contractAddress || !publicClient) return [];
+    
+    try {
+      // まず履歴の総数を取得
+      const historyCount = await publicClient.readContract({
+        address: contractAddress as `0x${string}`,
+        abi: RaffleABI,
+        functionName: "getRaffleHistoryCount"
+      });
+      
+      // 取得する履歴数を決定（最大count件）
+      const totalCount = Number(historyCount || 0);
+      const fetchCount = Math.min(totalCount, count);
+      
+      if (fetchCount <= 0) return [];
+      
+      const history: RaffleHistoryEntry[] = [];
+      
+      // 最新のエントリーから順に取得
+      for (let i = 0; i < fetchCount; i++) {
+        try {
+          const entry = await publicClient.readContract({
+            address: contractAddress as `0x${string}`,
+            abi: RaffleABI,
+            functionName: "getRaffleHistoryAtIndex",
+            args: [BigInt(i)]
+          }) as any[];
+          
+          if (entry && entry.length >= 5) {
+            history.push({
+              winner: entry[0] as string,
+              prize: BigInt(entry[1].toString()),
+              jackpotWon: entry[2] as boolean,
+              timestamp: BigInt(entry[3].toString()),
+              playerCount: BigInt(entry[4].toString())
+            });
+          }
+        } catch (error) {
+          console.error(`履歴エントリー取得エラー (${i}):`, error);
+        }
+      }
+      
+      return history;
+    } catch (error) {
+      console.error('ラッフル履歴取得エラー:', error);
+      return [];
+    }
+  };
+  
+  // 最新のラッフル履歴エントリーを取得
+  const getLatestRaffleHistory = async (): Promise<RaffleHistoryEntry | null> => {
+    if (!contractAddress || !publicClient) return null;
+    
+    try {
+      const result = await publicClient.readContract({
+        address: contractAddress as `0x${string}`,
+        abi: RaffleABI,
+        functionName: "getLatestRaffleHistory"
+      }) as any[];
+      
+      if (!result || !Array.isArray(result) || result.length < 5) {
+        return null;
+      }
+      
+      return {
+        winner: result[0] as string,
+        prize: BigInt(result[1].toString()),
+        jackpotWon: result[2] as boolean,
+        timestamp: BigInt(result[3].toString()),
+        playerCount: BigInt(result[4].toString())
+      };
+    } catch (error) {
+      console.error('最新ラッフル履歴取得エラー:', error);
+      return null;
+    }
+  };
+  
+  // ユーザーの統計情報を取得
+  const getUserStats = async (userAddress = ''): Promise<UserStats | null> => {
+    const targetAddress = userAddress || address || smartAccountAddress;
+    
+    if (!targetAddress || !contractAddress || !publicClient) return null;
+    
+    try {
+      const result = await publicClient.readContract({
+        address: contractAddress as `0x${string}`,
+        abi: RaffleABI,
+        functionName: "getUserStats",
+        args: [targetAddress]
+      }) as any[];
+      
+      if (!result || !Array.isArray(result) || result.length < 3) {
+        return null;
+      }
+      
+      return {
+        entryCount: BigInt(result[0].toString()),
+        winCount: BigInt(result[1].toString()),
+        jackpotCount: BigInt(result[2].toString())
+      };
+    } catch (error) {
+      console.error('ユーザー統計取得エラー:', error);
+      return null;
+    }
+  };
+  
+  // ラッフルの最小プレイヤー数を取得
+  const getMinimumPlayers = async (): Promise<number> => {
+    if (!contractAddress || !publicClient) return 0;
+    
+    try {
+      const result = await publicClient.readContract({
+        address: contractAddress as `0x${string}`,
+        abi: RaffleABI,
+        functionName: "getMinimumPlayers"
+      });
+      
+      return Number(result || 0);
+    } catch (error) {
+      console.error('最小プレイヤー数取得エラー:', error);
+      return 0;
+    }
+  };
+  
+  // ラッフルがミニマムプレイヤー数に達した時刻を取得
+  const getMinPlayersReachedTime = async (): Promise<bigint> => {
+    if (!contractAddress || !publicClient) return BigInt(0);
+    
+    try {
+      const result = await publicClient.readContract({
+        address: contractAddress as `0x${string}`,
+        abi: RaffleABI,
+        functionName: "getMinPlayersReachedTime"
+      });
+      
+      return BigInt(result?.toString() || "0");
+    } catch (error) {
+      console.error('最小プレイヤー達成時間取得エラー:', error);
+      return BigInt(0);
+    }
+  };
+
   return {
     raffleData,
     isLoading: isLoading || isTransactionLoading || uiLoading,
@@ -1049,12 +1260,18 @@ export function useRaffleContract() {
     isPlayerEntered,
     isUpkeepNeeded,
     checkAutomationStatus,
+    checkUpkeepDebug,
     performManualUpkeep,
     checkPlayerEntered,
     manualPerformUpkeepAsOwner,
     tokenBalanceInfo,
     checkTokenBalanceWithInfo,
     getContractEthBalance,
-    getContractUsdcBalance
+    getContractUsdcBalance,
+    getRaffleHistory,
+    getLatestRaffleHistory,
+    getUserStats,
+    getMinimumPlayers,
+    getMinPlayersReachedTime
   };
 }

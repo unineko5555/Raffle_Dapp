@@ -57,10 +57,10 @@ export function WinnerModal({ isOpen, onClose, winner, prize, isJackpot }: Winne
               {isJackpot 
                 ? 'おめでとうございます！特別なジャックポットに当選しました！'
                 : 'おめでとうございます！ラッフルで当選しました！'}
-              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                当選アドレス: {formatAddress(winner)}
-              </div>
             </DialogDescription>
+            <p className="mt-1 text-xs text-center text-slate-500 dark:text-slate-400">
+              当選アドレス: {formatAddress(winner)}
+            </p>
           </DialogHeader>
           
           <div className="flex flex-col items-center justify-center py-4">
