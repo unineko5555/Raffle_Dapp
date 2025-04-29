@@ -12,7 +12,7 @@ import Link from "next/link";
 
 export function AppHeader() {
   return (
-    <header className="flex justify-between items-center mb-8 p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-lg backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">
+    <header className="flex flex-col md:flex-row justify-between items-center mb-8 p-4 md:p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-lg backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">
       <div className="flex items-center gap-2">
         <div className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
           Raffle Dapp
@@ -24,7 +24,7 @@ export function AppHeader() {
           Beta
         </Badge>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0 justify-center">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>

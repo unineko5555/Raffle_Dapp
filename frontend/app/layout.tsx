@@ -10,7 +10,8 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Raffle Dapp",
   description: "A modern raffle application on the blockchain with Account Abstraction",
-  generator: 'Cyfrin Updraft'
+  generator: 'Cyfrin Updraft',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
 }
 
 export default function RootLayout({

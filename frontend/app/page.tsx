@@ -281,23 +281,23 @@ export default function RaffleDapp() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 text-slate-900 dark:text-slate-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6">
         {/* コントラクト残高の表示 - 常時表示に変更 */}
-        <div className="mb-4 flex flex-wrap gap-2 justify-end">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-full text-sm">
-            <Wallet className="w-4 h-4 text-slate-500" />
+        <div className="mb-2 md:mb-4 flex flex-wrap gap-2 justify-center md:justify-end">
+          <div className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-slate-100 dark:bg-slate-700 rounded-full text-xs sm:text-sm whitespace-nowrap">
+            <Wallet className="w-3 h-3 sm:w-4 sm:h-4 text-slate-500" />
             <span className="font-medium">{contractBalances.ethBalance} ETH</span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-full text-sm">
-            <CreditCard className="w-4 h-4 text-slate-500" />
+          <div className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-slate-100 dark:bg-slate-700 rounded-full text-xs sm:text-sm whitespace-nowrap">
+            <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 text-slate-500" />
             <span className="font-medium">{(Number(contractBalances.usdcBalance) / 1000000).toFixed(2)} USDC</span>
           </div>
         </div>
         
         <AppHeader />
 
-        <main className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">
+        <main className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl shadow-lg p-3 sm:p-4 md:p-6 transition-all duration-300 hover:shadow-xl backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">
             <RaffleHeader />
 
             <RafflePrizeInfo 
@@ -352,7 +352,7 @@ export default function RaffleDapp() {
             />
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">
+          <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl shadow-lg p-3 sm:p-4 md:p-6 transition-all duration-300 hover:shadow-xl backdrop-blur-sm bg-white/80 dark:bg-slate-800/80">
             <UserProfile 
               address={address}
               smartAccountAddress={smartAccountAddress}
