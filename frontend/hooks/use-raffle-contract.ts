@@ -529,14 +529,65 @@ export function useRaffleContract() {
           console.log('スマートアカウント手動Upkeepトランザクションハッシュ:', txHash);
           console.log('エクスプローラーで確認: https://sepolia.etherscan.io/tx/' + txHash);
           
-          // トランザクションを成功とみなす
-          // 少し遅延させて、トランザクションが確定するのを待つ
-          setTimeout(async () => {
-            // 少し遅延させてペンディング中のブロックチェーン更新が反映されるようにする
-            await updateRaffleData(true); // データを強制更新
-          }, 5000); // 5秒の遅延
+          // ここで確実にトランザクションが確定するまで待つ
+          const maxRetries = 20; // 最大再試行回数
+          let retries = 0;
+          let raffleFinished = false;
           
-          return txHash;
+          // データ更新と状態確認を行う関数
+          const checkRaffleStatus = async () => {
+            console.log(`ラッフル状態確認中... (試行 ${retries+1}/${maxRetries})`);
+            
+            // データ強制更新
+            await updateRaffleData(true);
+            
+            // 現在のラッフル状態を確認
+            const currentState = raffleData.raffleState;
+            const currentWinner = raffleData.recentWinner;
+            
+            // ラッフルが開始状態に戻っていて、勝者が指定されていれば成功
+            if (currentState === 0 && currentWinner) {
+              console.log('ラッフル成功: 勝者は', currentWinner);
+              raffleFinished = true;
+              return true;
+            }
+            
+            // 再試行回数を上限に達した場合は試行を打ち切る
+            if (retries >= maxRetries) {
+              console.log('最大試行回数に達しましたが、ラッフルはまだ完了していません');
+              return false;
+            }
+            
+            // ラッフルがまだ完了していない場合は再試行
+            retries++;
+            // 1秒待機して再度確認
+            setTimeout(checkRaffleStatus, 1000);
+            return false;
+          };
+          
+          // 状態確認開始 (初回は少し遅らせてトランザクション確定を待つ)
+          setTimeout(checkRaffleStatus, 5000);
+          
+          // 結果が確定するまで待つ
+          const waitForCompletion = () => {
+            return new Promise<string>((resolve) => {
+              const checkInterval = setInterval(() => {
+                if (raffleFinished) {
+                  clearInterval(checkInterval);
+                  resolve(txHash);
+                }
+                // 最大待機時間を超えた場合も終了
+                if (retries >= maxRetries) {
+                  clearInterval(checkInterval);
+                  resolve(txHash); // 最大再試行回数を超えてもハッシュを返す
+                }
+              }, 1000);
+            });
+          };
+          
+          // 完了を待つ
+          return await waitForCompletion();
+          
         } catch (smartAccountError) {
           // sendUserOperationのエラーをキャッチしても、トランザクション自体が送信完了している可能性がある
           console.error('スマートアカウント手動Upkeepエラー:', smartAccountError);
@@ -551,7 +602,7 @@ export function useRaffleContract() {
             txHash = txHashMatch[0];
             console.log('エラー内でトランザクションハッシュを発見:', txHash);
             
-            // データを強制更新
+            // データを再取得して状態を更新 (引き続き非同期で)
             setTimeout(async () => {
               await updateRaffleData(true);
             }, 5000);
@@ -589,19 +640,71 @@ export function useRaffleContract() {
              if (!publicClient) throw new Error("Public client is not available");
              
              try {
+               console.log('トランザクション確認中:', contractWriteData);
                // トランザクションの確認を待つ
                const receipt = await publicClient.waitForTransactionReceipt({ hash: contractWriteData });
                
-               // トランザクション成功後、データを再取得して状態を更新
-               setTimeout(async () => {
-                 // 少し遅延させてペンディング中のブロックチェーン更新が反映されるようにする
-                 await updateRaffleData(true); // データを強制更新
-               }, 2000); // 2秒の遅延
+               // ここでラッフル状態を確認する再試行ループを追加
+               const maxRetries = 15;
+               let retries = 0;
+               let raffleFinished = false;
                
-               return contractWriteData;
+               // ラッフル状態確認関数
+               const checkRaffleStatus = async () => {
+                 console.log(`ラッフル状態確認中 (EOAモード)... (試行 ${retries+1}/${maxRetries})`);
+                 
+                 // データ強制更新
+                 await updateRaffleData(true);
+                 
+                 // 現在のラッフル状態を確認
+                 const currentState = raffleData.raffleState;
+                 const currentWinner = raffleData.recentWinner;
+                 
+                 // ラッフルが開始状態に戻っているか確認
+                 if (currentState === 0 && currentWinner) {
+                   console.log('ラッフル成功 (EOA): 勝者は', currentWinner);
+                   raffleFinished = true;
+                   return true;
+                 }
+                 
+                 // 再試行回数を上限に達した場合は試行を打ち切る
+                 if (retries >= maxRetries) {
+                   console.log('最大試行回数に達しましたが、結果を取得できませんでした');
+                   return false;
+                 }
+                 
+                 // 再試行
+                 retries++;
+                 setTimeout(checkRaffleStatus, 1000);
+                 return false;
+               };
+               
+               // 状態確認開始 (初回は少し遅らせてトランザクション確定を待つ)
+               setTimeout(checkRaffleStatus, 2000);
+               
+               // 結果が確定するまで待つ
+               const waitForCompletion = () => {
+                 return new Promise<`0x${string}`>((resolve) => {
+                   const checkInterval = setInterval(() => {
+                     if (raffleFinished) {
+                       clearInterval(checkInterval);
+                       resolve(contractWriteData);
+                     }
+                     // 最大待機時間を超えた場合も終了
+                     if (retries >= maxRetries) {
+                       clearInterval(checkInterval);
+                       resolve(contractWriteData);
+                     }
+                   }, 1000);
+                 });
+               };
+               
+               // 完了を待つ
+               return await waitForCompletion();
              } catch (error) {
                console.error('トランザクション確認エラー:', error);
-               throw error;
+               // エラーが発生しても、トランザクション自体は送信されている可能性があるのでハッシュを返す
+               return contractWriteData;
              }
           }
           return null;
