@@ -58,20 +58,29 @@ export function EnterRaffleButton({
   // トークン残高チェック
   useEffect(() => {
     const checkBalance = async () => {
+      // EOAウォレットの場合
       if (isConnected && address) {
         const info = await checkTokenBalanceWithInfo(address);
+        setBalanceInfo(info);
+      }
+      // スマートウォレットの場合
+      else if (isReadyToSendTx && smartAccountAddress) {
+        const info = await checkTokenBalanceWithInfo(smartAccountAddress);
         setBalanceInfo(info);
       }
     };
     
     checkBalance();
-  }, [isConnected, address, checkTokenBalanceWithInfo]);
+  }, [isConnected, address, isReadyToSendTx, smartAccountAddress, checkTokenBalanceWithInfo]);
   
   // ユーザーがラッフルに参加できるかのチェック
   const canEnterRaffle = isRaffleOpen && 
+    // ウォレット接続状況確認
     (isConnected || isReadyToSendTx) && 
+    // 既に参加していないことを確認
     !isPlayerEntered && 
-    balanceInfo?.hasEnoughBalance !== false;
+    // 残高不足でないことを確認
+    (balanceInfo?.hasEnoughBalance !== false);
   
   // ラッフルに参加する際の実装
   const enterRaffle = async () => {
