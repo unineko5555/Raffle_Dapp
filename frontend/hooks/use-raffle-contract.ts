@@ -155,11 +155,23 @@ export function useRaffleContract() {
     chainId: currentChainId,
   } : {});
 
+  // プレイヤーリストのキャッシュ用変数
+  let cachedPlayers: string[] = [];
+  let cachedPlayerCount = 0;
+  let lastPlayersUpdateTime = 0;
+  const PLAYERS_CACHE_DURATION = 8000; // 8秒間のキャッシュ有効期間
+
   // プレイヤーリストを取得
   const getPlayers = async () => {
     if (!contractAddress || !publicClient) return [];
     
     try {
+      // キャッシュが有効なら再利用
+      const now = Date.now();
+      if (cachedPlayers.length > 0 && now - lastPlayersUpdateTime < PLAYERS_CACHE_DURATION) {
+        return cachedPlayers;
+      }
+      
       // まずプレイヤー数を再取得して確認
       let currentPlayerCount;
       try {
@@ -170,12 +182,24 @@ export function useRaffleContract() {
         });
       } catch (error) {
         console.error('プレイヤー数取得エラー:', error);
-        return [];
+        // エラー時はキャッシュがあれば再利用
+        return cachedPlayers.length > 0 ? cachedPlayers : [];
+      }
+      
+      // プレイヤー数が前回と同じ場合はキャッシュを再利用
+      const count = Number(currentPlayerCount || 0);
+      if (count === cachedPlayerCount && cachedPlayers.length > 0) {
+        lastPlayersUpdateTime = now; // キャッシュ時間を更新
+        return cachedPlayers;
       }
       
       // プレイヤー数が0の場合は早期リターン
-      const count = Number(currentPlayerCount || 0);
-      if (count <= 0) return [];
+      if (count <= 0) {
+        cachedPlayers = [];
+        cachedPlayerCount = 0;
+        lastPlayersUpdateTime = now;
+        return [];
+      }
       
       const players = [];
       
@@ -200,12 +224,22 @@ export function useRaffleContract() {
         }
       }
       
+      // 取得結果をキャッシュ
+      cachedPlayers = players;
+      cachedPlayerCount = count;
+      lastPlayersUpdateTime = now;
+      
       return players;
     } catch (error) {
       console.error('プレイヤーリスト取得全体エラー:', error);
-      return [];
+      // エラー時はキャッシュがあれば再利用
+      return cachedPlayers.length > 0 ? cachedPlayers : [];
     }
   };
+
+  // プレイヤー参加状態のキャッシュ用変数
+  let lastPlayerCheckTime = 0;
+  const PLAYER_CHECK_INTERVAL = 5000; // 5秒間隔で参加状態をチェック
 
   // プレイヤーの参加状態を確認 - スマートアカウントアドレスのサポートを追加
   const checkPlayerEntered = async (checkAddress = '') => {
@@ -215,6 +249,13 @@ export function useRaffleContract() {
     if ((!isConnected && !checkAddress) || !targetAddress || !contractAddress || !publicClient) {
       setIsPlayerEntered(false);
       return false;
+    }
+    
+    // 状態更新を適切な間隔で行う
+    const now = Date.now();
+    if (now - lastPlayerCheckTime < PLAYER_CHECK_INTERVAL) {
+      // キャッシュ有効期間内は現在の状態をそのまま返す
+      return isPlayerEntered;
     }
     
     try {
@@ -248,6 +289,7 @@ export function useRaffleContract() {
       
       // 状態を更新
       setIsPlayerEntered(isEntered);
+      lastPlayerCheckTime = now; // チェック時間を更新
       
       // 結果を返す
       return isEntered;
@@ -259,6 +301,12 @@ export function useRaffleContract() {
     }
   };
 
+  // 前回取得したデータを保存する変数
+  let lastRaffleState = 0;
+  let lastPlayerCount = 0;
+  let lastUpdateTime = 0;
+  const UPDATE_INTERVAL = 10000; // 最低更新間隔 (10秒)
+
   // データを更新
   const updateRaffleData = async (forceUpdate = false) => {
     try { 
@@ -266,20 +314,46 @@ export function useRaffleContract() {
       if (forceUpdate) {
         console.log('ラッフルデータの強制更新を実行します');
         setUiLoading(true);
+      } else {
+        // 前回の更新から十分な時間が経過していない場合はスキップ
+        const now = Date.now();
+        if (now - lastUpdateTime < UPDATE_INTERVAL) {
+          return;
+        }
       }
       
       if (contractAddress && publicClient) {
-        // 必須のデータを直接コントラクトから再取得
+        // 状態確認: 更新の必要があるかどうかを最初にチェック
         try {
-          // より確実な参加者数を取得するためのAPI定義
+          // 最小限のRPC呼び出しで状態を確認
+          const currentStateRequest = {
+            address: contractAddress as `0x${string}`,
+            abi: RaffleABI,
+            functionName: "getRaffleState",
+          };
+          
           const directPlayerCountRequest = {
             address: contractAddress as `0x${string}`,
             abi: RaffleABI,
             functionName: "getNumberOfPlayers",
           };
           
-          // 必須データを再取得(プレイヤー数)
-          let currentPlayerCount = await publicClient.readContract(directPlayerCountRequest);
+          // 状態とプレイヤー数をチェック
+          const currentState = Number(await publicClient.readContract(currentStateRequest));
+          const currentPlayerCount = await publicClient.readContract(directPlayerCountRequest);
+          
+          // 状態に変化がなく強制更新でもない場合はスキップ
+          if (!forceUpdate && currentState === lastRaffleState && 
+              Number(currentPlayerCount) === lastPlayerCount) {
+            // 状態に変化なし - 更新をスキップ
+            lastUpdateTime = Date.now(); // 最終確認時間を更新
+            return;
+          }
+          
+          // 状態が変化した場合は更新を実行
+          lastRaffleState = currentState;
+          lastPlayerCount = Number(currentPlayerCount);
+          lastUpdateTime = Date.now();
           
           // 中間デバッグログ
           console.log('コントラクトからの最新プレイヤー数:', Number(currentPlayerCount));
@@ -364,8 +438,8 @@ export function useRaffleContract() {
             owner: ownerData as string || null,
           });
           
-          // データ更新後に再度参加状態をチェックして確実に表示に反映させる
-          if (isConnected && address) {
+          // データ更新後の参加状態確認は必要な場合のみ実行
+          if (isConnected && address && forceUpdate) {
             setTimeout(async () => {
               await checkPlayerEntered();
             }, 500);
@@ -1127,10 +1201,10 @@ export function useRaffleContract() {
     }
   };
 
-  // データの自動更新
+  // データの自動更新 - 依存配列を最適化
   useEffect(() => {
     updateRaffleData();
-  }, [contractAddress, entranceFeeData, numberOfPlayersData, raffleStateData, jackpotAmountData, recentWinnerData, address, isConnected]);
+  }, [contractAddress, raffleStateData, address, isConnected]);
 
   // 当初データ読み込み後、ローディングを停止
   useEffect(() => {

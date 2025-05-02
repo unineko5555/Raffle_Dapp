@@ -115,8 +115,8 @@ export default function RaffleDapp() {
     // 初回読み込み
     updateContractBalances();
     
-    // 30秒ごとに更新
-    const intervalId = setInterval(updateContractBalances, 30000);
+    // 60秒ごとに更新 (頻度を下げる)
+    const intervalId = setInterval(updateContractBalances, 60000);
     
     return () => clearInterval(intervalId);
   }, [raffleContract.getContractEthBalance, raffleContract.getContractUsdcBalance]);
@@ -254,19 +254,22 @@ export default function RaffleDapp() {
     return () => clearInterval(timer)
   }, [minutes, seconds])
 
-  // ラッフル参加成功時のコールバック
+  // ラッフル参加成功時のコールバック - 重複リクエストを減らすために最適化
   const handleRaffleEntrySuccess = () => {
+    // データ変更がブロックチェーンに反映されるまで十分な時間を取る
     setTimeout(() => {
-      checkPlayerEntered();
-      updateContractBalances();
-      
-      // ラッフルデータも強制更新
+      // まずラッフルデータを強制更新 - これでプレイヤー状態も更新される
       // @ts-ignore - メソッドが存在しない可能性があるのでignore
       if (typeof raffleContract.updateRaffleData === 'function') {
         // @ts-ignore
         raffleContract.updateRaffleData(true);
+        
+        // データ更新後、さらに少し遅延させてコントラクト残高を更新
+        setTimeout(() => {
+          updateContractBalances();
+        }, 2000);
       }
-    }, 2000); // トランザクションの反映を待つために少し遅延
+    }, 3000); // 反映を待つためにブロック確定時間を考慮して遅延
   };
 
   // チェーン切り替え処理
