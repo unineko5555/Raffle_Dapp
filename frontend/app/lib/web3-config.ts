@@ -1,10 +1,5 @@
-import { createConfig, http } from "wagmi"
-import { mainnet, sepolia, arbitrumSepolia, baseSepolia } from "wagmi/chains"
-import { contractConfig } from "./contract-config"
-
-// 環境変数から取得する想定
-const alchemyApiKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "demo"
-const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "demo"
+import { sepolia, arbitrumSepolia, baseSepolia } from "wagmi/chains";
+import { contractConfig } from "./contract-config";
 
 // Wagmi設定
 // wagmi v2ではこの場所での静的な設定は非推奨で、WagmiProviderで設定しています
@@ -21,8 +16,8 @@ export const supportedChains = [
     currency: {
       name: "Sepolia ETH",
       symbol: "SEP",
-      decimals: 18
-    }
+      decimals: 18,
+    },
   },
   {
     id: baseSepolia.id,
@@ -34,8 +29,8 @@ export const supportedChains = [
     currency: {
       name: "Sepolia ETH",
       symbol: "SEP",
-      decimals: 18
-    }
+      decimals: 18,
+    },
   },
   {
     id: arbitrumSepolia.id,
@@ -47,8 +42,8 @@ export const supportedChains = [
     currency: {
       name: "Sepolia ETH",
       symbol: "SEP",
-      decimals: 18
-    }
+      decimals: 18,
+    },
   },
 ];
 
@@ -69,5 +64,5 @@ export const socialLoginProviders = [
     id: "google",
     name: "Google",
     icon: "/icons/google.svg",
-  }
+  },
 ];

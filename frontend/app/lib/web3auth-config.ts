@@ -1,10 +1,9 @@
 // Web3Auth設定
-import { 
-  CHAIN_NAMESPACES, 
-  CustomChainConfig, 
-  WALLET_ADAPTERS,
+import {
+  CHAIN_NAMESPACES,
+  CustomChainConfig,
   WEB3AUTH_NETWORK,
-  getEvmChainConfig
+  getEvmChainConfig,
 } from "@web3auth/base";
 import { Web3AuthNoModal } from "@web3auth/no-modal";
 import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
@@ -17,71 +16,88 @@ import { WalletConnectV2Adapter } from "@web3auth/wallet-connect-v2-adapter";
 export const WEB3AUTH_CLIENT_ID = process.env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID;
 if (!WEB3AUTH_CLIENT_ID) {
   // アプリケーションの起動を止めるか、エラー処理を行う
-  console.error("FATAL ERROR: NEXT_PUBLIC_WEB3AUTH_CLIENT_ID environment variable is not set.");
+  console.error(
+    "FATAL ERROR: NEXT_PUBLIC_WEB3AUTH_CLIENT_ID environment variable is not set."
+  );
   throw new Error("Web3Auth Client ID is missing in environment variables.");
 }
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 if (!googleClientId) {
-  console.error("FATAL ERROR: NEXT_PUBLIC_GOOGLE_CLIENT_ID environment variable is not set.");
+  console.error(
+    "FATAL ERROR: NEXT_PUBLIC_GOOGLE_CLIENT_ID environment variable is not set."
+  );
   throw new Error("Google Client ID is missing in environment variables.");
 }
 
 // Web3Auth Network のチェックを追加
 const web3AuthNetworkStr = process.env.NEXT_PUBLIC_WEB3AUTH_NETWORK;
 if (!web3AuthNetworkStr) {
-  console.error("FATAL ERROR: NEXT_PUBLIC_WEB3AUTH_NETWORK environment variable is not set.");
+  console.error(
+    "FATAL ERROR: NEXT_PUBLIC_WEB3AUTH_NETWORK environment variable is not set."
+  );
   throw new Error("Web3Auth Network is missing in environment variables.");
 }
 
 // 明示的な定数を使用
-const web3AuthNetwork = web3AuthNetworkStr === "mainnet" 
-  ? WEB3AUTH_NETWORK.SAPPHIRE_MAINNET 
-  : WEB3AUTH_NETWORK.SAPPHIRE_DEVNET;
+const web3AuthNetwork =
+  web3AuthNetworkStr === "mainnet"
+    ? WEB3AUTH_NETWORK.SAPPHIRE_MAINNET
+    : WEB3AUTH_NETWORK.SAPPHIRE_DEVNET;
 
 // WalletConnectプロジェクトIDのチェック
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 if (!walletConnectProjectId) {
-  console.error("FATAL ERROR: NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID environment variable is not set.");
-  throw new Error("WalletConnect Project ID is missing in environment variables.");
+  console.error(
+    "FATAL ERROR: NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID environment variable is not set."
+  );
+  throw new Error(
+    "WalletConnect Project ID is missing in environment variables."
+  );
 }
 
 // 注意: 以前の getChainConfig 関数は getEvmChainConfig に置き換えられましたが、
 // 互換性のためにカスタム実装を残しておきます
-export const getChainConfig = (chainId: number): CustomChainConfig | undefined => {
+export const getChainConfig = (
+  chainId: number
+): CustomChainConfig | undefined => {
   // まずgetEvmChainConfigで標準サポートチェーンを試す
   const standardConfig = getEvmChainConfig(chainId, WEB3AUTH_CLIENT_ID!);
   if (standardConfig) {
     return standardConfig;
   }
-  
+
   // 標準サポートにないチェーンのためのカスタム設定
   // Base Sepolia
   if (chainId === 84532) {
     return {
       chainNamespace: CHAIN_NAMESPACES.EIP155,
       chainId: "0x14a34",
-      rpcTarget: `https://base-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "demo"}`,
+      rpcTarget: `https://base-sepolia.g.alchemy.com/v2/${
+        process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "demo"
+      }`,
       displayName: "Base Sepolia",
       blockExplorerUrl: "https://sepolia.basescan.org",
       ticker: "ETH",
       tickerName: "Base Ethereum",
     };
   }
-  
+
   // Arbitrum Sepolia
   if (chainId === 421614) {
     return {
       chainNamespace: CHAIN_NAMESPACES.EIP155,
       chainId: "0x66eee",
-      rpcTarget: `https://arb-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "demo"}`,
+      rpcTarget: `https://arb-sepolia.g.alchemy.com/v2/${
+        process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "demo"
+      }`,
       displayName: "Arbitrum Sepolia",
       blockExplorerUrl: "https://sepolia-explorer.arbitrum.io",
       ticker: "ETH",
       tickerName: "Arbitrum Ethereum",
     };
   }
-  
+
   return undefined;
 };
 
@@ -129,7 +145,7 @@ export async function initializeWeb3Auth(chainId: number) {
         // メール認証の設定
         email_passwordless: {
           name: "Email",
-          verifier: "Raffle-Dapp-Email", 
+          verifier: "Raffle-Dapp-Email",
           typeOfLogin: "email_passwordless",
           clientId: WEB3AUTH_CLIENT_ID,
         },
@@ -147,8 +163,8 @@ export async function initializeWeb3Auth(chainId: number) {
       adapterSettings: {
         walletConnectInitOptions: {
           projectId: walletConnectProjectId,
-        }
-      }
+        },
+      },
     });
     // WalletConnectアダプターをWeb3Authに追加
     web3auth.configureAdapter(walletConnectV2Adapter);
@@ -156,7 +172,7 @@ export async function initializeWeb3Auth(chainId: number) {
     console.error("Error adding WalletConnectV2Adapter:", error);
     // エラーがあっても処理を続行
   }
-  
+
   try {
     console.log("[web3auth-config] Initializing Web3Auth instance..."); // ログ追加
     console.log("Web3Auth Options:", {
@@ -164,15 +180,17 @@ export async function initializeWeb3Auth(chainId: number) {
       web3AuthNetwork,
       chainConfig: JSON.stringify(chainConfig, null, 2), // カンマ追加
     });
-    
+
     try {
       // 初期化を実行、エラーが発生しても続行
       await web3auth.init();
-      console.log("[web3auth-config] Web3Auth instance initialized successfully.");
+      console.log(
+        "[web3auth-config] Web3Auth instance initialized successfully."
+      );
     } catch (initError) {
       console.error("Error during web3auth.init(), but continuing:", initError);
     }
-    
+
     return web3auth;
   } catch (error) {
     console.error("Error during web3auth.init():", error);
@@ -187,7 +205,10 @@ export const getWeb3AuthProvider = async (chainId: number) => {
   try {
     console.log("[web3auth-config] Calling initializeWeb3Auth..."); // ログ追加
     const web3auth = await initializeWeb3Auth(chainId);
-    console.log("[web3auth-config] initializeWeb3Auth returned:", web3auth ? "Web3Auth instance" : "null"); // ログ追加
+    console.log(
+      "[web3auth-config] initializeWeb3Auth returned:",
+      web3auth ? "Web3Auth instance" : "null"
+    ); // ログ追加
     return web3auth;
   } catch (error) {
     console.error("[web3auth-config] Error in getWeb3AuthProvider:", error); // ログ追加
