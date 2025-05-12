@@ -76,6 +76,7 @@ export default function RaffleDapp() {
   const [activeChain, setActiveChain] = useState(supportedChains[0]);
   const [txHash, setTxHash] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isTransactionSuccess, setIsTransactionSuccess] = useState(false);
 
   // useRaffleContractフックから実際のコントラクトデータを取得
   const raffleContract = useRaffleContract();
@@ -130,19 +131,20 @@ export default function RaffleDapp() {
     }
   };
 
-  // コンポーネントマウント時と一定間隔でコントラクト残高を更新
+  // 初回読み込み時のみコントラクト残高を更新
   useEffect(() => {
-    // 初回読み込み
     updateContractBalances();
+  }, []);
 
-    // 60秒ごとに更新 (頻度を下げる)
-    const intervalId = setInterval(updateContractBalances, 60000);
-
-    return () => clearInterval(intervalId);
-  }, [
-    raffleContract.getContractEthBalance,
-    raffleContract.getContractUsdcBalance,
-  ]);
+  // 重要なイベント後のみコントラクト残高を更新 (定期ポーリングを廃止)
+  useEffect(() => {
+    if (isTransactionSuccess || winner) {
+      // トランザクション確定を待ってから更新、API呼び出しを必要最小限に
+      setTimeout(() => {
+        updateContractBalances();
+      }, 3000);
+    }
+  }, [isTransactionSuccess, winner]);
 
   // 手動でラッフルを開始する
   const startRaffle = async () => {
@@ -204,11 +206,9 @@ export default function RaffleDapp() {
           // 成功メッセージ
           alert("ラッフルが開始されました！トランザクション: " + upkeepResult);
 
-          // トランザクション完了後、2秒後にデータを強制更新
-          setTimeout(() => {
-            // コントラクトデータを再取得
-            updateContractBalances();
-          }, 3000);
+          // トランザクション成功状態を更新し、自動で残高が更新される
+          setIsTransactionSuccess(true);
+          setTimeout(() => setIsTransactionSuccess(false), 5000); // 5秒後にリセット
         } else {
           alert(
             "ラッフル開始トランザクションが生成されましたが、結果が不明です。\n後ほど確認してください。"
@@ -302,22 +302,14 @@ export default function RaffleDapp() {
     return () => clearInterval(timer);
   }, [minutes, seconds]);
 
-  // ラッフル参加成功時のコールバック - 重複リクエストを減らすために最適化
+  // ラッフル参加成功時のコールバック - イベントベースの自動更新に統一
   const handleRaffleEntrySuccess = () => {
-    // データ変更がブロックチェーンに反映されるまで十分な時間を取る
-    setTimeout(() => {
-      // まずラッフルデータを強制更新 - これでプレイヤー状態も更新される
-      // @ts-ignore - メソッドが存在しない可能性があるのでignore
-      if (typeof raffleContract.updateRaffleData === "function") {
-        // @ts-ignore
-        raffleContract.updateRaffleData(true);
-
-        // データ更新後、さらに少し遅延させてコントラクト残高を更新
-        setTimeout(() => {
-          updateContractBalances();
-        }, 2000);
-      }
-    }, 3000); // 反映を待つためにブロック確定時間を考慮して遅延
+    // isTransactionSuccessが変更されると自動で更新されるため、特別な処理は不要
+    // @ts-ignore - メソッドが存在しない可能性があるのでignore
+    if (typeof raffleContract.updateRaffleData === "function") {
+      // @ts-ignore
+      raffleContract.updateRaffleData(true);
+    }
   };
 
   // チェーン切り替え処理

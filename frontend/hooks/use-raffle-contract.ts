@@ -944,8 +944,23 @@ export function useRaffleContract() {
     }
   };
 
+  // 残高キャッシュ機能
+  let balanceCache: {
+    ethBalance?: string;
+    usdcBalance?: string;
+    lastUpdated: number;
+  } = { lastUpdated: 0 };
+  const CACHE_TTL = 30000; // 30秒
+
   // コントラクトのETH残高を取得する関数
   const getContractEthBalance = async () => {
+    const now = Date.now();
+    
+    // キャッシュが有効な場合は返す
+    if (balanceCache.ethBalance && now - balanceCache.lastUpdated < CACHE_TTL) {
+      return balanceCache.ethBalance;
+    }
+    
     if (!contractAddress || !publicClient) return "0";
     
     try {
@@ -953,15 +968,25 @@ export function useRaffleContract() {
         address: contractAddress as `0x${string}`
       });
       
-      return formatUnits(balance, 18); // ETHは18桁
+      const result = formatUnits(balance, 18);
+      balanceCache.ethBalance = result;
+      balanceCache.lastUpdated = now;
+      return result;
     } catch (error) {
       console.error("コントラクトETH残高取得エラー:", error);
-      return "0";
+      return balanceCache.ethBalance || "0";
     }
   };
 
   // コントラクトのUSDC残高を取得する関数
   const getContractUsdcBalance = async () => {
+    const now = Date.now();
+    
+    // キャッシュが有効な場合は返す
+    if (balanceCache.usdcBalance && now - balanceCache.lastUpdated < CACHE_TTL) {
+      return balanceCache.usdcBalance;
+    }
+    
     if (!contractAddress || !erc20Address || !publicClient) return "0";
     
     try {
@@ -972,12 +997,13 @@ export function useRaffleContract() {
         args: [contractAddress]
       });
       
-      // 数値を文字列化して、元の最小単位（小数点なし）で返す
-      const balanceStr = typeof balance === 'bigint' ? balance.toString() : "0";
-      return balanceStr; // 最小単位の整数文字列として返す
+      const result = typeof balance === 'bigint' ? balance.toString() : "0";
+      balanceCache.usdcBalance = result;
+      balanceCache.lastUpdated = now;
+      return result;
     } catch (error) {
       console.error("コントラクトUSDC残高取得エラー:", error);
-      return "0";
+      return balanceCache.usdcBalance || "0";
     }
   };
 
