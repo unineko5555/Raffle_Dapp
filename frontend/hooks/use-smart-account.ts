@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useWalletClient, useChainId } from "wagmi";
 import { sepolia, arbitrumSepolia, baseSepolia } from "viem/chains";
 import { useWeb3Auth } from "./use-web3auth";
 import {
   createWeb3AuthSigner,
   createLightSmartAccountClient,
-  formatUserOperation,
   type UserOperationData,
 } from "@/app/lib/alchemy/account-kit-config";
 import { useToast } from "@/components/ui/use-toast";

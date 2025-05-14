@@ -1,7 +1,6 @@
 import { sepolia, arbitrumSepolia, baseSepolia } from "wagmi/chains";
 import { contractConfig } from "./contract-config";
 
-// Wagmi設定
 // wagmi v2ではこの場所での静的な設定は非推奨で、WagmiProviderで設定しています
 
 // サポートするチェーン情報
@@ -54,7 +53,6 @@ export function getContractConfig(chainId: number) {
 
 // ソーシャルログイン用の設定
 export const socialLoginProviders = [
-  // テスト用にメールログインを先に表示
   {
     id: "email_passwordless",
     name: "メール",

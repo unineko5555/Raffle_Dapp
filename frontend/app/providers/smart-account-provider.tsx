@@ -1,10 +1,10 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useSmartAccount } from '@/hooks/use-smart-account';
-import { sepolia } from 'viem/chains';
-import { type AlchemySmartAccountClient } from '@alchemy/aa-alchemy';
-import { type UserOperationData } from '@/app/lib/alchemy/account-kit-config';
+import { createContext, useContext, ReactNode } from "react";
+import { useSmartAccount } from "@/hooks/use-smart-account";
+import { sepolia } from "viem/chains";
+import { type AlchemySmartAccountClient } from "@alchemy/aa-alchemy";
+import { type UserOperationData } from "@/app/lib/alchemy/account-kit-config";
 
 // コンテキストの型定義
 interface SmartAccountContextType {
@@ -16,7 +16,11 @@ interface SmartAccountContextType {
   userOps: UserOperationData[];
   currentChainId: number;
   initializeSmartAccount: () => Promise<AlchemySmartAccountClient | null>;
-  sendUserOperation: (to: string, data: string, value?: bigint) => Promise<{ userOpHash: string; txHash: string }>;
+  sendUserOperation: (
+    to: string,
+    data: string,
+    value?: bigint
+  ) => Promise<{ userOpHash: string; txHash: string }>;
   getUserOperationHistory: () => Promise<UserOperationData[]>;
   switchChain: (chainId: number) => Promise<void>;
 }
@@ -31,7 +35,7 @@ const SmartAccountContext = createContext<SmartAccountContextType>({
   userOps: [],
   currentChainId: sepolia.id,
   initializeSmartAccount: async () => null,
-  sendUserOperation: async () => ({ userOpHash: '', txHash: '' }),
+  sendUserOperation: async () => ({ userOpHash: "", txHash: "" }),
   getUserOperationHistory: async () => [],
   switchChain: async () => {},
 });
