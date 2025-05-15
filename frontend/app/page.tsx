@@ -113,7 +113,13 @@ export default function RaffleDapp() {
         updateContractBalances();
       }, 5000); // 5秒に延長してレート制限を回避
     }
-  }, [isTransactionSuccess, winner, updateContractBalances]);
+  }, [
+    isTransactionSuccess,
+    winner,
+    raffleData.raffleState,
+    raffleData.numberOfPlayers,
+    updateContractBalances,
+  ]);
 
   // 手動でラッフルを開始する
   const startRaffle = async () => {
