@@ -185,12 +185,12 @@ export function useRaffleContract() {
   let cachedPlayers: string[] = [];
   let cachedPlayerCount = 0;
   let lastPlayersUpdateTime = 0;
-  const PLAYERS_CACHE_DURATION = 8000; // 8秒間のキャッシュ有効期間
-  
+  const PLAYERS_CACHE_DURATION = 30000; // 30秒に延長
+
   // ログ制御用変数
   let lastLogTime = 0;
   let lastLoggedPlayerCount = -1;
-  const LOG_INTERVAL = 5000; // 5秒間隔
+  const LOG_INTERVAL = 30000; // 30秒に延長
 
   // プレイヤーリストを取得
   const getPlayers = async (knownPlayerCount?: number) => {
@@ -216,12 +216,14 @@ export function useRaffleContract() {
             functionName: "getNumberOfPlayers",
           });
           currentPlayerCount = Number(playerCountResult || 0);
-          
+
           // ログ出力の制御
           const currentNow = Date.now();
-          if (currentNow - lastLogTime > LOG_INTERVAL && 
-              currentPlayerCount !== lastLoggedPlayerCount) {
-            console.log('プレイヤー数取得:', currentPlayerCount);
+          if (
+            currentNow - lastLogTime > LOG_INTERVAL &&
+            currentPlayerCount !== lastLoggedPlayerCount
+          ) {
+            console.log("プレイヤー数取得:", currentPlayerCount);
             lastLogTime = currentNow;
             lastLoggedPlayerCount = currentPlayerCount;
           }
@@ -248,7 +250,7 @@ export function useRaffleContract() {
 
       const players = [];
 
-      // 安全にプレイヤーを取得するため、一度に1人ずつ処理
+      // 安全にプレイヤーを取得するため、一度に1人ずつ処理（3-4人程度の小規模想定）
       for (let i = 0; i < count; i++) {
         try {
           const player = await publicClient.readContract({
@@ -259,11 +261,13 @@ export function useRaffleContract() {
           });
 
           if (player) players.push(player as string);
-        } catch (error) {
-          // エラーログを跨度に出しすぎないように制御
-          if (i === 0) {
-            console.error("プレイヤー取得エラー:", error);
+
+          // 3-4人程度なので、2人目以降はレート制限回避のために少し待機
+          if (i > 0 && i < count - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 50));
           }
+        } catch (error) {
+          console.error(`プレイヤー${i}取得エラー:`, error);
           // エラーが発生した場合は、以降の取得を中止
           break;
         }
@@ -284,7 +288,7 @@ export function useRaffleContract() {
 
   // プレイヤー参加状態のキャッシュ用変数
   let lastPlayerCheckTime = 0;
-  const PLAYER_CHECK_INTERVAL = 5000; // 5秒間隔で参加状態をチェック
+  const PLAYER_CHECK_INTERVAL = 15000; // 15秒に延長
 
   // プレイヤーの参加状態を確認 - スマートアカウントアドレスのサポートを追加
   const checkPlayerEntered = async (checkAddress = "") => {
@@ -355,7 +359,7 @@ export function useRaffleContract() {
   let lastRaffleState = 0;
   let lastPlayerCount = 0;
   let lastUpdateTime = 0;
-  const UPDATE_INTERVAL = 10000; // 最低更新間隔 (10秒)
+  const UPDATE_INTERVAL = 20000; // 20秒に延長
 
   // データを更新
   const updateRaffleData = async (forceUpdate = false) => {
@@ -414,16 +418,22 @@ export function useRaffleContract() {
 
           // ログ出力の制御
           const logNow = Date.now();
-          if (forceUpdate || (logNow - lastLogTime > LOG_INTERVAL && 
-              Number(currentPlayerCount) !== lastLoggedPlayerCount)) {
-            console.log('コントラクトからの最新プレイヤー数:', Number(currentPlayerCount));
+          if (
+            forceUpdate ||
+            (logNow - lastLogTime > LOG_INTERVAL &&
+              Number(currentPlayerCount) !== lastLoggedPlayerCount)
+          ) {
+            console.log(
+              "コントラクトからの最新プレイヤー数:",
+              Number(currentPlayerCount)
+            );
             lastLogTime = logNow;
             lastLoggedPlayerCount = Number(currentPlayerCount);
           }
 
           // プレイヤーリストを取得（既知のプレイヤー数を渡す）
           const players = await getPlayers(Number(currentPlayerCount));
-          
+
           // プレイヤー数をBigIntからNumberに安全に変換
           const playerCount = Number(currentPlayerCount);
 
@@ -559,7 +569,7 @@ export function useRaffleContract() {
             ? (recentWinnerData as string)
             : null,
         players,
-        owner: (ownerData as string) || null,
+        owner: (ownerData as string) || null, // オーナー情報を明示的に設定
       });
     }
   };
@@ -1091,7 +1101,7 @@ export function useRaffleContract() {
     usdcBalance?: string;
     lastUpdated: number;
   } = { lastUpdated: 0 };
-  const CACHE_TTL = 30000; // 30秒
+  const CACHE_TTL = 120000; // 2分に延長（レート制限対策）
 
   // コントラクトのETH残高を取得する関数
   const getContractEthBalance = async () => {
@@ -1105,6 +1115,7 @@ export function useRaffleContract() {
     if (!contractAddress || !publicClient) return "0";
 
     try {
+      // publicClientを使用（CORS問題を回避）
       const balance = await publicClient.getBalance({
         address: contractAddress as `0x${string}`,
       });
@@ -1134,6 +1145,7 @@ export function useRaffleContract() {
     if (!contractAddress || !erc20Address || !publicClient) return "0";
 
     try {
+      // publicClientを使用してERC20残高を取得
       const balance = await publicClient.readContract({
         address: erc20Address as `0x${string}`,
         abi: ERC20ABI,

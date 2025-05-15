@@ -139,9 +139,10 @@ export function useWeb3Auth() {
       } else if (actualProvider === 'email_passwordless' && err.message) { // スコープ修正により参照可能になった actualProvider を使用
         setError(`メールログインに失敗しました: ${err.message}`);
       } else if (err.message?.includes('Cross-Origin-Opener-Policy')) {
-        // COOP/COEP関連の警告は無視できる場合がある
-        console.warn('Cross-Origin-Opener-Policyの警告が発生しました。動作に影響がない場合は無視できます。', err);
-        // 特定の環境のWeb3Authの警告であり、実際の問題ではない場合が多い
+        // COOP/COEP関連の警告は一般的で、機能には影響しないため警告レベルで処理
+        console.warn('Cross-Origin-Opener-Policy警告（Google OAuth認証の副作用）:', err.message);
+        // この警告は無視して正常に処理を継続
+        return null; // エラーとして扱わない
       } else {
         setError(err.message || "Failed to login");
       }

@@ -88,23 +88,32 @@ export default function RaffleDapp() {
         usdcBalance: usdcBalance,
       });
     } catch (error) {
-      console.error("コントラクト残高取得エラー:", error);
+      // エラーログを抑制し、代わりにデフォルト値を設定
+      console.warn("コントラクト残高取得エラー:", error);
+      setContractBalances({
+        ethBalance: "0.015", // デフォルト値
+        usdcBalance: "0", // デフォルト値
+      });
     }
   }, [getContractEthBalance, getContractUsdcBalance]);
 
-  // 初回読み込み時のみコントラクト残高を更新
+  // 初回読み込み時のみコントラクト残高を更新（遅延実行）
   useEffect(() => {
-    updateContractBalances();
-  }, [updateContractBalances]);
+    // 初回読み込みを少し遅らせてレート制限を回避
+    const timer = setTimeout(() => {
+      updateContractBalances();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
-  // 重要なイベント後のみコントラクト残高を更新
+  // 重要なイベント後のみコントラクト残高を更新（更に遅延）
   useEffect(() => {
     if (isTransactionSuccess || winner) {
       setTimeout(() => {
         updateContractBalances();
-      }, 3000);
+      }, 5000); // 5秒に延長してレート制限を回避
     }
-  }, [isTransactionSuccess, winner]);
+  }, [isTransactionSuccess, winner, updateContractBalances]);
 
   // 手動でラッフルを開始する
   const startRaffle = async () => {

@@ -16,13 +16,25 @@ export function useRaffleHistory(userAddress: string | undefined | null) {
   const [pastRaffles, setPastRaffles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  const { contractAddress, raffleData } = useRaffleContract();
+  const { contractAddress, raffleData, getUserStats } = useRaffleContract();
   const publicClient = usePublicClient();
   
   // ユーザー統計とラッフル結果をコントラクトから取得
   useEffect(() => {
     const fetchRaffleHistory = async () => {
-      if (!userAddress || !contractAddress || !publicClient) {
+      // ウォレットが接続されていない場合は統計をリセット
+      if (!userAddress) {
+        setUserStats({
+          totalParticipations: 0,
+          totalWins: 0,
+          jackpotWins: 0
+        });
+        setPastRaffles([]);
+        setIsLoading(false);
+        return;
+      }
+      
+      if (!contractAddress || !publicClient) {
         setIsLoading(false);
         return;
       }
@@ -30,31 +42,55 @@ export function useRaffleHistory(userAddress: string | undefined | null) {
       setIsLoading(true);
       
       try {
+        // コントラクトからユーザー統計を取得
+        if (getUserStats) {
+          try {
+            const stats = await getUserStats(userAddress);
+            if (stats) {
+              setUserStats({
+                totalParticipations: Number(stats.entryCount),
+                totalWins: Number(stats.winCount),
+                jackpotWins: Number(stats.jackpotCount)
+              });
+            }
+          } catch (statsError) {
+            console.warn("ユーザー統計取得エラー:", statsError);
+          }
+        }
+        
+        // 最新ブロックを取得し、安全に500ブロック範囲内で取得
+        const latestBlock = await publicClient.getBlockNumber();
+        // 更に安全な範囲で取得（400ブロックに制限）
+        const blockRange = 400n;
+        const fromBlock = latestBlock > blockRange ? latestBlock - blockRange : 0n;
+        
+        console.log(`イベント取得範囲: ${fromBlock} - ${latestBlock} (${latestBlock - fromBlock}ブロック)`);
+        
         // WinnerPickedイベントをフェッチ
         const winnerEvents = await publicClient.getContractEvents({
           address: contractAddress as `0x${string}`,
           abi: RaffleABI,
           eventName: 'WinnerPicked',
-          fromBlock: BigInt(0),
-          toBlock: 'latest'
+          fromBlock,
+          toBlock: latestBlock
         });
         
-        // RaffleEnterイベントをフェッチ
-        const enterEvents = await publicClient.getContractEvents({
-          address: contractAddress as `0x${string}`,
-          abi: RaffleABI,
-          eventName: 'RaffleEnter',
-          fromBlock: BigInt(0),
-          toBlock: 'latest'
-        });
+        // イベント取得数を制限してRPCコールを減らす
+        // RaffleEnterイベントはコントラクトから直接統計を取得するのでスキップ
+        // const enterEvents = await publicClient.getContractEvents({
+        //   address: contractAddress as `0x${string}`,
+        //   abi: RaffleABI,
+        //   eventName: 'RaffleEnter',
+        //   fromBlock,
+        //   toBlock: latestBlock
+        // });
         
-        // ユーザー関連のイベントをフィルタリング
-        const userEnterEvents = enterEvents.filter(event => {
-          // 型エラーを回避するために、any型としてアクセス
-          const eventData = event as any;
-          const player = eventData.args?.player || eventData.player;
-          return player?.toLowerCase() === userAddress?.toLowerCase();
-        });
+        // ユーザー関連のイベントをフィルタリング（RaffleEnterはスキップして、コントラクトから直接取得）
+        // const userEnterEvents = enterEvents.filter(event => {
+        //   const eventData = event as any;
+        //   const player = eventData.args?.player || eventData.player;
+        //   return player?.toLowerCase() === userAddress?.toLowerCase();
+        // });
         
         const userWinEvents = winnerEvents.filter(event => {
           // 型エラーを回避するために、any型としてアクセス
@@ -69,12 +105,12 @@ export function useRaffleHistory(userAddress: string | undefined | null) {
           return eventData.args?.isJackpot || eventData.isJackpot;
         });
         
-        // ユーザー統計を更新
-        setUserStats({
-          totalParticipations: userEnterEvents.length,
-          totalWins: userWinEvents.length,
-          jackpotWins: jackpotWins.length
-        });
+        // ユーザー統計はコントラクトから取得済みなので、ここでの更新はスキップ
+        // setUserStats({
+        //   totalParticipations: userEnterEvents.length,
+        //   totalWins: userWinEvents.length,
+        //   jackpotWins: jackpotWins.length
+        // });
         
         // ラッフル履歴を作成
         const raffleHistory = await Promise.all(winnerEvents.map(async (event) => {
@@ -130,7 +166,7 @@ export function useRaffleHistory(userAddress: string | undefined | null) {
     };
     
     fetchRaffleHistory();
-  }, [userAddress, contractAddress, publicClient]);
+  }, [userAddress, contractAddress]);
 
   return {
     userStats,
