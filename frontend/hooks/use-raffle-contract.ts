@@ -437,41 +437,9 @@ export function useRaffleContract() {
           // プレイヤー数をBigIntからNumberに安全に変換
           const playerCount = Number(currentPlayerCount);
 
-          // 注意: playersは既にgetPlayers()で取得済み
-
-          // プレイヤー数と取得できたプレイヤーのチェック
-          // 弾常なログ出力を抑制
-          const isDetailedDebug = false; // 詳細なデバッグログを表示するかどうか
-
-          if (isDetailedDebug) {
-            console.log("プレイヤーリスト取得結果:", {
-              expectedCount: Number(currentPlayerCount),
-              actualCount: players.length,
-              players: players.map(
-                (p) => p.substring(0, 6) + "..." + p.substring(p.length - 4)
-              ),
-            });
-          }
-
           // プレイヤー参加状態を確認
           if (isConnected && address) {
             await checkPlayerEntered();
-          }
-
-          // BigInt型のデータを安全に処理
-          let formattedEntranceFee = "0";
-          let formattedJackpotAmount = "0";
-
-          try {
-            if (entranceFeeData && typeof entranceFeeData === "bigint") {
-              formattedEntranceFee = formatUnits(entranceFeeData, 6);
-            }
-
-            if (jackpotAmountData && typeof jackpotAmountData === "bigint") {
-              formattedJackpotAmount = formatUnits(jackpotAmountData, 6);
-            }
-          } catch (error) {
-            console.error("Error formatting data:", error);
           }
 
           // データ更新前にデバッグログ出力
@@ -484,21 +452,8 @@ export function useRaffleContract() {
             });
           }
 
-          // ラッフルデータ更新
-          setRaffleData({
-            entranceFee: formattedEntranceFee,
-            numberOfPlayers: playerCount,
-            raffleState: raffleStateData ? Number(raffleStateData) : 0,
-            jackpotAmount: formattedJackpotAmount,
-            recentWinner:
-              recentWinnerData &&
-              (recentWinnerData as string) !==
-                "0x0000000000000000000000000000000000000000"
-                ? (recentWinnerData as string)
-                : null,
-            players,
-            owner: (ownerData as string) || null,
-          });
+          // 共通フォーマット関数を使用してラッフルデータを更新
+          setRaffleData(formatRaffleData(players, playerCount));
 
           // データ更新後の参加状態確認は必要な場合のみ実行
           if (isConnected && address && forceUpdate) {
@@ -529,9 +484,43 @@ export function useRaffleContract() {
     }
   };
 
+  // 共通のデータフォーマット関数
+  const formatRaffleData = (players: string[], playerCount?: number) => {
+    let formattedEntranceFee = "0";
+    let formattedJackpotAmount = "0";
+    
+    try {
+      if (entranceFeeData && typeof entranceFeeData === "bigint") {
+        formattedEntranceFee = formatUnits(entranceFeeData, 6);
+      }
+      if (jackpotAmountData && typeof jackpotAmountData === "bigint") {
+        formattedJackpotAmount = formatUnits(jackpotAmountData, 6);
+      }
+    } catch (error) {
+      console.error("Error formatting data:", error);
+    }
+    
+    return {
+      entranceFee: formattedEntranceFee,
+      numberOfPlayers: playerCount || players.length,
+      raffleState: raffleStateData ? Number(raffleStateData) : 0,
+      jackpotAmount: formattedJackpotAmount,
+      recentWinner:
+        recentWinnerData &&
+        (recentWinnerData as string) !==
+          "0x0000000000000000000000000000000000000000"
+          ? (recentWinnerData as string)
+          : null,
+      players,
+      owner: (ownerData as string) || null,
+    };
+  };
+
   // フォールバック用のデータ更新関数
   const fallbackUpdateRaffleData = async () => {
-    if (contractAddress) {
+    if (!contractAddress) return;
+    
+    try {
       // 参加者リストの取得を試みる
       const players = await getPlayers();
 
@@ -540,37 +529,12 @@ export function useRaffleContract() {
         await checkPlayerEntered();
       }
 
-      // BigInt型のデータを安全に処理
-      let formattedEntranceFee = "0";
-      let formattedJackpotAmount = "0";
-
-      try {
-        if (entranceFeeData && typeof entranceFeeData === "bigint") {
-          formattedEntranceFee = formatUnits(entranceFeeData, 6);
-        }
-
-        if (jackpotAmountData && typeof jackpotAmountData === "bigint") {
-          formattedJackpotAmount = formatUnits(jackpotAmountData, 6);
-        }
-      } catch (error) {
-        console.error("Error formatting data:", error);
-      }
-
-      // データを更新
-      setRaffleData({
-        entranceFee: formattedEntranceFee,
-        numberOfPlayers: players.length, // 当面の措置として、取得できたプレイヤー数を使用
-        raffleState: raffleStateData ? Number(raffleStateData) : 0,
-        jackpotAmount: formattedJackpotAmount,
-        recentWinner:
-          recentWinnerData &&
-          (recentWinnerData as string) !==
-            "0x0000000000000000000000000000000000000000"
-            ? (recentWinnerData as string)
-            : null,
-        players,
-        owner: (ownerData as string) || null, // オーナー情報を明示的に設定
-      });
+      // 共通フォーマット関数を使用
+      setRaffleData(formatRaffleData(players));
+      console.log("フォールバック更新完了");
+    } catch (error) {
+      console.warn("フォールバックも失敗、既存データを維持:", error);
+      // エラーを投げずに既存データを維持
     }
   };
 
