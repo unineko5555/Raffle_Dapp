@@ -368,8 +368,9 @@ export function useRaffleContract() {
       if (forceUpdate) {
         console.log("ラッフルデータの強制更新を実行します");
         setUiLoading(true);
+        // 強制更新時は間隔チェックをスキップ
       } else {
-        // 前回の更新から十分な時間が経過していない場合はスキップ
+        // 前回の更新から十分な時間が経過していない場合はスキップ（強制更新時は除く）
         const now = Date.now();
         if (now - lastUpdateTime < UPDATE_INTERVAL) {
           return;
@@ -377,95 +378,98 @@ export function useRaffleContract() {
       }
 
       if (contractAddress && publicClient) {
-        // 状態確認: 更新の必要があるかどうかを最初にチェック
-        try {
-          // 最小限のRPC呼び出しで状態を確認
-          const currentStateRequest = {
-            address: contractAddress as `0x${string}`,
-            abi: RaffleABI,
-            functionName: "getRaffleState",
-          };
+        // 強制更新時は間隔チェックをスキップ
+        if (!forceUpdate) {
+          // 状態確認: 更新の必要があるかどうかを最初にチェック
+          try {
+            // 最小限のRPC呼び出しで状態を確認
+            const currentStateRequest = {
+              address: contractAddress as `0x${string}`,
+              abi: RaffleABI,
+              functionName: "getRaffleState",
+            };
 
-          const directPlayerCountRequest = {
-            address: contractAddress as `0x${string}`,
-            abi: RaffleABI,
-            functionName: "getNumberOfPlayers",
-          };
+            const directPlayerCountRequest = {
+              address: contractAddress as `0x${string}`,
+              abi: RaffleABI,
+              functionName: "getNumberOfPlayers",
+            };
 
-          // 状態とプレイヤー数をチェック
-          const currentState = Number(
-            await publicClient.readContract(currentStateRequest)
-          );
-          const currentPlayerCount = await publicClient.readContract(
-            directPlayerCountRequest
-          );
-
-          // 状態に変化がなく強制更新でもない場合はスキップ
-          if (
-            !forceUpdate &&
-            currentState === lastRaffleState &&
-            Number(currentPlayerCount) === lastPlayerCount
-          ) {
-            // 状態に変化なし - 更新をスキップ
-            lastUpdateTime = Date.now(); // 最終確認時間を更新
-            return;
-          }
-
-          // 状態が変化した場合は更新を実行
-          lastRaffleState = currentState;
-          lastPlayerCount = Number(currentPlayerCount);
-          lastUpdateTime = Date.now();
-
-          // ログ出力の制御
-          const logNow = Date.now();
-          if (
-            forceUpdate ||
-            (logNow - lastLogTime > LOG_INTERVAL &&
-              Number(currentPlayerCount) !== lastLoggedPlayerCount)
-          ) {
-            console.log(
-              "コントラクトからの最新プレイヤー数:",
-              Number(currentPlayerCount)
+            // 状態とプレイヤー数をチェック
+            const currentState = Number(
+              await publicClient.readContract(currentStateRequest)
             );
-            lastLogTime = logNow;
-            lastLoggedPlayerCount = Number(currentPlayerCount);
-          }
+            const currentPlayerCount = await publicClient.readContract(
+              directPlayerCountRequest
+            );
 
-          // プレイヤーリストを取得（既知のプレイヤー数を渡す）
-          const players = await getPlayers(Number(currentPlayerCount));
+            // 状態に変化がなく強制更新でもない場合はスキップ
+            if (
+              !forceUpdate &&
+              currentState === lastRaffleState &&
+              Number(currentPlayerCount) === lastPlayerCount
+            ) {
+              // 状態に変化なし - 更新をスキップ
+              lastUpdateTime = Date.now(); // 最終確認時間を更新
+              return;
+            }
 
-          // プレイヤー数をBigIntからNumberに安全に変換
-          const playerCount = Number(currentPlayerCount);
+            // 状態が変化した場合は更新を実行
+            lastRaffleState = currentState;
+            lastPlayerCount = Number(currentPlayerCount);
+            lastUpdateTime = Date.now();
 
-          // プレイヤー参加状態を確認
-          if (isConnected && address) {
-            await checkPlayerEntered();
-          }
+            // ログ出力の制御
+            const logNow = Date.now();
+            if (
+              forceUpdate ||
+              (logNow - lastLogTime > LOG_INTERVAL &&
+                Number(currentPlayerCount) !== lastLoggedPlayerCount)
+            ) {
+              console.log(
+                "コントラクトからの最新プレイヤー数:",
+                Number(currentPlayerCount)
+              );
+              lastLogTime = logNow;
+              lastLoggedPlayerCount = Number(currentPlayerCount);
+            }
 
-          // データ更新前にデバッグログ出力
-          const now = Date.now();
-          // 前回の更新から10秒以上経過している場合のみログを出力
-          if (now - lastStateChange > 10000) {
-            console.log("ラッフル状態更新:", {
-              currentPlayers: players.length,
-              isPlayerEntered: isPlayerEntered,
-            });
-          }
+            // プレイヤーリストを取得（既知のプレイヤー数を渡す）
+            const players = await getPlayers(Number(currentPlayerCount));
 
-          // 共通フォーマット関数を使用してラッフルデータを更新
-          setRaffleData(formatRaffleData(players, playerCount));
+            // プレイヤー数をBigIntからNumberに安全に変換
+            const playerCount = Number(currentPlayerCount);
 
-          // データ更新後の参加状態確認は必要な場合のみ実行
-          if (isConnected && address && forceUpdate) {
-            setTimeout(async () => {
+            // プレイヤー参加状態を確認
+            if (isConnected && address) {
               await checkPlayerEntered();
-            }, 500);
-          }
-        } catch (directError) {
-          console.error("直接データ取得エラー:", directError);
+            }
 
-          // フォールバック: 元のロジックを使用
-          await fallbackUpdateRaffleData();
+            // データ更新前にデバッグログ出力
+            const now = Date.now();
+            // 前回の更新から10秒以上経過している場合のみログを出力
+            if (now - lastStateChange > 10000) {
+              console.log("ラッフル状態更新:", {
+                currentPlayers: players.length,
+                isPlayerEntered: isPlayerEntered,
+              });
+            }
+
+            // 共通フォーマット関数を使用してラッフルデータを更新
+            setRaffleData(formatRaffleData(players, playerCount));
+
+            // データ更新後の参加状態確認は必要な場合のみ実行
+            if (isConnected && address && forceUpdate) {
+              setTimeout(async () => {
+                await checkPlayerEntered();
+              }, 500);
+            }
+          } catch (directError) {
+            console.error("直接データ取得エラー:", directError);
+
+            // フォールバック: 元のロジックを使用
+            await fallbackUpdateRaffleData();
+          }
         }
       }
     } catch (error) {
@@ -488,7 +492,7 @@ export function useRaffleContract() {
   const formatRaffleData = (players: string[], playerCount?: number) => {
     let formattedEntranceFee = "0";
     let formattedJackpotAmount = "0";
-    
+
     try {
       if (entranceFeeData && typeof entranceFeeData === "bigint") {
         formattedEntranceFee = formatUnits(entranceFeeData, 6);
@@ -499,7 +503,7 @@ export function useRaffleContract() {
     } catch (error) {
       console.error("Error formatting data:", error);
     }
-    
+
     return {
       entranceFee: formattedEntranceFee,
       numberOfPlayers: playerCount || players.length,
@@ -519,7 +523,7 @@ export function useRaffleContract() {
   // フォールバック用のデータ更新関数
   const fallbackUpdateRaffleData = async () => {
     if (!contractAddress) return;
-    
+
     try {
       // 参加者リストの取得を試みる
       const players = await getPlayers();
