@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Zap, Wallet, CreditCard } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { ToastIcon } from "@/components/ui/toast-icon";
 import { Badge } from "@/components/ui/badge";
 import { supportedChains } from "./lib/web3-config";
-import { useAccount, useChainId } from "wagmi";
+import { contractConfig } from "./lib/contract-config";
+import { useAccount, useChainId, usePublicClient } from "wagmi";
 import { useRaffleContract } from "@/hooks/use-raffle-contract";
 import { useRaffleWinEvents } from "@/hooks/use-raffle-win-events";
 import { useWeb3Auth } from "@/hooks/use-web3auth";
@@ -33,6 +34,11 @@ export default function RaffleDapp() {
   const { address, isConnected } = useAccount();
   const { user } = useWeb3Auth();
   const { toast } = useToast();
+  const publicClient = usePublicClient({ chainId });
+
+  // useRefフックをコンポーネントトップレベルで定義
+  const tokenListenerChainIdRef = useRef<number | null>(null);
+  const chainChangeIdRef = useRef<number | null>(null);
 
   // スマートアカウントの状態を取得
   const {
@@ -73,16 +79,35 @@ export default function RaffleDapp() {
     usdcBalance: "0",
   });
 
-  // コントラクト残高を取得する関数
-  const updateContractBalances = useCallback(async () => {
+  // コントラクト残高を取得する関数 - forceUpdateフラグ対応
+  const updateContractBalances = useCallback(async (forceUpdate = false) => {
+    // デバッグログのレベルを下げる
+    const isDebugMode = false;
+    
     if (!getContractEthBalance || !getContractUsdcBalance) {
       return;
     }
 
     try {
-      const ethBalance = await getContractEthBalance();
-      const usdcBalance = await getContractUsdcBalance();
+      // レート制限対策オプションを渡す
+      const options = { forceUpdate };
+      
+      // チェーンIDを含めてログ出力
+      if (isDebugMode) console.log(`コントラクト残高更新開始 (チェーンID: ${chainId}${forceUpdate ? ', 強制更新': ''})`);
+      
+      const ethBalance = await getContractEthBalance(options);
+      const usdcBalance = await getContractUsdcBalance(options);
 
+      // 前回値と比較して変更があればログ出力
+      if (ethBalance !== contractBalances.ethBalance || usdcBalance !== contractBalances.usdcBalance) {
+        if (isDebugMode) {
+          console.log('残高更新:', {
+            前: { ETH: contractBalances.ethBalance, USDC: contractBalances.usdcBalance },
+            後: { ETH: ethBalance, USDC: usdcBalance }
+          });
+        }
+      }
+      
       setContractBalances({
         ethBalance: ethBalance,
         usdcBalance: usdcBalance,
@@ -95,7 +120,7 @@ export default function RaffleDapp() {
         usdcBalance: "0", // デフォルト値
       });
     }
-  }, [getContractEthBalance, getContractUsdcBalance]);
+  }, [getContractEthBalance, getContractUsdcBalance, chainId, contractBalances]);
 
   // 初回読み込み時のみコントラクト残高を更新（遅延実行）
   useEffect(() => {
@@ -106,20 +131,101 @@ export default function RaffleDapp() {
     return () => clearTimeout(timer);
   }, []);
 
-  // 重要なイベント後のみコントラクト残高を更新（更に遅延）
-  useEffect(() => {
-    if (isTransactionSuccess || winner) {
-      setTimeout(() => {
-        updateContractBalances();
-      }, 5000); // 5秒に延長してレート制限を回避
+  // トークン転送イベントの監視
+  const watchTokenEvents = useCallback(() => {
+    // デバッグログのレベルを下げる
+    const isDebugMode = false; // デバッグモードフラグ
+    
+    if (!contractAddress || !getContractUsdcBalance || !publicClient) {
+      if (isDebugMode) console.log('トークン監視のための条件を満たしていません');
+      return () => {}; // 空のクリーンアップ関数を返す
     }
-  }, [
-    isTransactionSuccess,
-    winner,
-    raffleData.raffleState,
-    raffleData.numberOfPlayers,
-    updateContractBalances,
-  ]);
+    
+    // 現在のチェーンのERC20アドレスを取得
+    const erc20Address = contractConfig[chainId as keyof typeof contractConfig]?.erc20Address;
+    
+    if (!erc20Address) {
+      if (isDebugMode) console.log(`現在のチェーンID ${chainId} のERC20アドレスが見つかりません`);
+      return () => {}; // 空のクリーンアップ関数を返す
+    }
+
+    if (isDebugMode) console.log(`トークンイベント監視開始: チェーンID ${chainId}, トークン ${erc20Address}`);
+    
+    try {
+      const unwatch = publicClient.watchContractEvent({
+        address: erc20Address as `0x${string}`,
+        abi: [{
+          anonymous: false,
+          inputs: [
+            { indexed: true, name: "from", type: "address" },
+            { indexed: true, name: "to", type: "address" },
+            { indexed: false, name: "value", type: "uint256" }
+          ],
+          name: "Transfer",
+          type: "event"
+        }],
+        eventName: "Transfer",
+        onLogs: (logs) => {
+          // コントラクトが送信元または受信先の転送をフィルタリング
+          const relevantLogs = logs.filter(log => {
+            const from = log.args.from?.toLowerCase();
+            const to = log.args.to?.toLowerCase();
+            const contractAddrLower = contractAddress.toLowerCase();
+            return from === contractAddrLower || to === contractAddrLower;
+          });
+          
+          if (relevantLogs.length > 0) {
+            if (isDebugMode) console.log("コントラクトに関連するトークン転送を検出しました:", relevantLogs);
+            // 残高の強制更新を実行
+            updateContractBalances(true);
+          }
+        }
+      });
+      
+      // クリーンアップ関数を返す
+      return () => {
+        if (isDebugMode) console.log('トークン監視を停止します');
+        unwatch();
+      };
+    } catch (error) {
+      console.error('イベント監視の設定エラー:', error);
+      return () => {
+        if (isDebugMode) console.log('エラーのため監視は実行されていません');
+      };
+    }
+  }, [chainId, contractAddress, publicClient, updateContractBalances, getContractUsdcBalance]);
+  
+  // イベントリスナーの初期化 - リレンダリングを防ぐために依存配列を最適化
+  useEffect(() => {
+    // watchTokenEvents関数の依存リストがチェーンIDを含むため、不必要な再初期化を避ける
+    // チェーンIDが変更された場合のみイベントリスナーを再初期化
+    
+    // チェーンが本当に変更された場合のみイベントリスナーを再設定
+    if (chainId && tokenListenerChainIdRef.current !== chainId) {
+      // 前回のチェーンIDを更新
+      tokenListenerChainIdRef.current = chainId;
+      
+      // 新しいリスナーを設定
+      const cleanupFn = watchTokenEvents();
+      
+      // クリーンアップ関数を返す
+      return () => {
+        cleanupFn();
+      };
+    }
+    
+    // 初回レンダリング時にはリスナー設定
+    if (tokenListenerChainIdRef.current === null) {
+      tokenListenerChainIdRef.current = chainId || 0;
+      const cleanupFn = watchTokenEvents();
+      return () => {
+        cleanupFn();
+      };
+    }
+    
+    // 上記条件に該当しない場合は何もしない
+    return () => {};
+  }, [chainId, watchTokenEvents]);
 
   // 手動でラッフルを開始する
   const startRaffle = async () => {
@@ -194,15 +300,35 @@ export default function RaffleDapp() {
     }
   }, [isConnected, address, checkPlayerEntered]);
 
-  // チェーンが変更されたときにアクティブチェーンを更新
+  // チェーンが変更されたときに強制更新フラグを設定し、残高を更新
   useEffect(() => {
-    if (chainId) {
+    // デバッグログのレベルを下げる
+    const isDebugMode = false;
+    
+    // 実際にチェーンが変わった場合だけアクションを実行
+    if (chainId && chainChangeIdRef.current !== chainId) {
+      chainChangeIdRef.current = chainId;
+      
+      // チェーン変更時に強制更新フラグを設定
+      if (typeof window !== 'undefined') {
+        (window as any).FORCE_CONTRACT_BALANCE_REFRESH = true;
+      }
+      
+      // チェーン変更通知
+      if (isDebugMode) console.log(`チェーン変更検出: チェーンID ${chainId} - 残高を強制更新します`);
+      
+      // チェーン切り替え後は少し遅延させて残高を更新
       const newActiveChain = supportedChains.find((c) => c.id === chainId);
       if (newActiveChain) {
         setActiveChain(newActiveChain);
+        
+        // 遅延させて確実にチェーン変更後のデータを取得
+        setTimeout(() => {
+          updateContractBalances(true);
+        }, 1000);
       }
     }
-  }, [chainId]);
+  }, [chainId, updateContractBalances, supportedChains]);
 
   // ラッフル参加成功時のコールバック
   const handleRaffleEntrySuccess = () => {

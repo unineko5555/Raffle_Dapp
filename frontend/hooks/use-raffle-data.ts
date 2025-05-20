@@ -387,12 +387,16 @@ export function useRaffleData() {
   } = { lastUpdated: 0 };
   const CACHE_TTL = 120000; // 2分に延長（レート制限対策）
 
-  // コントラクトのETH残高を取得する関数
-  const getContractEthBalance = async () => {
+  // コントラクトのETH残高を取得する関数 - 強制更新オプション対応
+  const getContractEthBalance = async (options = { forceUpdate: false }) => {
     const now = Date.now();
 
-    // キャッシュが有効な場合は返す
-    if (balanceCache.ethBalance && now - balanceCache.lastUpdated < CACHE_TTL) {
+    // 強制更新フラグがある場合はキャッシュをスキップ
+    const forceRefresh = options.forceUpdate || 
+      (typeof window !== 'undefined' && Boolean((window as any).FORCE_CONTRACT_BALANCE_REFRESH));
+
+    // 強制更新でない場合、キャッシュが有効なら返す
+    if (!forceRefresh && balanceCache.ethBalance && now - balanceCache.lastUpdated < CACHE_TTL) {
       return balanceCache.ethBalance;
     }
 
@@ -405,21 +409,36 @@ export function useRaffleData() {
       });
 
       const result = formatUnits(balance, 18);
+      console.log(`チェーンID ${currentChainId} のETH残高取得成功: ${result}`);
       balanceCache.ethBalance = result;
       balanceCache.lastUpdated = now;
       return result;
     } catch (error) {
-      console.error("コントラクトETH残高取得エラー:", error);
+      console.error(`チェーンID ${currentChainId} のETH残高取得エラー:`, error);
       return balanceCache.ethBalance || "0";
     }
   };
 
-  // コントラクトのUSDC残高を取得する関数
-  const getContractUsdcBalance = async () => {
+  // コントラクトのUSDC残高を取得する関数 - 強制更新オプション対応
+  const getContractUsdcBalance = async (options = { forceUpdate: false }) => {
     const now = Date.now();
 
-    // キャッシュが有効な場合は返す
+    // 強制更新フラグがある場合やチェーン切り替え後はキャッシュをスキップ
+    const forceRefresh = options.forceUpdate || 
+      (typeof window !== 'undefined' && Boolean((window as any).FORCE_CONTRACT_BALANCE_REFRESH));
+
+    // デバッグログ
+    if (forceRefresh) {
+      console.log(`USDC残高の強制更新を実行します (チェーンID: ${currentChainId})`);
+      // 強制更新フラグをリセット
+      if (typeof window !== 'undefined') {
+        (window as any).FORCE_CONTRACT_BALANCE_REFRESH = false;
+      }
+    }
+
+    // 強制更新でない場合、キャッシュが有効なら返す
     if (
+      !forceRefresh &&
       balanceCache.usdcBalance &&
       now - balanceCache.lastUpdated < CACHE_TTL
     ) {
@@ -432,7 +451,7 @@ export function useRaffleData() {
     if (!contractAddress || !erc20Address || !publicClient) return "0";
 
     try {
-      // publicClientを使用してERC20残高を取得
+      // publicClientを使用してERC20残高を取得 - チェーンIDを明示的に指定
       const balance = await publicClient.readContract({
         address: erc20Address as `0x${string}`,
         abi: [
@@ -446,14 +465,16 @@ export function useRaffleData() {
         ],
         functionName: "balanceOf",
         args: [contractAddress],
+        chainId: currentChainId // 明示的にチェーンIDを指定
       });
 
       const result = typeof balance === "bigint" ? balance.toString() : "0";
+      console.log(`チェーンID ${currentChainId} のUSDC残高取得成功: ${result}`);
       balanceCache.usdcBalance = result;
       balanceCache.lastUpdated = now;
       return result;
     } catch (error) {
-      console.error("コントラクトUSDC残高取得エラー:", error);
+      console.error(`チェーンID ${currentChainId} のUSDC残高取得エラー:`, error);
       return balanceCache.usdcBalance || "0";
     }
   };
