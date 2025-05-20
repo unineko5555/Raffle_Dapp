@@ -210,7 +210,7 @@ export function useRaffleHistory(userAddress: string | undefined | null) {
         );
 
         // WinnerPickedイベントをフェッチ
-        let winnerEvents = [];
+        let winnerEvents: any[] = [];
         try {
           winnerEvents = await publicClient.getContractEvents({
             address: contractAddress as `0x${string}`,

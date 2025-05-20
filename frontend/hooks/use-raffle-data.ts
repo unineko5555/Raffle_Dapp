@@ -451,7 +451,7 @@ export function useRaffleData() {
     if (!contractAddress || !erc20Address || !publicClient) return "0";
 
     try {
-      // publicClientを使用してERC20残高を取得 - チェーンIDを明示的に指定
+      // publicClientを使用してERC20残高を取得 - チェーンIDを明示指定しない
       const balance = await publicClient.readContract({
         address: erc20Address as `0x${string}`,
         abi: [
@@ -464,8 +464,8 @@ export function useRaffleData() {
           },
         ],
         functionName: "balanceOf",
-        args: [contractAddress],
-        chainId: currentChainId // 明示的にチェーンIDを指定
+        args: [contractAddress]
+        // chainId: currentChainId  <- この行を削除
       });
 
       const result = typeof balance === "bigint" ? balance.toString() : "0";
