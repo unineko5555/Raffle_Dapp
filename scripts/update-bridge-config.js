@@ -28,14 +28,17 @@ const NETWORK_MAPPING = {
     11155111: {
         name: 'sepolia',
         ccipSelector: '16015286601757825753',
+        ccipRouterAddress: '0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59' // Sepolia CCIP Router
     },
     421614: {
         name: 'arbitrum-sepolia',
         ccipSelector: '3478487238524512106',
+        ccipRouterAddress: '0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165' // Arbitrum Sepolia CCIP Router
     },
     84532: {
         name: 'base-sepolia',
         ccipSelector: '10344971235874465080',
+        ccipRouterAddress: '0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93' // Base Sepolia CCIP Router
     }
 };
 
@@ -162,7 +165,8 @@ function updateBridgeHook(bridgeAbi, bridgeAddresses) {
             networkId: parseInt(networkId),
             chainName: network.name,
             ccipSelector: network.ccipSelector,
-            bridgeAddress: bridgeAddresses[networkId]
+            bridgeAddress: bridgeAddresses[networkId],
+            ccipRouterAddress: network.ccipRouterAddress
         };
     });
     
@@ -182,6 +186,7 @@ export interface BridgeContractConfig {
   chainName: string;
   ccipSelector: string | null;
   bridgeAddress: Address;
+  ccipRouterAddress: Address;
 }
 
 export const BRIDGE_ABI = ${JSON.stringify(bridgeAbi, null, 2)} as const;

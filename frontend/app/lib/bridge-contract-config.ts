@@ -8,6 +8,7 @@ export interface BridgeContractConfig {
   chainName: string;
   ccipSelector: string | null;
   bridgeAddress: Address;
+  ccipRouterAddress: Address; // CCIPルーターアドレスを追加
 }
 
 export const BRIDGE_ABI = [
@@ -574,19 +575,22 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "networkId": 84532,
     "chainName": "base-sepolia",
     "ccipSelector": "10344971235874465080",
-    "bridgeAddress": "0x8ab90ab3013df24bdf7adcea73706c62b311cc67"
+    "bridgeAddress": "0x8ab90ab3013df24bdf7adcea73706c62b311cc67",
+    "ccipRouterAddress": "0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93" // Base Sepolia CCIP Router
   },
   {
     "networkId": 421614,
     "chainName": "arbitrum-sepolia",
     "ccipSelector": "3478487238524512106",
-    "bridgeAddress": "0xf786e2292cfc0d8dabed7d59b636c16289753e1c"
+    "bridgeAddress": "0xf786e2292cfc0d8dabed7d59b636c16289753e1c",
+    "ccipRouterAddress": "0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165" // Arbitrum Sepolia CCIP Router
   },
   {
     "networkId": 11155111,
     "chainName": "sepolia",
     "ccipSelector": "16015286601757825753",
-    "bridgeAddress": "0x6f801df32713c7f33acef6318b92cd16829ad17e"
+    "bridgeAddress": "0x6f801df32713c7f33acef6318b92cd16829ad17e",
+    "ccipRouterAddress": "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59" // Sepolia CCIP Router
   }
 ];
 
