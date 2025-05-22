@@ -363,8 +363,33 @@ export function useTokenBridge() {
       
       setEstimatedFee(feeResult as bigint);
       return feeResult as bigint;
-    } catch (error) {
-      console.error("手数料見積もりエラー:", error);
+    } catch (error: any) {
+      console.error("手数料見積もりエラー詳細:");
+      console.error("  エラー名:", error.name);
+      console.error("  メッセージ:", error.message);
+      if (error.shortMessage) {
+        console.error("  短いメッセージ:", error.shortMessage);
+      }
+      if (error.cause) {
+        console.error("  原因:", error.cause);
+      }
+      if (error.meta) {
+        console.error("  メタ情報:", error.meta);
+      }
+
+      // estimateFee呼び出し時の引数をログ出力
+      const bridgeAddress = bridgeAddresses[currentChainId] as `0x${string}`;
+      const destinationSelector = chainSelectors[destinationChainId];
+      // USDC amount（デフォルトでは6デシマル）
+      const parsedAmount = parseUnits(amount, 6);
+
+      console.error("  estimateFee呼び出し引数:");
+      console.error(`    ソースブリッジコントラクトアドレス (bridgeAddress): ${bridgeAddress}`);
+      console.error(`    宛先セレクタ (destinationSelector): ${destinationSelector?.toString()}`);
+      console.error(`    ユーザーアドレス (activeAddress): ${activeAddress}`);
+      console.error(`    解析された金額 (parsedAmount): ${parsedAmount.toString()}`);
+      console.error(`    自動ラッフル参加 (autoEnterRaffle): ${autoEnterRaffle}`);
+      
       return null;
     }
   }, [activeAddress, currentChainId, publicClient]);
