@@ -509,7 +509,8 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         bool autoEnterRaffle
     ) external view returns (uint256 fee) {
         // 基本チェック
-        require(s_supportedChains[destinationChainSelector], "Destination chain not supported");
+        require(s_supportedChains[destinationChainSelector], "ERR:UNSUPPORTED_CHAIN");
+        require(s_usdcAddress != address(0), "ERR:USDC_ZERO_ADDR");
         
         // メッセージデータを準備
         bytes memory messageData = abi.encode(
@@ -528,8 +529,10 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         
         // 宛先チェーン用のルーターアドレスを取得
         address routerAddress = _getRouterForChain(destinationChainSelector);
+        require(routerAddress != address(0), "ERR:ROUTER_ZERO_ADDR");
         
         // CCIPメッセージを準備
+        require(s_destinationBridgeContracts[destinationChainSelector] != address(0), "ERR:DEST_BRIDGE_ZERO_ADDR");
         CCIPInterface.EVM2AnyMessage memory message = CCIPInterface.EVM2AnyMessage({
             receiver: abi.encode(s_destinationBridgeContracts[destinationChainSelector]),
             data: messageData,
