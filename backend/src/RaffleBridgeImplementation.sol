@@ -192,12 +192,14 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
      * @return ルーターアドレス
      */
     function _getRouterForChain(uint64 chainSelector) internal view returns (address) {
-        address router = s_chainRouters[chainSelector];
-        // チェーン特有のルーターが設定されていない場合はデフォルトを使用
-        if (router == address(0)) {
-            return s_defaultRouter;
-        }
-        return router;
+        // The s_chainRouters mapping, as populated by the current deployer,
+        // maps destination chain selectors to routers ON THOSE DESTINATION CHAINS.
+        // This is not what we need for getFee/ccipSend, which must be called on the SOURCE chain's router.
+        // Therefore, we should always use s_defaultRouter, which is set to the current chain's router during initialization.
+        
+        // The chainSelector parameter is intentionally not used in this corrected logic.
+        // You can add `uint64 memory _ = chainSelector;` if needed to silence compiler warnings about unused parameters.
+        return s_defaultRouter; 
     }
 
     /**
