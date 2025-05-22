@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -54,7 +53,6 @@ export function TokenBridge() {
   // 状態管理
   const [amount, setAmount] = useState<string>("0");
   const [destinationChainId, setDestinationChainId] = useState<number | null>(null);
-  const [autoEnterRaffle, setAutoEnterRaffle] = useState<boolean>(false);
   const [currentFee, setCurrentFee] = useState<string>("0");
   const [showRecentTx, setShowRecentTx] = useState<boolean>(false);
 
@@ -69,12 +67,10 @@ export function TokenBridge() {
         console.log("============ 手数料見積もり実行 ============");
         console.log(`宛先チェーンID: ${destinationChainId}`);
         console.log(`金額: ${amount}`);
-        console.log(`自動ラッフル参加: ${autoEnterRaffle}`);
         
         const fee = await estimateBridgeFee(
           destinationChainId,
-          amount,
-          autoEnterRaffle
+          amount
         );
         
         if (fee) {
@@ -87,7 +83,7 @@ export function TokenBridge() {
     };
 
     getFee();
-  }, [activeAddress, destinationChainId, amount, autoEnterRaffle, estimateBridgeFee]);
+  }, [activeAddress, destinationChainId, amount, estimateBridgeFee]);
 
   // 宛先チェーン変更ハンドラー
   const handleDestinationChange = (value: string) => {
@@ -122,7 +118,7 @@ export function TokenBridge() {
   // ブリッジハンドラー
   const handleBridge = async () => {
     if (destinationChainId) {
-      await bridgeUSDC(destinationChainId, amount, autoEnterRaffle);
+      await bridgeUSDC(destinationChainId, amount);
       // 送信後にフォームをリセット
       setAmount("0");
     }
@@ -225,22 +221,6 @@ export function TokenBridge() {
               最大
             </Button>
           </div>
-        </div>
-
-        {/* 自動ラッフル参加オプション */}
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="auto-enter"
-            checked={autoEnterRaffle}
-            onCheckedChange={(checked) => setAutoEnterRaffle(!!checked)}
-            disabled={isLoading || isApproving}
-          />
-          <Label
-            htmlFor="auto-enter"
-            className="text-sm text-gray-700 dark:text-gray-300"
-          >
-            宛先チェーンでラッフルに自動参加
-          </Label>
         </div>
 
         {/* 手数料情報 */}

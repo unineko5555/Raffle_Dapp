@@ -69,7 +69,6 @@ export type BridgeTransaction = {
   destinationChain: number;
   amount: string;
   status: 'pending' | 'success' | 'failed';
-  autoEnterRaffle: boolean;
 };
 
 export type DestinationChainInfo = {
@@ -298,8 +297,7 @@ export function useTokenBridge() {
   // Get estimated fee for bridging
   const estimateBridgeFee = useCallback(async (
     destinationChainId: number,
-    amount: string,
-    autoEnterRaffle: boolean = false
+    amount: string
   ) => {
     if (!activeAddress || !publicClient) return null;
     
@@ -358,7 +356,7 @@ export function useTokenBridge() {
         address: bridgeAddress,
         abi: BRIDGE_ABI,
         functionName: "estimateFee",
-        args: [destinationSelector, activeAddress as `0x${string}`, parsedAmount, autoEnterRaffle],
+        args: [destinationSelector, activeAddress as `0x${string}`, parsedAmount],
       });
       
       setEstimatedFee(feeResult as bigint);
@@ -388,7 +386,6 @@ export function useTokenBridge() {
       console.error(`    宛先セレクタ (destinationSelector): ${destinationSelector?.toString()}`);
       console.error(`    ユーザーアドレス (activeAddress): ${activeAddress}`);
       console.error(`    解析された金額 (parsedAmount): ${parsedAmount.toString()}`);
-      console.error(`    自動ラッフル参加 (autoEnterRaffle): ${autoEnterRaffle}`);
       
       return null;
     }
@@ -610,8 +607,7 @@ export function useTokenBridge() {
   // Bridge USDC
   const bridgeUSDC = useCallback(async (
     destinationChainId: number,
-    amount: string,
-    autoEnterRaffle: boolean = false
+    amount: string
   ) => {
     if (!activeAddress || !writeContractAsync) {
       toast({
@@ -640,7 +636,7 @@ export function useTokenBridge() {
       const parsedAmount = parseUnits(amount, 6);
       
       // 手数料を見積もる
-      const fee = await estimateBridgeFee(destinationChainId, amount, autoEnterRaffle);
+      const fee = await estimateBridgeFee(destinationChainId, amount);
       if (!fee) {
         throw new Error("手数料の見積もりに失敗しました");
       }
@@ -650,7 +646,7 @@ export function useTokenBridge() {
         address: bridgeAddress,
         abi: BRIDGE_ABI,
         functionName: "bridgeTokens",
-        args: [destinationSelector, activeAddress as `0x${string}`, parsedAmount, autoEnterRaffle],
+        args: [destinationSelector, activeAddress as `0x${string}`, parsedAmount],
         value: fee,
       });
       
@@ -667,7 +663,6 @@ export function useTokenBridge() {
         destinationChain: destinationChainId,
         amount,
         status: 'pending',
-        autoEnterRaffle,
       };
       
       // トランザクションリストに追加

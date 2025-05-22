@@ -55,22 +55,21 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         address indexed receiver,
         uint64 destinationChainSelector,
         uint256 amount,
-        bytes32 messageId,
-        bool autoEnterRaffle
+        bytes32 messageId
     );
     
     event TokensReceived(
         uint64 sourceChainSelector,
         address indexed receiver,
         uint256 amount,
-        bytes32 messageId,
-        bool autoEnterRaffle
+        bytes32 messageId
     );
     
     event PoolInitialized(uint256 amount);
     event PoolReplenished(uint256 amount);
     event LowPoolAlert(uint256 currentBalance, uint256 threshold);
     event RaffleAddressUpdated(address newRaffleAddress);
+    event DefaultRouterUpdated(address indexed newRouter);
     event Upgraded(address indexed newImplementation);
 
     // 修飾子
@@ -217,13 +216,11 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
      * @param destinationChainSelector 宛先チェーンのセレクタ
      * @param receiver 受取人のアドレス
      * @param amount ブリッジするUSDCの量
-     * @param autoEnterRaffle 宛先チェーンでラッフルに自動参加するかどうか
      */
     function bridgeTokens(
         uint64 destinationChainSelector,
         address receiver,
-        uint256 amount,
-        bool autoEnterRaffle
+        uint256 amount
     ) external payable {
         // 基本的なチェック
         require(amount > 0, "Amount must be greater than 0");
@@ -242,9 +239,7 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         // メッセージデータを準備
         bytes memory messageData = abi.encode(
             receiver,           // 受取人アドレス
-            amount,            // USDC量
-            autoEnterRaffle,   // ラッフル自動参加フラグ
-            block.timestamp    // タイムスタンプ
+            amount             // USDC量
         );
         
         // トークン転送情報を準備
@@ -282,8 +277,7 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
             receiver,
             destinationChainSelector,
             amount,
-            messageId,
-            autoEnterRaffle
+            messageId
         );
         
         // 残りのETHを返金
@@ -307,9 +301,8 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         // メッセージデータをデコード
         (
             address receiver,
-            uint256 amount,
-            bool autoEnterRaffle
-        ) = abi.decode(message.data, (address, uint256, bool));
+            uint256 amount
+        ) = abi.decode(message.data, (address, uint256));
         
         // USDC Token
         IERC20 usdc = IERC20(s_usdcAddress);
@@ -317,19 +310,12 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         // まず受取人にUSDCを転送
         require(usdc.transfer(receiver, amount), "USDC transfer failed");
         
-        // ラッフル自動参加フラグが立っている場合はラッフルに参加
-        if (autoEnterRaffle && s_raffleAddress != address(0)) {
-            // 受取人からラッフル参加のための承認を得る必要がある点に注意
-            // ここでは簡略化のため、自動参加は実装しない
-        }
-        
         // イベント発行
         emit TokensReceived(
             sourceChainSelector,
             receiver,
             amount,
-            message.messageId,
-            autoEnterRaffle
+            message.messageId
         );
     }
 
@@ -416,6 +402,16 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
     }
 
     /**
+     * @notice デフォルトルーターアドレスを設定する関数（緊急修正用）
+     * @param newDefaultRouter 新しいデフォルトルーターアドレス
+     */
+    function setDefaultRouter(address newDefaultRouter) external onlyOwner {
+        require(newDefaultRouter != address(0), "Router address cannot be zero");
+        s_defaultRouter = newDefaultRouter;
+        emit DefaultRouterUpdated(newDefaultRouter);
+    }
+
+    /**
      * @notice 宛先ブリッジコントラクトアドレスを更新する関数
      * @param chainSelector チェーンセレクタ
      * @param bridgeContract 新しいブリッジコントラクトアドレス
@@ -497,29 +493,40 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
     }
 
     /**
+     * @notice デフォルトルーターアドレスを取得する関数
+     * @return defaultRouter デフォルトルーターアドレス
+     */
+    function getDefaultRouter() external view returns (address defaultRouter) {
+        return s_defaultRouter;
+    }
+
+    /**
      * @notice CCIP手数料を見積もる関数
      * @param destinationChainSelector 宛先チェーンのセレクタ
      * @param receiver 受取人のアドレス
      * @param amount ブリッジするUSDCの量
-     * @param autoEnterRaffle ラッフル自動参加フラグ
      * @return fee 見積もられた手数料
      */
     function estimateFee(
         uint64 destinationChainSelector,
         address receiver,
-        uint256 amount,
-        bool autoEnterRaffle
+        uint256 amount
     ) external view returns (uint256 fee) {
         // 基本チェック
         require(s_supportedChains[destinationChainSelector], "ERR:UNSUPPORTED_CHAIN");
         require(s_usdcAddress != address(0), "ERR:USDC_ZERO_ADDR");
         
-        // メッセージデータを準備
+        // 宛先チェーン用のルーターアドレスを取得
+        address routerAddress = _getRouterForChain(destinationChainSelector);
+        require(routerAddress != address(0), "ERR:ROUTER_ZERO_ADDR");
+        
+        // 宛先ブリッジコントラクトアドレスの確認
+        require(s_destinationBridgeContracts[destinationChainSelector] != address(0), "ERR:DEST_BRIDGE_ZERO_ADDR");
+        
+        // 簡素化されたメッセージデータを準備
         bytes memory messageData = abi.encode(
             receiver,
-            amount,
-            autoEnterRaffle,
-            block.timestamp
+            amount
         );
         
         // トークン転送情報を準備
@@ -529,18 +536,13 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
             amount: amount
         });
         
-        // 宛先チェーン用のルーターアドレスを取得
-        address routerAddress = _getRouterForChain(destinationChainSelector);
-        require(routerAddress != address(0), "ERR:ROUTER_ZERO_ADDR");
-        
         // CCIPメッセージを準備
-        require(s_destinationBridgeContracts[destinationChainSelector] != address(0), "ERR:DEST_BRIDGE_ZERO_ADDR");
         CCIPInterface.EVM2AnyMessage memory message = CCIPInterface.EVM2AnyMessage({
             receiver: abi.encode(s_destinationBridgeContracts[destinationChainSelector]),
             data: messageData,
             tokenAmounts: tokenAmounts,
             feeToken: address(0), // ETHで手数料支払い
-            extraArgs: ""
+            extraArgs: "" // 空の文字列
         });
         
         // 手数料を見積もる
