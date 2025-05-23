@@ -230,11 +230,19 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         // USDC Token
         IERC20 usdc = IERC20(s_usdcAddress);
         
+        // 実際のブリッジ実行時にプール残高をチェック
+        uint256 currentPoolBalance = usdc.balanceOf(address(this));
+        require(amount <= currentPoolBalance, "ERR:INSUFFICIENT_POOL_BALANCE");
+        
         // プール状態を更新
         _updatePoolStatus();
         
         // トークン転送 (送信者からコントラクトへ)
         require(usdc.transferFrom(msg.sender, address(this), amount), "USDC transfer failed");
+        
+        // 手数料を見積もり
+        uint256 fee = this.estimateFee(destinationChainSelector, receiver, amount);
+        require(msg.value >= fee, "Insufficient fee");
         
         // メッセージデータを準備
         bytes memory messageData = abi.encode(
@@ -258,16 +266,12 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
             data: messageData,
             tokenAmounts: tokenAmounts,
             feeToken: address(0), // ETHで手数料支払い
-            extraArgs: ""
+            extraArgs: abi.encodePacked(bytes4(0x97a657c9), abi.encode(uint256(200_000)))
         });
-        
-        // 手数料を計算
-        uint256 fee = CCIPInterface(routerAddress).getFee(destinationChainSelector, message);
-        require(msg.value >= fee, "Insufficient fee");
         
         // メッセージ送信
         bytes32 messageId = CCIPInterface(routerAddress).ccipSend{value: fee}(
-            uint256(destinationChainSelector), 
+            destinationChainSelector, // uint64を直接使用（uint256へのキャストを削除）
             message
         );
         
@@ -292,11 +296,9 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
      * @param message 受信したメッセージ
      */
     function ccipReceive(CCIPInterface.Any2EVMMessage memory message) external {
-        // メッセージを処理前に送信元を検証
-        // ソースチェーンのルーターを使用
-        uint64 sourceChainSelector = uint64(message.sourceChainSelector);
-        address routerAddress = _getRouterForChain(sourceChainSelector);
-        require(msg.sender == routerAddress, "Only router can call ccipReceive");
+        // 受信時は現在のチェーンのルーター（defaultRouter）が呼び出し元である必要がある
+        // sourceChainSelectorは参考情報として使用するが、検証には使用しない
+        require(msg.sender == s_defaultRouter, "Only current chain router can call ccipReceive");
         
         // メッセージデータをデコード
         (
@@ -312,7 +314,7 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         
         // イベント発行
         emit TokensReceived(
-            sourceChainSelector,
+            uint64(message.sourceChainSelector),
             receiver,
             amount,
             message.messageId
@@ -514,38 +516,39 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
     ) external view returns (uint256 fee) {
         // 基本チェック
         require(s_supportedChains[destinationChainSelector], "ERR:UNSUPPORTED_CHAIN");
-        require(s_usdcAddress != address(0), "ERR:USDC_ZERO_ADDR");
+        require(amount > 0, "ERR:INVALID_AMOUNT");
         
-        // 宛先チェーン用のルーターアドレスを取得
+        // 宛先のブリッジコントラクトアドレスを取得
+        address destinationBridge = s_destinationBridgeContracts[destinationChainSelector];
+        require(destinationBridge != address(0), "ERR:NO_DESTINATION_BRIDGE");
+        
+        // ルーターアドレスを取得（ソースチェーンのルーター）
         address routerAddress = _getRouterForChain(destinationChainSelector);
-        require(routerAddress != address(0), "ERR:ROUTER_ZERO_ADDR");
+        require(routerAddress != address(0), "ERR:NO_ROUTER");
         
-        // 宛先ブリッジコントラクトアドレスの確認
-        require(s_destinationBridgeContracts[destinationChainSelector] != address(0), "ERR:DEST_BRIDGE_ZERO_ADDR");
+        // メッセージデータをエンコード
+        bytes memory messageData = abi.encode(receiver, amount);
         
-        // 簡素化されたメッセージデータを準備
-        bytes memory messageData = abi.encode(
-            receiver,
-            amount
-        );
-        
-        // トークン転送情報を準備
+        // トークン転送配列を準備
         CCIPInterface.EVMTokenAmount[] memory tokenAmounts = new CCIPInterface.EVMTokenAmount[](1);
         tokenAmounts[0] = CCIPInterface.EVMTokenAmount({
             token: s_usdcAddress,
             amount: amount
         });
         
-        // CCIPメッセージを準備
+        // CCIPメッセージを準備（CCIPの公式仕様に従う）
         CCIPInterface.EVM2AnyMessage memory message = CCIPInterface.EVM2AnyMessage({
-            receiver: abi.encode(s_destinationBridgeContracts[destinationChainSelector]),
+            receiver: abi.encode(destinationBridge),
             data: messageData,
             tokenAmounts: tokenAmounts,
             feeToken: address(0), // ETHで手数料支払い
-            extraArgs: "" // 空の文字列
+            extraArgs: abi.encodePacked(
+                bytes4(0x97a657c9), // EVMExtraArgsV1 tag
+                abi.encode(uint256(200_000)) // gasLimit
+            )
         });
         
-        // 手数料を見積もる
+        // CCIP公式推奨: ルーターのgetFeeを使用して手数料を計算
         return CCIPInterface(routerAddress).getFee(destinationChainSelector, message);
     }
 

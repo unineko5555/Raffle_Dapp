@@ -348,10 +348,98 @@ export function useTokenBridge() {
         console.error("チェーン情報取得エラー:", error);
       }
       
+      // 追加のデバッグ情報を取得
+      console.log("============ 追加デバッグ情報 ============");
+      
+      // 1. コントラクトの基本情報を取得
+      try {
+        const contractInfo = await publicClient.readContract({
+          address: bridgeAddress,
+          abi: BRIDGE_ABI,
+          functionName: "getInfo",
+          args: [],
+        });
+        console.log("コントラクト基本情報:");
+        console.log("  USDCアドレス:", contractInfo[0]);
+        console.log("  ラッフルアドレス:", contractInfo[1]);
+        console.log("  オーナーアドレス:", contractInfo[2]);
+        console.log("  最小プール閾値:", contractInfo[3]?.toString());
+      } catch (error) {
+        console.error("基本情報取得エラー:", error);
+      }
+      
+      // 2. デフォルトルーターを取得
+      try {
+        const defaultRouter = await publicClient.readContract({
+          address: bridgeAddress,
+          abi: BRIDGE_ABI,
+          functionName: "getDefaultRouter",
+          args: [],
+        });
+        console.log("デフォルトルーター:", defaultRouter);
+        
+        // bridge-contract-config.tsから期待されるルーターアドレスを取得
+        const expectedRouter = BRIDGE_CONFIGS.find(config => config.networkId === currentChainId)?.ccipRouterAddress;
+        console.log("期待されるCCIPルーター:", expectedRouter);
+        console.log("ルーターアドレス一致:", defaultRouter === expectedRouter);
+      } catch (error) {
+        console.error("デフォルトルーター取得エラー:", error);
+      }
+      
+      // 3. チェーンルーターを取得
+      try {
+        const chainRouter = await publicClient.readContract({
+          address: bridgeAddress,
+          abi: BRIDGE_ABI,
+          functionName: "getChainRouter",
+          args: [destinationSelector],
+        });
+        console.log("宛先チェーン用ルーター:", chainRouter);
+      } catch (error) {
+        console.error("チェーンルーター取得エラー:", error);
+      }
+      
+      // 4. サポートされているチェーンセレクタ一覧を取得
+      try {
+        const supportedSelectors = await publicClient.readContract({
+          address: bridgeAddress,
+          abi: BRIDGE_ABI,
+          functionName: "getSupportedChainSelectors",
+          args: [],
+        });
+        console.log("サポートされているチェーンセレクタ:", supportedSelectors?.map(s => s.toString()));
+        console.log("宛先チェーンはサポートされているか:", 
+                    supportedSelectors?.some(s => s.toString() === destinationSelector.toString()));
+      } catch (error) {
+        console.error("サポートチェーン取得エラー:", error);
+      }
+      
+      // 5. プール残高を確認
+      try {
+        const poolBalance = await publicClient.readContract({
+          address: bridgeAddress,
+          abi: BRIDGE_ABI,
+          functionName: "getPoolBalance",
+          args: [],
+        });
+        console.log("現在のプール残高:", formatUnits(poolBalance as bigint, 6), "USDC");
+      } catch (error) {
+        console.error("プール残高取得エラー:", error);
+      }
+      
       // USDC amount（デフォルトでは6デシマル）
       const parsedAmount = parseUnits(amount, 6);
       
+      // estimateFee呼び出し前の最終確認
+      console.log("============ estimateFee呼び出し前の最終確認 ============");
+      console.log("ブリッジコントラクトアドレス:", bridgeAddress);
+      console.log("宛先チェーンセレクタ:", destinationSelector.toString());
+      console.log("受信者アドレス:", activeAddress);
+      console.log("送信量:", parsedAmount.toString(), "(wei単位)");
+      console.log("送信量:", amount, "USDC");
+      
       // 手数料を見積もる
+      console.log("\nestimateFee関数を呼び出します...");
       const feeResult = await publicClient.readContract({
         address: bridgeAddress,
         abi: BRIDGE_ABI,
@@ -370,9 +458,35 @@ export function useTokenBridge() {
       }
       if (error.cause) {
         console.error("  原因:", error.cause);
+        // causeがオブジェクトの場合、詳細を表示
+        if (typeof error.cause === 'object' && error.cause !== null) {
+          console.error("  原因の詳細:", JSON.stringify(error.cause, null, 2));
+        }
       }
       if (error.meta) {
         console.error("  メタ情報:", error.meta);
+      }
+      if (error.details) {
+        console.error("  詳細情報:", error.details);
+      }
+      if (error.args) {
+        console.error("  関数引数:", error.args);
+      }
+      if (error.errorName) {
+        console.error("  コントラクトエラー名:", error.errorName);
+      }
+      if (error.errorArgs) {
+        console.error("  コントラクトエラー引数:", error.errorArgs);
+      }
+      
+      // viemエラーの詳細情報を取得
+      if (error.walk) {
+        console.error("  エラーチェーン:");
+        error.walk((err: any) => {
+          if (err.message) {
+            console.error("    -", err.message);
+          }
+        });
       }
 
       // estimateFee呼び出し時の引数をログ出力
@@ -381,11 +495,21 @@ export function useTokenBridge() {
       // USDC amount（デフォルトでは6デシマル）
       const parsedAmount = parseUnits(amount, 6);
 
-      console.error("  estimateFee呼び出し引数:");
+      console.error("\n  estimateFee呼び出し引数:");
       console.error(`    ソースブリッジコントラクトアドレス (bridgeAddress): ${bridgeAddress}`);
       console.error(`    宛先セレクタ (destinationSelector): ${destinationSelector?.toString()}`);
       console.error(`    ユーザーアドレス (activeAddress): ${activeAddress}`);
-      console.error(`    解析された金額 (parsedAmount): ${parsedAmount.toString()}`);
+      console.error(`    解析された金額 (parsedAmount): ${parsedAmount.toString()} (${amount} USDC)`);
+      
+      // 現在のチェーン情報も表示
+      console.error("\n  現在の環境:");
+      console.error(`    現在のチェーンID: ${currentChainId}`);
+      console.error(`    現在のチェーン名: ${chainNames[currentChainId]}`);
+      console.error(`    宛先チェーンID: ${destinationChainId}`);
+      console.error(`    宛先チェーン名: ${chainNames[destinationChainId]}`);
+      
+      // エラーが発生した場合の通知（完全デバッグテストの手動実行を促す）
+      console.log("\n⚠️ エラーが発生しました。デバッグツールの「完全デバッグテスト」を実行して詳細を確認してください。");
       
       return null;
     }
@@ -779,6 +903,246 @@ export function useTokenBridge() {
     }
   }, [allowance]);
   
+  // デバッグ用のCCIPルーター直接テスト関数
+  const testCCIPRouterDirectly = useCallback(async (destinationChainId: number, amount: string) => {
+    if (!activeAddress || !publicClient) return null;
+    
+    try {
+      const bridgeAddress = bridgeAddresses[currentChainId] as `0x${string}`;
+      const destinationSelector = chainSelectors[destinationChainId];
+      const usdcAddress = contractConfig[currentChainId as keyof typeof contractConfig]?.erc20Address as `0x${string}`;
+      
+      console.log("============ CCIPルーター直接テスト ============");
+      
+      // 1. ルーターアドレスを取得
+      const routerAddress = await publicClient.readContract({
+        address: bridgeAddress,
+        abi: BRIDGE_ABI,
+        functionName: "getDefaultRouter",
+      }) as `0x${string}`;
+      
+      console.log("使用するCCIPルーター:", routerAddress);
+      
+      // 2. CCIPルーターのABI定義
+      const ccipRouterABI = [
+        {
+          "type": "function",
+          "name": "getFee",
+          "inputs": [
+            {"name": "destinationChainSelector", "type": "uint64"},
+            {"name": "message", "type": "tuple", "components": [
+              {"name": "receiver", "type": "bytes"},
+              {"name": "data", "type": "bytes"},
+              {"name": "tokenAmounts", "type": "tuple[]", "components": [
+                {"name": "token", "type": "address"},
+                {"name": "amount", "type": "uint256"}
+              ]},
+              {"name": "feeToken", "type": "address"},
+              {"name": "extraArgs", "type": "bytes"}
+            ]}
+          ],
+          "outputs": [{"name": "fee", "type": "uint256"}]
+        },
+        {
+          "type": "function",
+          "name": "isChainSupported",
+          "inputs": [{"name": "chainSelector", "type": "uint64"}],
+          "outputs": [{"name": "", "type": "bool"}]
+        }
+      ];
+      
+      // 3. 宛先チェーンがサポートされているかチェック
+      try {
+        const isSupported = await publicClient.readContract({
+          address: routerAddress,
+          abi: ccipRouterABI,
+          functionName: "isChainSupported",
+          args: [destinationSelector],
+        });
+        console.log("CCIPルーターでサポートされているか:", isSupported);
+      } catch (error) {
+        console.error("チェーンサポート確認エラー:", error);
+      }
+      
+      // 4. 宛先ブリッジアドレスを取得
+      const destinationBridgeAddress = bridgeAddresses[destinationChainId];
+      console.log("宛先ブリッジアドレス:", destinationBridgeAddress);
+      
+      // 5. CCIPメッセージを構築
+      const parsedAmount = parseUnits(amount, 6);
+      const testMessage = {
+        receiver: "0x" + destinationBridgeAddress.slice(2).toLowerCase().padStart(64, "0"),
+        data: "0x",
+        tokenAmounts: [{
+          token: usdcAddress,
+          amount: parsedAmount
+        }],
+        feeToken: "0x0000000000000000000000000000000000000000", // ETH
+        extraArgs: "0x97a657c90000000000000000000000000000000000000000000000000000000000030d40" // 200,000 gas limit
+      };
+      
+      console.log("構築したCCIPメッセージ:");
+      console.log("  receiver:", testMessage.receiver);
+      console.log("  data:", testMessage.data);
+      console.log("  tokenAmounts:", testMessage.tokenAmounts);
+      console.log("  feeToken:", testMessage.feeToken);
+      console.log("  extraArgs:", testMessage.extraArgs);
+      
+      // 6. CCIPルーターに直接getFeeを呼び出し
+      try {
+        const directFee = await publicClient.readContract({
+          address: routerAddress,
+          abi: ccipRouterABI,
+          functionName: "getFee",
+          args: [destinationSelector, testMessage]
+        });
+        
+        console.log("CCIPルーター直接呼び出し成功!");
+        console.log("  手数料:", formatUnits(directFee as bigint, 18), "ETH");
+        console.log("  手数料 (wei):", (directFee as bigint).toString());
+        
+        return directFee as bigint;
+      } catch (error) {
+        console.error("CCIPルーター直接呼び出しエラー:", error);
+        return null;
+      }
+      
+    } catch (error) {
+      console.error("CCIPルーター直接テストエラー:", error);
+      return null;
+    }
+  }, [activeAddress, currentChainId, publicClient]);
+  
+  // 段階的なテスト関数
+  const performStepByStepTest = useCallback(async (destinationChainId: number) => {
+    if (!activeAddress || !publicClient) return;
+    
+    console.log("============ 段階的デバッグテスト開始 ============");
+    
+    const testAmounts = ["0", "0.01", "0.1", "1"];
+    
+    for (const amount of testAmounts) {
+      console.log(`\n--- テスト金額: ${amount} USDC ---`);
+      
+      try {
+        // 1. CCIPルーター直接テスト
+        console.log("1. CCIPルーター直接テスト:");
+        const directResult = await testCCIPRouterDirectly(destinationChainId, amount);
+        if (directResult) {
+          console.log(`✅ CCIPルーター直接呼び出し成功: ${formatUnits(directResult, 18)} ETH`);
+        } else {
+          console.log("❌ CCIPルーター直接呼び出し失敗");
+        }
+        
+        // 2. ブリッジコントラクト経由テスト
+        console.log("2. ブリッジコントラクト経由テスト:");
+        const bridgeResult = await estimateBridgeFee(destinationChainId, amount);
+        if (bridgeResult) {
+          console.log(`✅ ブリッジコントラクト経由成功: ${formatUnits(bridgeResult, 18)} ETH`);
+        } else {
+          console.log("❌ ブリッジコントラクト経由失敗");
+        }
+        
+        // 3. 結果比較
+        if (directResult && bridgeResult) {
+          const difference = directResult - bridgeResult;
+          console.log(`📊 手数料差額: ${formatUnits(difference, 18)} ETH`);
+          if (difference === BigInt(0)) {
+            console.log("✅ 手数料が一致しています");
+          } else {
+            console.log("⚠️ 手数料に差があります");
+          }
+        }
+        
+        // 少し待機（レート制限回避）
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (error) {
+        console.error(`金額 ${amount} のテストでエラー:`, error);
+      }
+    }
+    
+    console.log("\n============ 段階的デバッグテスト終了 ============");
+  }, [activeAddress, publicClient, testCCIPRouterDirectly, estimateBridgeFee]);
+  
+  // USDCトークンの詳細情報を取得する関数
+  const debugUSDCTokenInfo = useCallback(async () => {
+    if (!activeAddress || !publicClient) return;
+    
+    try {
+      const usdcAddress = contractConfig[currentChainId as keyof typeof contractConfig]?.erc20Address as `0x${string}`;
+      const bridgeAddress = bridgeAddresses[currentChainId] as `0x${string}`;
+      
+      console.log("============ USDCトークン詳細情報 ============");
+      console.log("USDCアドレス:", usdcAddress);
+      console.log("ブリッジアドレス:", bridgeAddress);
+      
+      // USDCの基本情報を取得
+      const tokenInfo = await Promise.allSettled([
+        publicClient.readContract({
+          address: usdcAddress,
+          abi: ERC20ABI,
+          functionName: "name",
+        }),
+        publicClient.readContract({
+          address: usdcAddress,
+          abi: ERC20ABI,
+          functionName: "symbol",
+        }),
+        publicClient.readContract({
+          address: usdcAddress,
+          abi: ERC20ABI,
+          functionName: "decimals",
+        }),
+        publicClient.readContract({
+          address: usdcAddress,
+          abi: ERC20ABI,
+          functionName: "totalSupply",
+        }),
+        publicClient.readContract({
+          address: usdcAddress,
+          abi: ERC20ABI,
+          functionName: "balanceOf",
+          args: [activeAddress as `0x${string}`],
+        }),
+        publicClient.readContract({
+          address: usdcAddress,
+          abi: ERC20ABI,
+          functionName: "allowance",
+          args: [activeAddress as `0x${string}`, bridgeAddress],
+        })
+      ]);
+      
+      console.log("トークン名:", tokenInfo[0].status === 'fulfilled' ? tokenInfo[0].value : 'エラー');
+      console.log("トークンシンボル:", tokenInfo[1].status === 'fulfilled' ? tokenInfo[1].value : 'エラー');
+      console.log("デシマル:", tokenInfo[2].status === 'fulfilled' ? tokenInfo[2].value : 'エラー');
+      console.log("総供給量:", tokenInfo[3].status === 'fulfilled' ? formatUnits(tokenInfo[3].value as bigint, 6) + " USDC" : 'エラー');
+      console.log("ユーザー残高:", tokenInfo[4].status === 'fulfilled' ? formatUnits(tokenInfo[4].value as bigint, 6) + " USDC" : 'エラー');
+      console.log("ブリッジへの承認額:", tokenInfo[5].status === 'fulfilled' ? formatUnits(tokenInfo[5].value as bigint, 6) + " USDC" : 'エラー');
+      
+    } catch (error) {
+      console.error("USDCトークン情報取得エラー:", error);
+    }
+  }, [activeAddress, currentChainId, publicClient]);
+  
+  // 完全なデバッグテストを実行する関数
+  const runFullDebugTest = useCallback(async (destinationChainId: number, amount: string = "1") => {
+    console.log("============ 完全デバッグテスト開始 ============");
+    console.log(`宛先チェーン: ${chainNames[destinationChainId]} (${destinationChainId})`);
+    console.log(`テスト金額: ${amount} USDC`);
+    
+    // 1. USDCトークン情報の確認
+    await debugUSDCTokenInfo();
+    
+    // 2. CCIPルーター直接テスト
+    await testCCIPRouterDirectly(destinationChainId, amount);
+    
+    // 3. 段階的テスト
+    await performStepByStepTest(destinationChainId);
+    
+    console.log("============ 完全デバッグテスト終了 ============");
+  }, [chainNames, debugUSDCTokenInfo, testCCIPRouterDirectly, performStepByStepTest]);
+
   return {
     activeAddress,
     isLoading,
@@ -794,6 +1158,11 @@ export function useTokenBridge() {
     estimateBridgeFee,
     fetchBridgeData,
     initializePool,
-    replenishPool
+    replenishPool,
+    // デバッグ関数を追加
+    testCCIPRouterDirectly,
+    performStepByStepTest,
+    debugUSDCTokenInfo,
+    runFullDebugTest
   };
 }

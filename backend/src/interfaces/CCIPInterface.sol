@@ -34,7 +34,7 @@ interface CCIPInterface {
      * @return fee 必要な手数料
      */
     function getFee(
-        uint256 destinationChainSelector,
+        uint64 destinationChainSelector,
         EVM2AnyMessage memory message
     ) external view returns (uint256 fee);
 
@@ -45,7 +45,7 @@ interface CCIPInterface {
      * @return messageId 作成されたメッセージID
      */
     function ccipSend(
-        uint256 destinationChainSelector,
+        uint64 destinationChainSelector,
         EVM2AnyMessage calldata message
     ) external payable returns (bytes32 messageId);
 }

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import {Script} from "forge-std/Script.sol";
-import {RaffleBridge} from "../src/RaffleBridge.sol";
+import {RaffleBridgeImplementation} from "../src/RaffleBridgeImplementation.sol";
 import {console} from "forge-std/console.sol";
 
 /**
@@ -118,8 +118,11 @@ contract RaffleBridgeDeployer is Script {
         // ブロードキャストの開始
         vm.startBroadcast();
         
-        // RaffleBridgeコントラクトのデプロイ
-        RaffleBridge bridge = new RaffleBridge(
+        // RaffleBridgeImplementationコントラクトのデプロイ（引数なし）
+        RaffleBridgeImplementation bridge = new RaffleBridgeImplementation();
+        
+        // initialize関数を呼び出して初期化
+        bridge.initialize(
             defaultRouter,
             routerAddresses,
             routerChainSelectors,

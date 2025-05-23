@@ -426,11 +426,11 @@ contract RaffleImplementation is
         });
 
         // メッセージ送信の手数料を計算
-        uint256 fee = s_ccipRouter.getFee(destinationChainSelector, message);
+        uint256 fee = s_ccipRouter.getFee(uint64(destinationChainSelector), message);
         require(address(this).balance >= fee, "Insufficient balance for fee");
 
         // メッセージを送信
-        bytes32 messageId = s_ccipRouter.ccipSend{value: fee}(destinationChainSelector, message);
+        bytes32 messageId = s_ccipRouter.ccipSend{value: fee}(uint64(destinationChainSelector), message);
 
         // イベント発行
         emit CrossChainMessageSent(destinationChainSelector, messageId);
