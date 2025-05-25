@@ -48,6 +48,8 @@ export function TokenBridge() {
     approveUSDC,
     bridgeUSDC,
     estimateBridgeFee,
+    checkApprovalStatus,
+    approveAndBridge,
   } = useTokenBridge();
 
   // 状態管理
@@ -55,29 +57,15 @@ export function TokenBridge() {
   const [destinationChainId, setDestinationChainId] = useState<number | null>(null);
   const [currentFee, setCurrentFee] = useState<string>("0");
   const [showRecentTx, setShowRecentTx] = useState<boolean>(false);
+  // 承認状態の表示を簡素化（毎回承認するため状態管理を削除）
 
   // 手数料見積もり
   useEffect(() => {
     const getFee = async () => {
-      if (
-        activeAddress &&
-        destinationChainId &&
-        parseFloat(amount) > 0
-      ) {
-        console.log("============ 手数料見積もり実行 ============");
-        console.log(`宛先チェーンID: ${destinationChainId}`);
-        console.log(`金額: ${amount}`);
-        
-        const fee = await estimateBridgeFee(
-          destinationChainId,
-          amount
-        );
-        
+      if (activeAddress && destinationChainId && parseFloat(amount) > 0) {
+        const fee = await estimateBridgeFee(destinationChainId, amount);
         if (fee) {
           setCurrentFee(formatEther(fee));
-          console.log(`見積もり手数料: ${formatEther(fee)} ETH`);
-        } else {
-          console.error("手数料の見積もりに失敗しました");
         }
       }
     };
@@ -110,16 +98,12 @@ export function TokenBridge() {
     setAmount(usdcBalance);
   };
 
-  // 承認ハンドラー
-  const handleApprove = async () => {
-    await approveUSDC(amount);
-  };
-
-  // ブリッジハンドラー
+  // ブリッジハンドラー（毎回承認を実行）
   const handleBridge = async () => {
-    if (destinationChainId) {
-      await bridgeUSDC(destinationChainId, amount);
-      // 送信後にフォームをリセット
+    if (!destinationChainId || parseFloat(amount) <= 0) return;
+
+    const result = await approveAndBridge(destinationChainId, amount);
+    if (result) {
       setAmount("0");
     }
   };
@@ -223,6 +207,8 @@ export function TokenBridge() {
           </div>
         </div>
 
+
+
         {/* 手数料情報 */}
         {destinationChainId && parseFloat(amount) > 0 && (
           <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg space-y-2">
@@ -237,41 +223,24 @@ export function TokenBridge() {
           </div>
         )}
 
-        {/* 承認・ブリッジボタン */}
-        {needsApproval(amount) ? (
-          <Button
-            className="w-full"
-            onClick={handleApprove}
-            disabled={isApproving || parseFloat(amount) <= 0}
-          >
-            {isApproving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                承認中...
-              </>
-            ) : (
-              "USDCブリッジを承認"
-            )}
-          </Button>
-        ) : (
-          <Button
-            className="w-full"
-            onClick={handleBridge}
-            disabled={!canBridge || isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                処理中...
-              </>
-            ) : (
-              <>
-                ブリッジする
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </Button>
-        )}
+        {/* ブリッジボタン（シンプル化） */}
+        <Button
+          className="w-full"
+          onClick={handleBridge}
+          disabled={!canBridge}
+        >
+          {isLoading || isApproving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {isApproving ? "承認中..." : "ブリッジ中..."}
+            </>
+          ) : (
+            <>
+              ブリッジ実行
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
+        </Button>
       </div>
 
       {/* 最近のトランザクション */}
@@ -344,6 +313,7 @@ export function TokenBridge() {
       <div className="mt-6 text-xs text-gray-500 dark:text-gray-400">
         <p>* ブリッジしたトークンが宛先チェーンに届くまで数分かかる場合があります</p>
         <p>* トークン転送にはCCIP手数料がかかります</p>
+        <p>* 承認は毎回自動実行されます</p>
       </div>
     </div>
   );

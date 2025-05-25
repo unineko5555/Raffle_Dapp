@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAccount, useChainId, usePublicClient, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseUnits, formatUnits, createPublicClient, http } from "viem";
 import { sepolia, baseSepolia, arbitrumSepolia } from "viem/chains";
@@ -152,6 +152,7 @@ export function useTokenBridge() {
       }
       
       // 使用するクライアントを選択
+      
       let client;
       
       // 現在のチェーンならPublicClientを使用
@@ -515,6 +516,34 @@ export function useTokenBridge() {
     }
   }, [activeAddress, currentChainId, publicClient]);
   
+  // 承認状態チェック関数
+  const checkApprovalStatus = useCallback(async (amount: string): Promise<boolean> => {
+    if (!activeAddress || !publicClient || parseFloat(amount) <= 0) return false;
+    
+    try {
+      const bridgeAddress = bridgeAddresses[currentChainId] as `0x${string}`;
+      const usdcAddress = contractConfig[currentChainId as keyof typeof contractConfig]?.erc20Address as `0x${string}`;
+      
+      if (!bridgeAddress || !usdcAddress) return false;
+      
+      const currentAllowance = await publicClient.readContract({
+        address: usdcAddress,
+        abi: ERC20ABI,
+        functionName: "allowance",
+        args: [activeAddress as `0x${string}`, bridgeAddress],
+      });
+      
+      const requiredAmount = parseUnits(amount, 6);
+      return (currentAllowance as bigint) >= requiredAmount;
+    } catch (error) {
+      console.error("承認状態チェックエラー:", error);
+      return false;
+    }
+  }, [activeAddress, currentChainId, publicClient]);
+
+  // 承認状態管理（常に承認が必要として扱う）
+  const needsApproval = useMemo(() => true, []);
+
   // Approve USDC for bridge
   const approveUSDC = useCallback(async (amount: string) => {
     if (!activeAddress || !writeContractAsync) {
@@ -530,18 +559,31 @@ export function useTokenBridge() {
       setIsApproving(true);
       
       const bridgeAddress = bridgeAddresses[currentChainId] as `0x${string}`;
-      if (!bridgeAddress || bridgeAddress === "0x0000000000000000000000000000000000000000") {
-        throw new Error(`ブリッジコントラクトアドレスが設定されていません: チェーンID ${currentChainId}`);
-      }
-      
       const usdcAddress = contractConfig[currentChainId as keyof typeof contractConfig]?.erc20Address as `0x${string}`;
-      if (!usdcAddress) {
-        throw new Error(`USDCアドレスが見つかりません: チェーンID ${currentChainId}`);
+      
+      if (!bridgeAddress || !usdcAddress) {
+        throw new Error("コントラクトアドレスが設定されていません");
       }
       
-      // 承認額（大きめに設定）
+      console.log("承認処理開始:");
+      console.log("  USDCアドレス:", usdcAddress);
+      console.log("  ブリッジアドレス:", bridgeAddress);
+      console.log("  承認額:", amount, "USDC");
+      
+      // 現在の承認額を確認
+      const currentAllowance = await publicClient!.readContract({
+        address: usdcAddress,
+        abi: ERC20ABI,
+        functionName: "allowance",
+        args: [activeAddress as `0x${string}`, bridgeAddress],
+      });
+      console.log("  現在の承認額:", formatUnits(currentAllowance as bigint, 6), "USDC");
+      
       const parsedAmount = parseUnits(amount, 6);
-      const approveAmount = parsedAmount * BigInt(2); // 余裕を持たせる
+      // 承認額を大きめに設定（10倍）して確実に承認される様にする
+      const approveAmount = parsedAmount * BigInt(10);
+      
+      console.log("  新規承認額:", formatUnits(approveAmount, 6), "USDC");
       
       const tx = await writeContractAsync({
         address: usdcAddress,
@@ -550,43 +592,49 @@ export function useTokenBridge() {
         args: [bridgeAddress, approveAmount],
       });
       
+      console.log("  承認トランザクション送信:", tx);
+      
       toast({
         title: "承認送信",
         description: "USDCの承認トランザクションを送信しました",
       });
       
       // トランザクション確認を待つ
-      await publicClient!.waitForTransactionReceipt({ hash: tx });
+      const receipt = await publicClient!.waitForTransactionReceipt({ hash: tx });
+      console.log("  承認トランザクション確認:", receipt.status);
       
-      toast({
-        title: "承認完了",
-        description: "USDCの承認が完了しました",
-      });
-      
-      // アローワンスを更新
+      // 承認後の実際の状態を確認
       const newAllowance = await publicClient!.readContract({
         address: usdcAddress,
         abi: ERC20ABI,
         functionName: "allowance",
         args: [activeAddress as `0x${string}`, bridgeAddress],
       });
+      console.log("  更新後の承認額:", formatUnits(newAllowance as bigint, 6), "USDC");
       
-      setAllowance(newAllowance as bigint);
+      const verified = await checkApprovalStatus(amount);
+      if (verified) {
+        toast({
+          title: "承認完了",
+          description: "USDCの承認が完了しました",
+        });
+      } else {
+        console.error("承認確認に失敗しました");
+      }
+      
       return tx;
     } catch (error) {
       console.error("USDC承認エラー:", error);
-      
       toast({
         title: "承認エラー",
         description: error instanceof Error ? error.message : "不明なエラー",
         variant: "destructive",
       });
-      
       return null;
     } finally {
       setIsApproving(false);
     }
-  }, [activeAddress, currentChainId, writeContractAsync, publicClient, toast]);
+  }, [activeAddress, currentChainId, writeContractAsync, publicClient, toast, checkApprovalStatus]);
   
   // プール初期化
   const initializePool = useCallback(async (amount: string) => {
@@ -658,77 +706,7 @@ export function useTokenBridge() {
     }
   }, [activeAddress, currentChainId, writeContractAsync, publicClient, toast, approveUSDC, fetchBridgeData]);
   
-  // プール補充
-  const replenishPool = useCallback(async (amount: string) => {
-    if (!activeAddress || !writeContractAsync) {
-      toast({
-        title: "エラー",
-        description: "ウォレットが接続されていません",
-        variant: "destructive",
-      });
-      return null;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      const bridgeAddress = bridgeAddresses[currentChainId] as `0x${string}`;
-      if (!bridgeAddress || bridgeAddress === "0x0000000000000000000000000000000000000000") {
-        throw new Error(`ブリッジコントラクトアドレスが設定されていません: チェーンID ${currentChainId}`);
-      }
-      
-      const usdcAddress = contractConfig[currentChainId as keyof typeof contractConfig]?.erc20Address as `0x${string}`;
-      if (!usdcAddress) {
-        throw new Error(`USDCアドレスが見つかりません: チェーンID ${currentChainId}`);
-      }
-      
-      // USDC amount
-      const parsedAmount = parseUnits(amount, 6);
-      
-      // USDC承認
-      await approveUSDC(amount);
-      
-      // プール補充
-      const tx = await writeContractAsync({
-        address: bridgeAddress,
-        abi: BRIDGE_ABI,
-        functionName: "replenishPool",
-        args: [parsedAmount],
-      });
-      
-      toast({
-        title: "プール補充送信",
-        description: `${amount} USDCでプールを補充しました`,
-      });
-      
-      // トランザクション確認を待つ
-      await publicClient!.waitForTransactionReceipt({ hash: tx });
-      
-      toast({
-        title: "プール補充完了",
-        description: "USDCプールの補充が完了しました",
-      });
-      
-      // データを再取得
-      fetchBridgeData();
-      
-      return tx;
-    } catch (error) {
-      console.error("プール補充エラー:", error);
-      
-      toast({
-        title: "補充エラー",
-        description: error instanceof Error ? error.message : "不明なエラー",
-        variant: "destructive",
-      });
-      
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [activeAddress, currentChainId, writeContractAsync, publicClient, toast, approveUSDC, fetchBridgeData]);
-  
-  // Bridge USDC
+  // Bridge USDC - 先に定義
   const bridgeUSDC = useCallback(async (
     destinationChainId: number,
     amount: string
@@ -744,6 +722,8 @@ export function useTokenBridge() {
     
     try {
       setIsLoading(true);
+      
+      // ブリッジ実行（承認を先に実行してから呼び出されるため、承認チェックを削除）
       
       const bridgeAddress = bridgeAddresses[currentChainId] as `0x${string}`;
       if (!bridgeAddress || bridgeAddress === "0x0000000000000000000000000000000000000000") {
@@ -856,6 +836,132 @@ export function useTokenBridge() {
     }
   }, [activeAddress, currentChainId, writeContractAsync, publicClient, toast, estimateBridgeFee, fetchBridgeData]);
   
+  // 承認とブリッジを統合実行（毎回承認を実行）
+  const approveAndBridge = useCallback(async (
+    destinationChainId: number,
+    amount: string
+  ) => {
+    if (!activeAddress || !writeContractAsync) return null;
+    
+    try {
+      console.log("============ 承認とブリッジ処理開始 ============");
+      console.log("宛先チェーンID:", destinationChainId);
+      console.log("金額:", amount, "USDC");
+      
+      // 1. 毎回新しい承認を実行（確実性を重視）
+      console.log("1. 承認処理を開始します...");
+      const approvalResult = await approveUSDC(amount);
+      if (!approvalResult || approvalResult === null) {
+        console.error("承認に失敗しました");
+        return null;
+      }
+      
+      // 2. 承認完了後、状態同期のため待機（5秒に延長）
+      console.log("2. 承認完了を待機中...");
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // 3. 承認状態を再確認
+      console.log("3. 承認状態を再確認中...");
+      const isApproved = await checkApprovalStatus(amount);
+      if (!isApproved) {
+        console.error("承認状態の確認に失敗しました");
+        toast({
+          title: "エラー",
+          description: "承認が正しく完了していません。もう一度お試しください。",
+          variant: "destructive",
+        });
+        return null;
+      }
+      
+      // 4. ブリッジ実行
+      console.log("4. ブリッジ処理を開始します...");
+      const bridgeResult = await bridgeUSDC(destinationChainId, amount);
+      
+      console.log("============ 承認とブリッジ処理完了 ============");
+      return bridgeResult;
+    } catch (error) {
+      console.error("統合ブリッジエラー:", error);
+      toast({
+        title: "エラー",
+        description: "ブリッジ処理中にエラーが発生しました",
+        variant: "destructive",
+      });
+      return null;
+    }
+  }, [activeAddress, writeContractAsync, approveUSDC, bridgeUSDC, checkApprovalStatus, toast]);
+  
+  // プール補充
+  const replenishPool = useCallback(async (amount: string) => {
+    if (!activeAddress || !writeContractAsync) {
+      toast({
+        title: "エラー",
+        description: "ウォレットが接続されていません",
+        variant: "destructive",
+      });
+      return null;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      const bridgeAddress = bridgeAddresses[currentChainId] as `0x${string}`;
+      if (!bridgeAddress || bridgeAddress === "0x0000000000000000000000000000000000000000") {
+        throw new Error(`ブリッジコントラクトアドレスが設定されていません: チェーンID ${currentChainId}`);
+      }
+      
+      const usdcAddress = contractConfig[currentChainId as keyof typeof contractConfig]?.erc20Address as `0x${string}`;
+      if (!usdcAddress) {
+        throw new Error(`USDCアドレスが見つかりません: チェーンID ${currentChainId}`);
+      }
+      
+      // USDC amount
+      const parsedAmount = parseUnits(amount, 6);
+      
+      // USDC承認
+      await approveUSDC(amount);
+      
+      // プール補充
+      const tx = await writeContractAsync({
+        address: bridgeAddress,
+        abi: BRIDGE_ABI,
+        functionName: "replenishPool",
+        args: [parsedAmount],
+      });
+      
+      toast({
+        title: "プール補充送信",
+        description: `${amount} USDCでプールを補充しました`,
+      });
+      
+      // トランザクション確認を待つ
+      await publicClient!.waitForTransactionReceipt({ hash: tx });
+      
+      toast({
+        title: "プール補充完了",
+        description: "USDCプールの補充が完了しました",
+      });
+      
+      // データを再取得
+      fetchBridgeData();
+      
+      return tx;
+    } catch (error) {
+      console.error("プール補充エラー:", error);
+      
+      toast({
+        title: "補充エラー",
+        description: error instanceof Error ? error.message : "不明なエラー",
+        variant: "destructive",
+      });
+      
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeAddress, currentChainId, writeContractAsync, publicClient, toast, approveUSDC, fetchBridgeData]);
+  
+
+  
   // Load transactions from localStorage
   useEffect(() => {
     const storedTxs = localStorage.getItem('bridge_transactions');
@@ -892,16 +998,6 @@ export function useTokenBridge() {
     if (!usdcBalance) return "0";
     return formatUnits(usdcBalance as bigint, 6);
   }, [usdcBalance]);
-  
-  // Check if approval is needed
-  const needsApproval = useCallback((amount: string) => {
-    try {
-      const parsedAmount = parseUnits(amount, 6);
-      return allowance < parsedAmount;
-    } catch (error) {
-      return true; // エラーの場合は承認が必要とみなす
-    }
-  }, [allowance]);
   
   // デバッグ用のCCIPルーター直接テスト関数
   const testCCIPRouterDirectly = useCallback(async (destinationChainId: number, amount: string) => {
@@ -1152,7 +1248,7 @@ export function useTokenBridge() {
     destinationChains,
     transactions,
     usdcBalance: formattedUsdcBalance(),
-    needsApproval,
+    needsApproval, // 常にtrueを返す
     approveUSDC,
     bridgeUSDC,
     estimateBridgeFee,
@@ -1163,6 +1259,8 @@ export function useTokenBridge() {
     testCCIPRouterDirectly,
     performStepByStepTest,
     debugUSDCTokenInfo,
-    runFullDebugTest
+    runFullDebugTest,
+    checkApprovalStatus,
+    approveAndBridge
   };
 }
