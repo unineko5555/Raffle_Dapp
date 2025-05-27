@@ -118,20 +118,8 @@ contract RaffleBridgeDeployer is Script {
         // ブロードキャストの開始
         vm.startBroadcast();
         
-        // RaffleBridgeImplementationコントラクトのデプロイ（引数なし）
+        // ✅ 修正: RaffleBridgeコントラクトのデプロイ（引数なし）
         RaffleBridgeImplementation bridge = new RaffleBridgeImplementation();
-        
-        // initialize関数を呼び出して初期化
-        bridge.initialize(
-            defaultRouter,
-            routerAddresses,
-            routerChainSelectors,
-            usdc,
-            supportedChainSelectors,
-            destinationBridgeContracts,
-            chainNames,
-            MINIMUM_POOL_THRESHOLD
-        );
         
         console.log("RaffleBridge deployed at:", address(bridge));
         

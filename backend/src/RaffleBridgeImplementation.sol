@@ -212,10 +212,11 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
     }
 
     /**
-     * @notice USDCをブリッジする関数
+     * @notice USDCをブリッジする関数 (CCIP Pool-based Pattern)
      * @param destinationChainSelector 宛先チェーンのセレクタ
      * @param receiver 受取人のアドレス
      * @param amount ブリッジするUSDCの量
+     * @dev Pool-based pattern: ユーザー → ブリッジプール → CCIP（データのみ）
      */
     function bridgeTokens(
         uint64 destinationChainSelector,
@@ -229,49 +230,42 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         
         // USDC Token
         IERC20 usdc = IERC20(s_usdcAddress);
+        address routerAddress = s_defaultRouter; // ✅ ソースチェーンのルーター使用
+        require(routerAddress != address(0), "ERR:NO_ROUTER");
         
-        // 実際のブリッジ実行時にプール残高をチェック
-        uint256 currentPoolBalance = usdc.balanceOf(address(this));
-        require(amount <= currentPoolBalance, "ERR:INSUFFICIENT_POOL_BALANCE");
+        // ✅ Pool Pattern: ユーザーがブリッジコントラクト（プール）に承認していることを確認
+        uint256 bridgeAllowance = usdc.allowance(msg.sender, address(this));
+        require(bridgeAllowance >= amount, "Please approve bridge contract for USDC transfer");
         
-        // プール状態を更新
-        _updatePoolStatus();
+        // ユーザーのUSDC残高を確認
+        uint256 userBalance = usdc.balanceOf(msg.sender);
+        require(userBalance >= amount, "Insufficient USDC balance");
         
-        // トークン転送 (送信者からコントラクトへ)
-        require(usdc.transferFrom(msg.sender, address(this), amount), "USDC transfer failed");
+        // ✅ Pool Pattern: 1. ユーザーからプール（ブリッジコントラクト）にUSDCを預ける
+        require(usdc.transferFrom(msg.sender, address(this), amount), "USDC transfer to pool failed");
         
-        // 手数料を見積もり
-        uint256 fee = this.estimateFee(destinationChainSelector, receiver, amount);
-        require(msg.value >= fee, "Insufficient fee");
-        
-        // メッセージデータを準備
+        // ✅ Pool Pattern: 2. メッセージのみ送信（トークンは含まない）
         bytes memory messageData = abi.encode(
-            receiver,           // 受取人アドレス
-            amount             // USDC量
+            receiver,    // 受取人アドレス
+            amount      // USDC量
         );
         
-        // トークン転送情報を準備
-        CCIPInterface.EVMTokenAmount[] memory tokenAmounts = new CCIPInterface.EVMTokenAmount[](1);
-        tokenAmounts[0] = CCIPInterface.EVMTokenAmount({
-            token: s_usdcAddress,
-            amount: amount
-        });
-        
-        // 宛先チェーン用のルーターアドレスを取得
-        address routerAddress = _getRouterForChain(destinationChainSelector);
-        
-        // CCIPメッセージを準備
+        // ✅ Pool Pattern: トークン転送なし（データのみのメッセージ）
         CCIPInterface.EVM2AnyMessage memory message = CCIPInterface.EVM2AnyMessage({
             receiver: abi.encode(s_destinationBridgeContracts[destinationChainSelector]),
             data: messageData,
-            tokenAmounts: tokenAmounts,
+            tokenAmounts: new CCIPInterface.EVMTokenAmount[](0), // ✅ 空の配列
             feeToken: address(0), // ETHで手数料支払い
             extraArgs: abi.encodePacked(bytes4(0x97a657c9), abi.encode(uint256(200_000)))
         });
         
-        // メッセージ送信
+        // 手数料を計算
+        uint256 fee = CCIPInterface(routerAddress).getFee(destinationChainSelector, message);
+        require(msg.value >= fee, "Insufficient fee for CCIP transaction");
+        
+        // ✅ Pool Pattern: データのみのメッセージを送信
         bytes32 messageId = CCIPInterface(routerAddress).ccipSend{value: fee}(
-            destinationChainSelector, // uint64を直接使用（uint256へのキャストを削除）
+            destinationChainSelector,
             message
         );
         
@@ -292,27 +286,23 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
     }
 
     /**
-     * @notice CCIP経由でメッセージを受信する関数
+     * @notice CCIP経由でメッセージを受信する関数 (Pool Pattern)
      * @param message 受信したメッセージ
      */
     function ccipReceive(CCIPInterface.Any2EVMMessage memory message) external {
-        // 受信時は現在のチェーンのルーター（defaultRouter）が呼び出し元である必要がある
-        // sourceChainSelectorは参考情報として使用するが、検証には使用しない
-        require(msg.sender == s_defaultRouter, "Only current chain router can call ccipReceive");
+        require(msg.sender == s_defaultRouter, "Only router can call ccipReceive");
         
         // メッセージデータをデコード
-        (
-            address receiver,
-            uint256 amount
-        ) = abi.decode(message.data, (address, uint256));
+        (address receiver, uint256 amount) = abi.decode(message.data, (address, uint256));
         
-        // USDC Token
+        // ✅ Pool Pattern: プールから受取人にUSDCを送金
         IERC20 usdc = IERC20(s_usdcAddress);
+        uint256 poolBalance = usdc.balanceOf(address(this));
+        require(poolBalance >= amount, "Insufficient pool balance");
         
-        // まず受取人にUSDCを転送
-        require(usdc.transfer(receiver, amount), "USDC transfer failed");
+        require(usdc.transfer(receiver, amount), "USDC transfer to receiver failed");
         
-        // イベント発行
+        // イベント発行 - ✅ 修正: uint256からuint64への明示的キャスト
         emit TokensReceived(
             uint64(message.sourceChainSelector),
             receiver,
@@ -495,6 +485,25 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
     }
 
     /**
+     * @notice CCIPルーターのallowanceを確認するヘルパー関数
+     * @param user ユーザーアドレス
+     * @param destinationChainSelector 宛先チェーンセレクタ
+     * @return allowance CCIPルーターへの承認額
+     * @return routerAddress CCIPルーターアドレス
+     */
+    function getRouterAllowance(address user, uint64 destinationChainSelector) external view returns (
+        uint256 allowance,
+        address routerAddress
+    ) {
+        routerAddress = _getRouterForChain(destinationChainSelector);
+        if (routerAddress != address(0)) {
+            IERC20 usdc = IERC20(s_usdcAddress);
+            allowance = usdc.allowance(user, routerAddress);
+        }
+        return (allowance, routerAddress);
+    }
+
+    /**
      * @notice デフォルトルーターアドレスを取得する関数
      * @return defaultRouter デフォルトルーターアドレス
      */
@@ -503,7 +512,7 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
     }
 
     /**
-     * @notice CCIP手数料を見積もる関数
+     * @notice CCIP手数料を見積もる関数 (Pool-based Pattern)
      * @param destinationChainSelector 宛先チェーンのセレクタ
      * @param receiver 受取人のアドレス
      * @param amount ブリッジするUSDCの量
@@ -518,37 +527,26 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         require(s_supportedChains[destinationChainSelector], "ERR:UNSUPPORTED_CHAIN");
         require(amount > 0, "ERR:INVALID_AMOUNT");
         
-        // 宛先のブリッジコントラクトアドレスを取得
         address destinationBridge = s_destinationBridgeContracts[destinationChainSelector];
         require(destinationBridge != address(0), "ERR:NO_DESTINATION_BRIDGE");
         
-        // ルーターアドレスを取得（ソースチェーンのルーター）
-        address routerAddress = _getRouterForChain(destinationChainSelector);
+        address routerAddress = s_defaultRouter; // ✅ ソースチェーンのルーター
         require(routerAddress != address(0), "ERR:NO_ROUTER");
         
-        // メッセージデータをエンコード
         bytes memory messageData = abi.encode(receiver, amount);
         
-        // トークン転送配列を準備
-        CCIPInterface.EVMTokenAmount[] memory tokenAmounts = new CCIPInterface.EVMTokenAmount[](1);
-        tokenAmounts[0] = CCIPInterface.EVMTokenAmount({
-            token: s_usdcAddress,
-            amount: amount
-        });
-        
-        // CCIPメッセージを準備（CCIPの公式仕様に従う）
+        // ✅ Pool Pattern: トークン転送なしのメッセージ
         CCIPInterface.EVM2AnyMessage memory message = CCIPInterface.EVM2AnyMessage({
             receiver: abi.encode(destinationBridge),
             data: messageData,
-            tokenAmounts: tokenAmounts,
-            feeToken: address(0), // ETHで手数料支払い
+            tokenAmounts: new CCIPInterface.EVMTokenAmount[](0), // ✅ 空の配列
+            feeToken: address(0),
             extraArgs: abi.encodePacked(
-                bytes4(0x97a657c9), // EVMExtraArgsV1 tag
-                abi.encode(uint256(200_000)) // gasLimit
+                bytes4(0x97a657c9),
+                abi.encode(uint256(200_000))
             )
         });
         
-        // CCIP公式推奨: ルーターのgetFeeを使用して手数料を計算
         return CCIPInterface(routerAddress).getFee(destinationChainSelector, message);
     }
 

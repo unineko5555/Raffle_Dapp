@@ -30,7 +30,7 @@ import { contractConfig } from "@/app/lib/contract-config";
 const SUPPORTED_CHAINS = [
   { id: 11155111, name: "Sepolia" },
   { id: 84532, name: "Base Sepolia" },
-  { id: 421614, name: "Arbitrum Sepolia" }
+  { id: 421614, name: "Arbitrum Sepolia" },
 ];
 
 export function TokenBridge() {
@@ -47,25 +47,33 @@ export function TokenBridge() {
     needsApproval,
     approveUSDC,
     bridgeUSDC,
+    approveAndBridge, // 新しい関数を追加
     estimateBridgeFee,
-    checkApprovalStatus,
-    approveAndBridge,
   } = useTokenBridge();
 
   // 状態管理
   const [amount, setAmount] = useState<string>("0");
-  const [destinationChainId, setDestinationChainId] = useState<number | null>(null);
+  const [destinationChainId, setDestinationChainId] = useState<number | null>(
+    null
+  );
   const [currentFee, setCurrentFee] = useState<string>("0");
   const [showRecentTx, setShowRecentTx] = useState<boolean>(false);
-  // 承認状態の表示を簡素化（毎回承認するため状態管理を削除）
 
   // 手数料見積もり
   useEffect(() => {
     const getFee = async () => {
       if (activeAddress && destinationChainId && parseFloat(amount) > 0) {
+        console.log("============ 手数料見積もり実行 ============");
+        console.log(`宛先チェーンID: ${destinationChainId}`);
+        console.log(`金額: ${amount}`);
+
         const fee = await estimateBridgeFee(destinationChainId, amount);
+
         if (fee) {
           setCurrentFee(formatEther(fee));
+          console.log(`見積もり手数料: ${formatEther(fee)} ETH`);
+        } else {
+          console.error("手数料の見積もりに失敗しました");
         }
       }
     };
@@ -77,11 +85,11 @@ export function TokenBridge() {
   const handleDestinationChange = (value: string) => {
     setDestinationChainId(parseInt(value));
   };
-  
+
   // 選択したチェーン名を取得する関数
   const getChainName = (chainId: number | null) => {
     if (!chainId) return null;
-    const chain = SUPPORTED_CHAINS.find(c => c.id === chainId);
+    const chain = SUPPORTED_CHAINS.find((c) => c.id === chainId);
     return chain ? chain.name : null;
   };
 
@@ -98,18 +106,28 @@ export function TokenBridge() {
     setAmount(usdcBalance);
   };
 
-  // ブリッジハンドラー（毎回承認を実行）
-  const handleBridge = async () => {
-    if (!destinationChainId || parseFloat(amount) <= 0) return;
+  // 承認+ブリッジ自動実行ハンドラー
+  const handleApproveAndBridge = async () => {
+    if (destinationChainId) {
+      const result = await approveAndBridge(destinationChainId, amount);
+      if (result) {
+        // 成功後にフォームをリセット
+        setAmount("0");
+      }
+    }
+  };
 
-    const result = await approveAndBridge(destinationChainId, amount);
-    if (result) {
+  // ブリッジハンドラー（既に承認済みの場合）
+  const handleBridge = async () => {
+    if (destinationChainId) {
+      await bridgeUSDC(destinationChainId, amount);
+      // 送信後にフォームをリセット
       setAmount("0");
     }
   };
 
   // ブリッジ有効性チェック
-  const canBridge =
+  const canExecute =
     !isLoading &&
     !isApproving &&
     destinationChainId !== null &&
@@ -121,8 +139,11 @@ export function TokenBridge() {
 
   // エクスプローラーURLを取得
   const getExplorerUrl = (chainId: number, txHash: string) => {
-    const baseUrl = contractConfig[chainId as keyof typeof contractConfig]?.blockExplorer;
-    return baseUrl ? `${baseUrl}/tx/${txHash}` : `https://sepolia.etherscan.io/tx/${txHash}`;
+    const baseUrl =
+      contractConfig[chainId as keyof typeof contractConfig]?.blockExplorer;
+    return baseUrl
+      ? `${baseUrl}/tx/${txHash}`
+      : `https://sepolia.etherscan.io/tx/${txHash}`;
   };
 
   return (
@@ -165,8 +186,8 @@ export function TokenBridge() {
             </SelectTrigger>
             <SelectContent>
               {SUPPORTED_CHAINS.map((chain) => (
-                <SelectItem 
-                  key={chain.id} 
+                <SelectItem
+                  key={chain.id}
                   value={chain.id.toString()}
                   disabled={chain.id === chainId}
                 >
@@ -207,13 +228,13 @@ export function TokenBridge() {
           </div>
         </div>
 
-
-
         {/* 手数料情報 */}
         {destinationChainId && parseFloat(amount) > 0 && (
           <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600 dark:text-gray-400">CCIP手数料:</span>
+              <span className="text-gray-600 dark:text-gray-400">
+                CCIP手数料:
+              </span>
               <span>{currentFee} ETH</span>
             </div>
             <div className="flex justify-between text-sm font-medium">
@@ -223,11 +244,11 @@ export function TokenBridge() {
           </div>
         )}
 
-        {/* ブリッジボタン（シンプル化） */}
+        {/* 承認+ブリッジ自動実行ボタン */}
         <Button
           className="w-full"
-          onClick={handleBridge}
-          disabled={!canBridge}
+          onClick={handleApproveAndBridge}
+          disabled={!canExecute || isLoading || isApproving}
         >
           {isLoading || isApproving ? (
             <>
@@ -236,7 +257,7 @@ export function TokenBridge() {
             </>
           ) : (
             <>
-              ブリッジ実行
+              {needsApproval(amount) ? "承認してブリッジ" : "ブリッジする"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </>
           )}
@@ -274,7 +295,11 @@ export function TokenBridge() {
                     <div>
                       <span className="font-medium">{tx.amount} USDC</span>
                       <span className="text-gray-500 mx-1">→</span>
-                      <span>{contractConfig[tx.destinationChain as keyof typeof contractConfig]?.name || "Unknown"}</span>
+                      <span>
+                        {contractConfig[
+                          tx.destinationChain as keyof typeof contractConfig
+                        ]?.name || "Unknown"}
+                      </span>
                     </div>
                     <Badge
                       variant={
@@ -311,9 +336,10 @@ export function TokenBridge() {
 
       {/* 注意事項 */}
       <div className="mt-6 text-xs text-gray-500 dark:text-gray-400">
-        <p>* ブリッジしたトークンが宛先チェーンに届くまで数分かかる場合があります</p>
+        <p>
+          * ブリッジしたトークンが宛先チェーンに届くまで数分かかる場合があります
+        </p>
         <p>* トークン転送にはCCIP手数料がかかります</p>
-        <p>* 承認は毎回自動実行されます</p>
       </div>
     </div>
   );
