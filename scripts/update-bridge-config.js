@@ -67,6 +67,16 @@ function loadABI(contractName) {
 function getBridgeAddresses() {
     const bridgeAddresses = {};
     
+    // ✅ 修正: アップグレード結果を優先的に読み取り
+    const upgradeResults = findUpgradeResults();
+    if (Object.keys(upgradeResults).length > 0) {
+        console.log(`${COLORS.fg.blue}Using upgrade results from RaffleBridgeUpgrader...${COLORS.reset}`);
+        return upgradeResults;
+    }
+    
+    // フォールバック: 古いロジックを使用
+    console.log(`${COLORS.fg.yellow}No upgrade results found, falling back to deployment history...${COLORS.reset}`);
+    
     // Search through broadcast directories for deployed bridge contracts
     const runDirs = fs.readdirSync(BROADCAST_PATH);
     
@@ -112,6 +122,114 @@ function getBridgeAddresses() {
     }
     
     return bridgeAddresses;
+}
+
+/**
+ * ✅ 新規追加: アップグレード結果からアドレスを読み取る関数
+ * @returns {Object} アップグレードされたブリッジアドレス
+ */
+function findUpgradeResults() {
+    const upgradeResults = {};
+    
+    // RaffleBridgeUpgraderのブロードキャストファイルを探す
+    const upgraderRunDirs = fs.readdirSync(BROADCAST_PATH).filter(dir => 
+        dir.includes('RaffleBridgeUpgrader') || dir.includes('Upgrader')
+    );
+    
+    for (const runDir of upgraderRunDirs) {
+        const runPath = path.join(BROADCAST_PATH, runDir);
+        
+        if (!fs.statSync(runPath).isDirectory()) {
+            continue;
+        }
+        
+        // ネットワークディレクトリを検索
+        const networkDirs = fs.readdirSync(runPath);
+        
+        for (const networkDir of networkDirs) {
+            const networkPath = path.join(runPath, networkDir);
+            
+            if (!fs.statSync(networkPath).isDirectory()) {
+                continue;
+            }
+            
+            const networkId = parseInt(networkDir);
+            
+            if (isNaN(networkId) || !NETWORK_MAPPING[networkId]) {
+                continue;
+            }
+            
+            // 最新のrun-latest.jsonファイルを読み取り
+            const latestRunFile = path.join(networkPath, 'run-latest.json');
+            
+            if (fs.existsSync(latestRunFile)) {
+                try {
+                    const runData = JSON.parse(fs.readFileSync(latestRunFile, 'utf8'));
+                    
+                    // トランザクションからプロキシと実装アドレスを抽出
+                    const upgradeInfo = extractUpgradeInfo(runData, networkId);
+                    
+                    if (upgradeInfo) {
+                        upgradeResults[networkId] = upgradeInfo;
+                        console.log(`${COLORS.fg.green}Found Upgrade Result for ${NETWORK_MAPPING[networkId].name}:${COLORS.reset}`);
+                        console.log(`${COLORS.fg.cyan}  Proxy: ${upgradeInfo.proxyAddress}${COLORS.reset}`);
+                        console.log(`${COLORS.fg.cyan}  Implementation: ${upgradeInfo.implementationAddress}${COLORS.reset}`);
+                    }
+                } catch (error) {
+                    console.warn(`${COLORS.fg.yellow}Warning: Could not parse upgrade file for network ${networkId}${COLORS.reset}`);
+                }
+            }
+        }
+    }
+    
+    return upgradeResults;
+}
+
+/**
+ * アップグレード情報を抽出する関数
+ * @param {Object} runData - ブロードキャストデータ
+ * @param {number} networkId - ネットワーク ID
+ * @returns {Object|null} アップグレード情報
+ */
+function extractUpgradeInfo(runData, networkId) {
+    const transactions = runData.transactions || [];
+    
+    let proxyAddress = null;
+    let implementationAddress = null;
+    
+    // 1. トランザクションからアドレスを抽出
+    for (const tx of transactions) {
+        // 新しいRaffleBridgeImplementationのデプロイを検索
+        if (tx.contractName === 'RaffleBridgeImplementation' && tx.transactionType === 'CREATE') {
+            implementationAddress = tx.contractAddress;
+        }
+        
+        // upgradeTo呼び出しを検索してプロキシアドレスを特定
+        if (tx.function === 'upgradeTo(address)' && tx.arguments && tx.arguments.length > 0) {
+            proxyAddress = tx.to; // upgradeToを呼び出したアドレスがプロキシ
+        }
+    }
+    
+    // 2. フォールバック: 環境変数からBRIDGE_PROXY_ADDRESSを使用
+    if (!proxyAddress) {
+        // 手動でマッピングを作成（ログから得た正しいアドレス）
+        const CORRECT_PROXY_ADDRESSES = {
+            11155111: '0x6F801df32713c7F33ACEf6318B92CD16829aD17e', // Ethereum Sepolia
+            84532: '0x8AB90AB3013Df24BdF7adCEA73706c62b311cC67',    // Base Sepolia  
+            421614: '0xF786e2292cfc0d8dabEd7D59b636C16289753e1C'   // Arbitrum Sepolia
+        };
+        
+        proxyAddress = CORRECT_PROXY_ADDRESSES[networkId];
+    }
+    
+    if (proxyAddress && implementationAddress) {
+        return {
+            proxyAddress,
+            implementationAddress
+        };
+    }
+    
+    return null;
 }
 
 /**

@@ -169,7 +169,9 @@ upgrade-bridge-proxy-arb: check-env
 	@echo "Upgrading Bridge Proxy on Arbitrum Sepolia testnet..."
 	BRIDGE_PROXY_ADDRESS=$(BRIDGE_PROXY_ADDRESS_ARB) forge script script/RaffleBridgeUpgrader.s.sol:RaffleBridgeUpgrader --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
 
-upgrade-bridge-proxy: upgrade-bridge-proxy-sepolia upgrade-bridge-proxy-base upgrade-bridge-proxy-arb update-bridge-implementation-config
+upgrade-bridge-proxy: upgrade-bridge-proxy-sepolia upgrade-bridge-proxy-base upgrade-bridge-proxy-arb
+	@echo "Updating bridge implementation configuration..."
+	cd .. && node scripts/update-bridge-config.js
 
 upgrade-bridge-proxy-with-data-sepolia: check-env
 	@echo "Upgrading Bridge Proxy with data on Ethereum Sepolia testnet..."
@@ -183,10 +185,7 @@ upgrade-bridge-proxy-with-data-arb: check-env
 	@echo "Upgrading Bridge Proxy with data on Arbitrum Sepolia testnet..."
 	BRIDGE_PROXY_ADDRESS=$(BRIDGE_PROXY_ADDRESS_ARB) forge script script/RaffleBridgeUpgrader.s.sol:RaffleBridgeUpgrader --sig "upgradeWithData()" --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key 0x$(PRIVATE_KEY) --broadcast -vvvv
 
-upgrade-bridge-proxy-with-data: upgrade-bridge-proxy-with-data-sepolia upgrade-bridge-proxy-with-data-base upgrade-bridge-proxy-with-data-arb update-bridge-implementation-config
-
-# Bridge implementation update after upgrade
-update-bridge-implementation-config:
+upgrade-bridge-proxy-with-data: upgrade-bridge-proxy-with-data-sepolia upgrade-bridge-proxy-with-data-base upgrade-bridge-proxy-with-data-arb
 	@echo "Updating bridge implementation configuration..."
 	cd .. && node scripts/update-bridge-config.js
 
