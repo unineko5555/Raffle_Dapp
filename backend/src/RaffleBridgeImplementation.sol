@@ -71,6 +71,11 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
     event RaffleAddressUpdated(address newRaffleAddress);
     event DefaultRouterUpdated(address indexed newRouter);
     event Upgraded(address indexed newImplementation);
+    
+    // ✅ デバッグ用イベント追加
+    event DebugLog(string indexed functionName, string indexed stage, uint256 value);
+    event DebugLogAddress(string indexed functionName, string indexed stage, address addr);
+    event DebugLogBool(string indexed functionName, string indexed stage, bool flag);
 
     // 修飾子
     modifier onlyOwner() {
@@ -212,7 +217,7 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
     }
 
     /**
-     * @notice USDCをブリッジする関数 (CCIP Pool-based Pattern)
+     * @notice USDCをブリッジする関数 (CCIP Pool-based Pattern + 安全なtransferFrom)
      * @param destinationChainSelector 宛先チェーンのセレクタ
      * @param receiver 受取人のアドレス
      * @param amount ブリッジするUSDCの量
@@ -223,39 +228,75 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         address receiver,
         uint256 amount
     ) external payable {
+        // ============ デバッグログ開始 ============
+        emit DebugLog("bridgeTokens", "function_start", 0);
+        emit DebugLogAddress("bridgeTokens", "sender", msg.sender);
+        emit DebugLogAddress("bridgeTokens", "receiver", receiver);
+        emit DebugLog("bridgeTokens", "amount", amount);
+        
         // 基本的なチェック
         require(amount > 0, "Amount must be greater than 0");
         require(s_supportedChains[destinationChainSelector], "Destination chain not supported");
         require(receiver != address(0), "Receiver cannot be zero address");
         
+        emit DebugLog("bridgeTokens", "basic_checks_passed", 1);
+        
         // USDC Token
         IERC20 usdc = IERC20(s_usdcAddress);
-        address routerAddress = s_defaultRouter; // ✅ ソースチェーンのルーター使用
+        address routerAddress = s_defaultRouter;
         require(routerAddress != address(0), "ERR:NO_ROUTER");
         
-        // ✅ Pool Pattern: ユーザーがブリッジコントラクト（プール）に承認していることを確認
+        emit DebugLogAddress("bridgeTokens", "usdc_address", s_usdcAddress);
+        emit DebugLogAddress("bridgeTokens", "router_address", routerAddress);
+        
+        // ============ 詳細な残高・承認チェック ============
+        uint256 userBalance = usdc.balanceOf(msg.sender);
         uint256 bridgeAllowance = usdc.allowance(msg.sender, address(this));
+        uint256 contractBalanceBefore = usdc.balanceOf(address(this));
+        
+        emit DebugLog("bridgeTokens", "user_balance", userBalance);
+        emit DebugLog("bridgeTokens", "bridge_allowance", bridgeAllowance);
+        emit DebugLog("bridgeTokens", "contract_balance_before", contractBalanceBefore);
+        
+        require(userBalance >= amount, "Insufficient USDC balance");
         require(bridgeAllowance >= amount, "Please approve bridge contract for USDC transfer");
         
-        // ユーザーのUSDC残高を確認
-        uint256 userBalance = usdc.balanceOf(msg.sender);
-        require(userBalance >= amount, "Insufficient USDC balance");
+        emit DebugLog("bridgeTokens", "balance_allowance_checks_passed", 2);
         
-        // ✅ Pool Pattern: 1. ユーザーからプール（ブリッジコントラクト）にUSDCを預ける
-        require(usdc.transferFrom(msg.sender, address(this), amount), "USDC transfer to pool failed");
+        // ============ より安全なtransferFromパターン ============
+        emit DebugLog("bridgeTokens", "before_transferFrom", 3);
         
-        // ✅ Pool Pattern: 2. メッセージのみ送信（トークンは含まない）
-        bytes memory messageData = abi.encode(
-            receiver,    // 受取人アドレス
-            amount      // USDC量
-        );
+        // ✅ 修正: transferFromを実行する前に、承認額を再確認
+        uint256 currentAllowance = usdc.allowance(msg.sender, address(this));
+        emit DebugLog("bridgeTokens", "current_allowance_recheck", currentAllowance);
+        require(currentAllowance >= amount, "Allowance insufficient at execution time");
         
-        // ✅ Pool Pattern: トークン転送なし（データのみのメッセージ）
+        // ✅ 修正: より安全なtransferFromの実行
+        bool transferSuccess = usdc.transferFrom(msg.sender, address(this), amount);
+        require(transferSuccess, "USDC transfer to bridge contract failed");
+        
+        emit DebugLog("bridgeTokens", "transferFrom_success", 4);
+        
+        // 転送後の残高確認
+        uint256 newUserBalance = usdc.balanceOf(msg.sender);
+        uint256 newContractBalance = usdc.balanceOf(address(this));
+        
+        emit DebugLog("bridgeTokens", "new_user_balance", newUserBalance);
+        emit DebugLog("bridgeTokens", "new_contract_balance", newContractBalance);
+        
+        // ✅ 追加: 転送量の検証
+        require(newContractBalance >= contractBalanceBefore + amount, "Contract balance increase verification failed");
+        require(newUserBalance == userBalance - amount, "User balance decrease verification failed");
+        
+        // メッセージデータを準備
+        bytes memory messageData = abi.encode(receiver, amount);
+        
+        // CCIPメッセージを準備（トークンなし）
         CCIPInterface.EVM2AnyMessage memory message = CCIPInterface.EVM2AnyMessage({
             receiver: abi.encode(s_destinationBridgeContracts[destinationChainSelector]),
             data: messageData,
-            tokenAmounts: new CCIPInterface.EVMTokenAmount[](0), // ✅ 空の配列
-            feeToken: address(0), // ETHで手数料支払い
+            tokenAmounts: new CCIPInterface.EVMTokenAmount[](0), // 空の配列
+            feeToken: address(0),
             extraArgs: abi.encodePacked(bytes4(0x97a657c9), abi.encode(uint256(200_000)))
         });
         
@@ -263,11 +304,15 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         uint256 fee = CCIPInterface(routerAddress).getFee(destinationChainSelector, message);
         require(msg.value >= fee, "Insufficient fee for CCIP transaction");
         
-        // ✅ Pool Pattern: データのみのメッセージを送信
+        emit DebugLog("bridgeTokens", "fee_calculated", fee);
+        
+        // CCIPメッセージを送信
         bytes32 messageId = CCIPInterface(routerAddress).ccipSend{value: fee}(
             destinationChainSelector,
             message
         );
+        
+        emit DebugLog("bridgeTokens", "ccip_sent", 5);
         
         // イベント発行
         emit TokensBridged(
@@ -283,6 +328,8 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
             (bool success, ) = msg.sender.call{value: msg.value - fee}("");
             require(success, "Refund failed");
         }
+        
+        emit DebugLog("bridgeTokens", "function_completed", 6);
     }
 
     /**
@@ -548,6 +595,32 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         });
         
         return CCIPInterface(routerAddress).getFee(destinationChainSelector, message);
+    }
+
+    /**
+     * @notice 緊急時にコントラクト内のUSDCを回収する関数（オーナー専用）
+     * @param amount 回収する量
+     */
+    function emergencyWithdraw(uint256 amount) external onlyOwner {
+        IERC20 usdc = IERC20(s_usdcAddress);
+        uint256 contractBalance = usdc.balanceOf(address(this));
+        require(contractBalance >= amount, "Insufficient contract balance");
+        require(usdc.transfer(s_owner, amount), "Emergency withdrawal failed");
+    }
+
+    /**
+     * @notice ユーザーの承認状況を確認するヘルパー関数
+     * @param user ユーザーアドレス
+     * @return allowance ブリッジコントラクトへの承認額
+     * @return balance ユーザーのUSDC残高
+     */
+    function getUserApprovalStatus(address user) external view returns (
+        uint256 allowance,
+        uint256 balance
+    ) {
+        IERC20 usdc = IERC20(s_usdcAddress);
+        allowance = usdc.allowance(user, address(this)); // ✅ ブリッジコントラクトへの承認
+        balance = usdc.balanceOf(user);
     }
 
     /**

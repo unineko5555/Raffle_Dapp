@@ -46,6 +46,12 @@ contract RaffleBridgeUpgrader is Script {
         console.log("OLD_IMPLEMENTATION_ADDRESS:", oldImplementation);
         console.log("=== END_UPGRADE_RESULT ===");
         
+        // 最終的な正しいアドレス一覧を表示
+        console.log("\n==== FINAL CORRECT ADDRESSES ====");
+        console.log("Proxy (Use this for frontend):", proxyAddress);
+        console.log("Implementation (Reference only):", newImplementationAddress);
+        console.log("====================================\n");
+        
         // アップグレード結果を確認
         address currentImplementation = proxy.implementation();
         console.log("\n==== Upgrade Summary ====");

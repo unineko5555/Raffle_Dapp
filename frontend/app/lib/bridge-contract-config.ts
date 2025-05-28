@@ -94,6 +94,19 @@ export const BRIDGE_ABI = [
   },
   {
     "type": "function",
+    "name": "emergencyWithdraw",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "estimateFee",
     "inputs": [
       {
@@ -266,6 +279,30 @@ export const BRIDGE_ABI = [
         "name": "",
         "type": "uint64[]",
         "internalType": "uint64[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getUserApprovalStatus",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "allowance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "balance",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -465,6 +502,81 @@ export const BRIDGE_ABI = [
   },
   {
     "type": "event",
+    "name": "DebugLog",
+    "inputs": [
+      {
+        "name": "functionName",
+        "type": "string",
+        "indexed": true,
+        "internalType": "string"
+      },
+      {
+        "name": "stage",
+        "type": "string",
+        "indexed": true,
+        "internalType": "string"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "DebugLogAddress",
+    "inputs": [
+      {
+        "name": "functionName",
+        "type": "string",
+        "indexed": true,
+        "internalType": "string"
+      },
+      {
+        "name": "stage",
+        "type": "string",
+        "indexed": true,
+        "internalType": "string"
+      },
+      {
+        "name": "addr",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "DebugLogBool",
+    "inputs": [
+      {
+        "name": "functionName",
+        "type": "string",
+        "indexed": true,
+        "internalType": "string"
+      },
+      {
+        "name": "stage",
+        "type": "string",
+        "indexed": true,
+        "internalType": "string"
+      },
+      {
+        "name": "flag",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "DefaultRouterUpdated",
     "inputs": [
       {
@@ -622,25 +734,25 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "networkId": 84532,
     "chainName": "base-sepolia",
     "ccipSelector": "10344971235874465080",
-    "bridgeAddress": "0x888bbcd12f31dc885e0e137add806f34d8a25382",
+    "bridgeAddress": "0x8AB90AB3013Df24BdF7adCEA73706c62b311cC67",
     "ccipRouterAddress": "0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93",
-    "implementationAddress": "0xacbe5e07a202641231815c98d73390f6567c396e"
+    "implementationAddress": "0xd6609d02a8fe8aa67f132a3907ef16204bc84a75"
   },
   {
     "networkId": 421614,
     "chainName": "arbitrum-sepolia",
     "ccipSelector": "3478487238524512106",
-    "bridgeAddress": "0xa2d4059f910d6ebd89f60c03ac4b9c1e32436b5e",
+    "bridgeAddress": "0xF786e2292cfc0d8dabEd7D59b636C16289753e1C",
     "ccipRouterAddress": "0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165",
-    "implementationAddress": "0xab1e0c5f6a270dcedb3e9a4226b501c1010ed195"
+    "implementationAddress": "0x1897c5f9d29a2b991cd354d6e420f3da702a296e"
   },
   {
     "networkId": 11155111,
     "chainName": "sepolia",
     "ccipSelector": "16015286601757825753",
-    "bridgeAddress": "0x8cd38981f1df35bb9a4e5a72f08402fb159de021",
+    "bridgeAddress": "0x6F801df32713c7F33ACEf6318B92CD16829aD17e",
     "ccipRouterAddress": "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59",
-    "implementationAddress": "0x7caf100989a12a07cc856691d41ef64d574014d0"
+    "implementationAddress": "0xb52e22b88f8cb1ed80aa6f29b8e54fbe98fb683d"
   }
 ];
 

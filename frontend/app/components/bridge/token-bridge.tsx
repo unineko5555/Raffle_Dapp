@@ -7,7 +7,7 @@ import { formatEther } from "viem";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowRight, AlertTriangle, ExternalLink } from "lucide-react";
+import { Loader2, ArrowRight, AlertTriangle, ExternalLink, Search } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -144,6 +144,11 @@ export function TokenBridge() {
     return baseUrl
       ? `${baseUrl}/tx/${txHash}`
       : `https://sepolia.etherscan.io/tx/${txHash}`;
+  };
+
+  // CCIPエクスプローラーURLを取得
+  const getCCIPExplorerUrl = (txHash: string) => {
+    return `https://ccip.chain.link/tx/${txHash}`;
   };
 
   return (
@@ -318,14 +323,25 @@ export function TokenBridge() {
                     <span className="text-gray-500">
                       {new Date(tx.timestamp).toLocaleString()}
                     </span>
-                    <a
-                      href={getExplorerUrl(tx.sourceChain, tx.txHash)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 dark:text-blue-400 flex items-center"
-                    >
-                      詳細 <ExternalLink className="ml-1 h-3 w-3" />
-                    </a>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={getExplorerUrl(tx.sourceChain, tx.txHash)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 dark:text-blue-400 flex items-center text-xs"
+                      >
+                        詳細 <ExternalLink className="ml-1 h-3 w-3" />
+                      </a>
+                      <a
+                        href={getCCIPExplorerUrl(tx.txHash)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-green-600 dark:text-green-400 flex items-center text-xs"
+                        title="CCIP Explorer で確認"
+                      >
+                        CCIP <Search className="ml-1 h-3 w-3" />
+                      </a>
+                    </div>
                   </div>
                 </div>
               ))}
