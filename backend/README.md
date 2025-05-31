@@ -1,191 +1,154 @@
-# Raffle Dapp バックエンド
+# Raffle DApp Backend
 
-このリポジトリは、クロスチェーン対応のラッフル（抽選）Dappのバックエンド実装です。Chainlink VRF、Automation、CCIPを使用して、複数チェーン間で動作する公平なラッフルシステムを提供します。
+Cross-chain raffle DApp backend built with Foundry and Chainlink CCIP.
 
-## 技術スタック
+## Quick Start
 
-- **開発環境**: [Foundry](https://github.com/foundry-rs/foundry) (Solidity開発・テストフレームワーク)
-- **スマートコントラクト言語**: Solidity ^0.8.18
-- **外部統合**:
-  - Chainlink VRF 2.5 (検証可能なランダム性)
-  - Chainlink Automation (自動実行)
-  - Chainlink CCIP (クロスチェーン通信)
-- **コントラクト設計**: UUPSプロキシパターン (アップグレード可能)
-- **対応チェーン**:
-  - Ethereum Sepolia
-  - Base Sepolia
-  - Arbitrum Sepolia
+### Prerequisites
 
-## アーキテクチャ
+- [Foundry](https://book.getfoundry.sh/getting-started/installation) installed
+- Node.js 18+ (for frontend integration)
 
-```
-                                    +-----------------+
-                                    |                 |
-                                    |  フロントエンド  |
-                                    |                 |
-                                    +--------+--------+
-                                             |
-                                             v
-   +------------------+              +-------+--------+             +-------------------+
-   |                  |              |                |             |                   |
-   | Chainlink VRF    +------------->   RaffleProxy   <-------------+ Chainlink        |
-   | (乱数生成)       |              |   (UUPS)       |             | Automation       |
-   |                  |              |                |             | (自動実行)        |
-   +------------------+              +-------+--------+             +-------------------+
-                                             |
-                                             v
-                                    +--------+--------+
-                                    |                 |
-                                    | RaffleImpl      |
-                                    | (ロジック)      |
-                                    |                 |
-                                    +--------+--------+
-                                             |
-                                             v
-    +--------------------+          +--------+--------+
-    |                    |          |                 |
-    | Ethereum Sepolia   +<-------->+                 +<--------->  +-------------------+
-    |                    |          |                 |             |                   |
-    +--------------------+          |                 |             | Base Sepolia      |
-                                    |   Chainlink     |             |                   |
-    +--------------------+          |   CCIP          |             +-------------------+
-    |                    |          |   (クロスチェーン|
-    | Arbitrum Sepolia   +<-------->+   通信)         |
-    |                    |          |                 |
-    +--------------------+          +-----------------+
-```
-
-## 主要なコンポーネント
-
-### コントラクト
-
-1. **RaffleImplementation.sol**
-   - ラッフルの核となるロジックを実装
-   - VRF、Automation、CCIPとの統合
-   - ジャックポットシステムの管理
-   - 参加者管理と当選者決定
-
-2. **RaffleProxy.sol**
-   - UUPSプロキシパターンによるアップグレード機能
-   - 実装コントラクトへのデリゲーション
-
-### インターフェース
-
-1. **IRaffle.sol**
-   - ラッフルの主要機能を定義
-   - 外部からアクセス可能な関数とイベントを規定
-
-2. **VRFCoordinatorV2Interface.sol**, **VRFConsumerBaseV2.sol**
-   - Chainlink VRFとの連携用
-
-3. **AutomationCompatibleInterface.sol**
-   - Chainlink Automationとの連携用
-
-4. **CCIPInterface.sol**
-   - Chainlink CCIPとの連携用
-
-5. **IERC20.sol**
-   - USDC等のトークン操作用
-
-6. **IUUPSUpgradeable.sol**
-   - アップグレード機能用
-
-### ライブラリ
-
-- **RaffleLib.sol**
-  - ラッフルのヘルパー関数を提供
-  - 当選確率計算や当選者選択ロジック
-
-### デプロイスクリプト
-
-- **RaffleProxyDeployer.s.sol**
-  - コントラクトデプロイ用スクリプト
-
-- **HelperConfig.s.sol**
-  - 各テストネットワーク用の設定を提供
-  - モックコントラクトのデプロイ（ローカル環境用）
-
-## 機能
-
-1. **公平なラッフル**
-   - Chainlink VRFによる検証可能なランダム性
-   - 参加料: 10 USDC / 1回
-   - 当選者: 各ラウンド1名（均等確率）
-
-2. **自動実行**
-   - ラッフル条件: 3人以上の参加者がいること
-   - 実行タイミング: 3人目の参加から1分経過後に自動実行
-   - Chainlink Automation による自動化
-
-3. **ジャックポットシステム**
-   - 蓄積方式: 参加料の10%をジャックポットとして蓄積
-   - 獲得条件: 約1%の確率でジャックポットも当選金として配布
-   - 繰越し: 獲得されなかった場合、次回に繰り越し
-
-4. **クロスチェーン通信**
-   - 異なるチェーン間でのラッフル結果の共有
-   - 対応チェーン: テストネット（Sepolia、Base Sepolia、Arbitrum Sepolia）
-
-5. **アップグレード可能**
-   - UUPSプロキシパターンによるアップグレード可能なコントラクト
-   - 新機能追加や修正が可能
-
-## 使用方法
-
-### 前提条件
-
-- [Foundry](https://github.com/foundry-rs/foundry) がインストールされていること
-
-### インストール
+### Installation
 
 ```bash
-git clone https://github.com/your-username/raffle-dapp.git
-cd raffle-dapp/backend
-forge install
+# Clone the repository
+git clone <your-repo-url>
+cd Raffle_Dapp/backend
+
+# Install all dependencies
+make install
+
+# Build contracts
+make build
+
+# Run tests
+make test
 ```
 
-### ローカルでのテスト
+## Dependencies
+
+This project uses the following dependencies (automatically installed with `make install`):
+
+- **Forge Standard Library** (`forge-std@v1.8.2`): Testing utilities
+- **OpenZeppelin Contracts** (`@openzeppelin/contracts@v5.0.2`): Secure contract standards
+- **Chainlink CCIP** (`@chainlink/contracts-ccip@v1.6.0`): Cross-chain interoperability
+
+### Manual Dependency Installation
+
+If you prefer to install dependencies manually:
 
 ```bash
-forge test
+# Install each dependency
+forge install foundry-rs/forge-std@v1.8.2 --no-commit
+forge install OpenZeppelin/openzeppelin-contracts@v5.0.2 --no-commit
+forge install smartcontractkit/chainlink-ccip@contracts-ccip-v1.6.0 --no-commit
 ```
 
-### テストネットへのデプロイ
+## Project Structure
 
-1. 環境変数の設定:
+```
+backend/
+├── src/                          # Smart contracts
+│   ├── RaffleImplementation.sol  # Main raffle contract
+│   ├── RaffleBridgeImplementation.sol  # CCIP bridge contract
+│   ├── RaffleProxy.sol           # UUPS proxy
+│   └── interfaces/               # Contract interfaces
+├── test/                         # Test files
+├── script/                       # Deployment scripts
+├── foundry.toml                  # Foundry configuration
+├── Makefile                      # Build automation
+└── README.md                     # This file
+```
+
+## Configuration
+
+### foundry.toml
+
+The project configuration includes:
+
+- **Remappings**: Automatic path resolution for dependencies
+- **Optimization**: Enabled with 200 runs
+- **Dependencies**: Declared for automatic installation
+
+### Environment Variables
+
+Create a `.env` file in the backend directory:
 
 ```bash
-export PRIVATE_KEY=your_private_key
-export SEPOLIA_RPC_URL=your_sepolia_rpc_url
-export BASE_SEPOLIA_RPC_URL=your_base_sepolia_rpc_url
-export ARBITRUM_SEPOLIA_RPC_URL=your_arbitrum_sepolia_rpc_url
-export ETHERSCAN_API_KEY=your_etherscan_api_key
-export BASE_API_KEY=your_base_api_key
-export ARBISCAN_API_KEY=your_arbiscan_api_key
+# Required for deployments
+PRIVATE_KEY=your_private_key_here
+SEPOLIA_RPC_URL=your_sepolia_rpc_url
+BASE_SEPOLIA_RPC_URL=your_base_sepolia_rpc_url
+ARBITRUM_SEPOLIA_RPC_URL=your_arbitrum_sepolia_rpc_url
+
+# API Keys for verification
+ETHERSCAN_API_KEY=your_etherscan_api_key
+BASE_API_KEY=your_base_api_key
+ARBISCAN_API_KEY=your_arbiscan_api_key
 ```
 
-2. デプロイ:
+## Available Commands
+
+### Development
 
 ```bash
-# Ethereum Sepoliaにデプロイ
-make deploy-sepolia
-
-# 他のチェーンにデプロイ
-make deploy-base-sepolia
-make deploy-arb-sepolia
+make install          # Install all dependencies
+make build            # Compile contracts
+make test             # Run all tests
+make test-unit        # Run unit tests only
+make format           # Format code
+make clean            # Clean build artifacts
 ```
 
-### 検証
+### Deployment
 
 ```bash
-# Ethereum Sepolia上のコントラクトを検証
-make verify-sepolia
+# Deploy to all testnets
+make deploy-raffle-proxy
+make deploy-bridge-proxy
 
-# 他のチェーン上のコントラクトを検証
-make verify-base-sepolia
-make verify-arb-sepolia
+# Deploy to specific networks
+make deploy-raffle-proxy-sepolia
+make deploy-bridge-proxy-base
 ```
 
-## ライセンス
+### Upgrades
 
-MIT
+```bash
+# Upgrade implementations
+make upgrade-raffle
+make upgrade-bridge-proxy
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Build Errors**: Run `make clean && make install && make build`
+2. **Dependency Issues**: Check that all dependencies are correctly installed
+3. **Remapping Errors**: Verify `foundry.toml` remappings are correct
+
+### Dependency Verification
+
+To verify dependencies are correctly installed:
+
+```bash
+# Check if libraries exist
+ls lib/
+# Should show: forge-std, openzeppelin-contracts, chainlink-ccip
+
+# Test compilation
+make build
+```
+
+## Architecture
+
+This project implements a cross-chain raffle system using:
+
+- **UUPS Proxy Pattern**: Upgradeable contracts
+- **Chainlink CCIP**: Cross-chain communication
+- **Pool-based Bridge**: Efficient token transfers
+- **Multi-chain Deployment**: Support for Ethereum, Base, and Arbitrum
+
+For more details, see the contract documentation in `/src`.

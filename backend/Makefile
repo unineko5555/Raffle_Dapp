@@ -48,7 +48,13 @@ all: clean install build test
 
 install:
 	@echo "Installing dependencies..."
-	forge install
+	@echo "Installing Forge standard library..."
+	forge install foundry-rs/forge-std@v1.8.2 --no-commit
+	@echo "Installing OpenZeppelin contracts..."
+	forge install OpenZeppelin/openzeppelin-contracts@v5.0.2 --no-commit
+	@echo "Installing Chainlink CCIP contracts..."
+	forge install smartcontractkit/chainlink-ccip@contracts-ccip-v1.6.0 --no-commit
+	@echo "All dependencies installed successfully!"
 
 build:
 	@echo "Building contracts..."
