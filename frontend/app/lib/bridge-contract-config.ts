@@ -47,7 +47,7 @@ export const BRIDGE_ABI = [
       {
         "name": "message",
         "type": "tuple",
-        "internalType": "struct CCIPInterface.Any2EVMMessage",
+        "internalType": "struct Client.Any2EVMMessage",
         "components": [
           {
             "name": "messageId",
@@ -56,8 +56,8 @@ export const BRIDGE_ABI = [
           },
           {
             "name": "sourceChainSelector",
-            "type": "uint256",
-            "internalType": "uint256"
+            "type": "uint64",
+            "internalType": "uint64"
           },
           {
             "name": "sender",
@@ -70,9 +70,9 @@ export const BRIDGE_ABI = [
             "internalType": "bytes"
           },
           {
-            "name": "tokenAmounts",
+            "name": "destTokenAmounts",
             "type": "tuple[]",
-            "internalType": "struct CCIPInterface.EVMTokenAmount[]",
+            "internalType": "struct Client.EVMTokenAmount[]",
             "components": [
               {
                 "name": "token",
@@ -87,6 +87,95 @@ export const BRIDGE_ABI = [
             ]
           }
         ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "debugCcipReceiveConditions",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "currentRouter",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "usdcToken",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "poolBalance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "routerValid",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "usdcValid",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "poolSufficient",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "debugRouterInfo",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "defaultRouter",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "isContract",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "codeSize",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "emergencyExecuteCcipReceive",
+    "inputs": [
+      {
+        "name": "messageId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "sourceChainSelector",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "receiver",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -133,6 +222,29 @@ export const BRIDGE_ABI = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "fallbackReceive",
+    "inputs": [
+      {
+        "name": "receiver",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "messageId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -440,6 +552,25 @@ export const BRIDGE_ABI = [
   },
   {
     "type": "function",
+    "name": "supportsInterface",
+    "inputs": [
+      {
+        "name": "interfaceId",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
     "name": "transferOwnership",
     "inputs": [
       {
@@ -736,7 +867,7 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "ccipSelector": "10344971235874465080",
     "bridgeAddress": "0x8AB90AB3013Df24BdF7adCEA73706c62b311cC67",
     "ccipRouterAddress": "0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93",
-    "implementationAddress": "0xd6609d02a8fe8aa67f132a3907ef16204bc84a75"
+    "implementationAddress": "0x1a2158e984ad39217f138bb9eb4004f46dc68b41"
   },
   {
     "networkId": 421614,
@@ -744,7 +875,7 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "ccipSelector": "3478487238524512106",
     "bridgeAddress": "0xF786e2292cfc0d8dabEd7D59b636C16289753e1C",
     "ccipRouterAddress": "0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165",
-    "implementationAddress": "0x1897c5f9d29a2b991cd354d6e420f3da702a296e"
+    "implementationAddress": "0x3967e5f40615ae03ab709bfffc14fb8e5c309721"
   },
   {
     "networkId": 11155111,
@@ -752,7 +883,7 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "ccipSelector": "16015286601757825753",
     "bridgeAddress": "0x6F801df32713c7F33ACEf6318B92CD16829aD17e",
     "ccipRouterAddress": "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59",
-    "implementationAddress": "0xb52e22b88f8cb1ed80aa6f29b8e54fbe98fb683d"
+    "implementationAddress": "0xf2db7d017aed1e7857cbb3b449774d1abcf1e6a4"
   }
 ];
 

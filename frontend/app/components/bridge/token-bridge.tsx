@@ -23,7 +23,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
 import { contractConfig } from "@/app/lib/contract-config";
 
 // チェーンの定義を追加
@@ -155,23 +154,6 @@ export function TokenBridge() {
     <div className="w-full max-w-md mx-auto p-4 bg-white dark:bg-slate-800 rounded-xl shadow-md">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">クロスチェーンUSDCブリッジ</h2>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge
-                variant="outline"
-                className="px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
-              >
-                CCIP
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">
-                Chainlink CCIPを使用したクロスチェーントークン転送
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
       </div>
 
       <div className="space-y-4">
@@ -306,18 +288,6 @@ export function TokenBridge() {
                         ]?.name || "Unknown"}
                       </span>
                     </div>
-                    <Badge
-                      variant={
-                        tx.status === "success"
-                          ? "default"
-                          : tx.status === "pending"
-                          ? "outline"
-                          : "destructive"
-                      }
-                      className="text-[10px] px-1 py-0"
-                    >
-                      {tx.status}
-                    </Badge>
                   </div>
                   <div className="mt-1 flex justify-between items-center">
                     <span className="text-gray-500">

@@ -3,15 +3,19 @@ pragma solidity ^0.8.18;
 
 import "./interfaces/IRaffle.sol";
 import "./interfaces/IERC20.sol";
-import "./interfaces/CCIPInterface.sol";
 import "./interfaces/IUUPSUpgradeable.sol";
+
+import {IAny2EVMMessageReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
+import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
+import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
+import {IERC165} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v5.0.2/utils/introspection/IERC165.sol";
 
 /**
  * @title RaffleBridgeImplementation
  * @notice CCIPを使用して各チェーン間でUSDCをブリッジするためのコントラクト
  * @dev UUPS upgradeable pattern対応の実装コントラクト
  */
-contract RaffleBridgeImplementation is IUUPSUpgradeable {
+contract RaffleBridgeImplementation is IUUPSUpgradeable, IAny2EVMMessageReceiver, IERC165 {
     /* 状態変数 */
     // CCIP Router
     address private s_defaultRouter;
@@ -187,7 +191,7 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
             sstore(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc, newImplementation)
         }
         
-
+        emit Upgraded(newImplementation);
     }
 
     /**
@@ -196,13 +200,6 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
      * @return ルーターアドレス
      */
     function _getRouterForChain(uint64 chainSelector) internal view returns (address) {
-        // The s_chainRouters mapping, as populated by the current deployer,
-        // maps destination chain selectors to routers ON THOSE DESTINATION CHAINS.
-        // This is not what we need for getFee/ccipSend, which must be called on the SOURCE chain's router.
-        // Therefore, we should always use s_defaultRouter, which is set to the current chain's router during initialization.
-        
-        // The chainSelector parameter is intentionally not used in this corrected logic.
-        // You can add `uint64 memory _ = chainSelector;` if needed to silence compiler warnings about unused parameters.
         return s_defaultRouter; 
     }
 
@@ -228,7 +225,6 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         address receiver,
         uint256 amount
     ) external payable {
-        // ============ デバッグログ開始 ============
         emit DebugLog("bridgeTokens", "function_start", 0);
         emit DebugLogAddress("bridgeTokens", "sender", msg.sender);
         emit DebugLogAddress("bridgeTokens", "receiver", receiver);
@@ -249,7 +245,7 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         emit DebugLogAddress("bridgeTokens", "usdc_address", s_usdcAddress);
         emit DebugLogAddress("bridgeTokens", "router_address", routerAddress);
         
-        // ============ 詳細な残高・承認チェック ============
+        // 詳細な残高・承認チェック
         uint256 userBalance = usdc.balanceOf(msg.sender);
         uint256 bridgeAllowance = usdc.allowance(msg.sender, address(this));
         uint256 contractBalanceBefore = usdc.balanceOf(address(this));
@@ -263,15 +259,13 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         
         emit DebugLog("bridgeTokens", "balance_allowance_checks_passed", 2);
         
-        // ============ より安全なtransferFromパターン ============
+        // より安全なtransferFromパターン
         emit DebugLog("bridgeTokens", "before_transferFrom", 3);
         
-        // ✅ 修正: transferFromを実行する前に、承認額を再確認
         uint256 currentAllowance = usdc.allowance(msg.sender, address(this));
         emit DebugLog("bridgeTokens", "current_allowance_recheck", currentAllowance);
         require(currentAllowance >= amount, "Allowance insufficient at execution time");
         
-        // ✅ 修正: より安全なtransferFromの実行
         bool transferSuccess = usdc.transferFrom(msg.sender, address(this), amount);
         require(transferSuccess, "USDC transfer to bridge contract failed");
         
@@ -284,30 +278,29 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         emit DebugLog("bridgeTokens", "new_user_balance", newUserBalance);
         emit DebugLog("bridgeTokens", "new_contract_balance", newContractBalance);
         
-        // ✅ 追加: 転送量の検証
         require(newContractBalance >= contractBalanceBefore + amount, "Contract balance increase verification failed");
         require(newUserBalance == userBalance - amount, "User balance decrease verification failed");
         
         // メッセージデータを準備
         bytes memory messageData = abi.encode(receiver, amount);
         
-        // CCIPメッセージを準備（トークンなし）
-        CCIPInterface.EVM2AnyMessage memory message = CCIPInterface.EVM2AnyMessage({
+        // ✅ CCIPメッセージを準備（トークンなし）- 公式Client.EVM2AnyMessageを使用
+        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(s_destinationBridgeContracts[destinationChainSelector]),
             data: messageData,
-            tokenAmounts: new CCIPInterface.EVMTokenAmount[](0), // 空の配列
+            tokenAmounts: new Client.EVMTokenAmount[](0),
             feeToken: address(0),
-            extraArgs: abi.encodePacked(bytes4(0x97a657c9), abi.encode(uint256(200_000)))
+            extraArgs: abi.encodePacked(bytes4(0x97a657c9), abi.encode(uint256(500_000)))
         });
         
         // 手数料を計算
-        uint256 fee = CCIPInterface(routerAddress).getFee(destinationChainSelector, message);
+        uint256 fee = IRouterClient(routerAddress).getFee(destinationChainSelector, message);
         require(msg.value >= fee, "Insufficient fee for CCIP transaction");
         
         emit DebugLog("bridgeTokens", "fee_calculated", fee);
         
         // CCIPメッセージを送信
-        bytes32 messageId = CCIPInterface(routerAddress).ccipSend{value: fee}(
+        bytes32 messageId = IRouterClient(routerAddress).ccipSend{value: fee}(
             destinationChainSelector,
             message
         );
@@ -336,26 +329,60 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
      * @notice CCIP経由でメッセージを受信する関数 (Pool Pattern)
      * @param message 受信したメッセージ
      */
-    function ccipReceive(CCIPInterface.Any2EVMMessage memory message) external {
+    function ccipReceive(Client.Any2EVMMessage memory message) external {
+        emit DebugLogAddress("ccipReceive", "msg_sender", msg.sender);
+        emit DebugLogAddress("ccipReceive", "expected_router", s_defaultRouter);
+        emit DebugLogBool("ccipReceive", "sender_is_router", msg.sender == s_defaultRouter);
+        emit DebugLog("ccipReceive", "function_called", 1);
+        
         require(msg.sender == s_defaultRouter, "Only router can call ccipReceive");
+        
+        emit DebugLog("ccipReceive", "router_check_passed", 2);
         
         // メッセージデータをデコード
         (address receiver, uint256 amount) = abi.decode(message.data, (address, uint256));
         
-        // ✅ Pool Pattern: プールから受取人にUSDCを送金
+        emit DebugLogAddress("ccipReceive", "decoded_receiver", receiver);
+        emit DebugLog("ccipReceive", "decoded_amount", amount);
+        
+        // Pool Pattern: プールから受取人にUSDCを送金
         IERC20 usdc = IERC20(s_usdcAddress);
         uint256 poolBalance = usdc.balanceOf(address(this));
+        uint256 receiverBalanceBefore = usdc.balanceOf(receiver);
+        
+        emit DebugLogAddress("ccipReceive", "usdc_address", s_usdcAddress);
+        emit DebugLog("ccipReceive", "pool_balance", poolBalance);
+        emit DebugLog("ccipReceive", "receiver_balance_before", receiverBalanceBefore);
+        emit DebugLogBool("ccipReceive", "sufficient_balance", poolBalance >= amount);
+        
         require(poolBalance >= amount, "Insufficient pool balance");
         
-        require(usdc.transfer(receiver, amount), "USDC transfer to receiver failed");
+        emit DebugLog("ccipReceive", "balance_check_passed", 3);
         
-        // イベント発行 - ✅ 修正: uint256からuint64への明示的キャスト
+        // より安全なtransfer実行
+        bool transferSuccess = usdc.transfer(receiver, amount);
+        
+        emit DebugLogBool("ccipReceive", "transfer_result", transferSuccess);
+        emit DebugLog("ccipReceive", "transfer_completed", 4);
+        
+        require(transferSuccess, "USDC transfer to receiver failed");
+        
+        // 転送後の残高確認
+        uint256 newPoolBalance = usdc.balanceOf(address(this));
+        uint256 receiverBalanceAfter = usdc.balanceOf(receiver);
+        
+        emit DebugLog("ccipReceive", "new_pool_balance", newPoolBalance);
+        emit DebugLog("ccipReceive", "receiver_balance_after", receiverBalanceAfter);
+        
+        // イベント発行
         emit TokensReceived(
             uint64(message.sourceChainSelector),
             receiver,
             amount,
             message.messageId
         );
+        
+        emit DebugLog("ccipReceive", "function_success", 5);
     }
 
     /**
@@ -365,14 +392,11 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
     function initializePool(uint256 amount) external onlyOwner {
         require(amount > 0, "Amount must be greater than 0");
         
-        // オーナーからコントラクトにUSDCを転送
         IERC20 usdc = IERC20(s_usdcAddress);
         require(usdc.transferFrom(msg.sender, address(this), amount), "USDC transfer failed");
         
-        // プール状態を更新
         _updatePoolStatus();
         
-        // イベント発行
         emit PoolInitialized(amount);
     }
 
@@ -384,7 +408,6 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         uint256 currentBalance = usdc.balanceOf(address(this));
         bool isLow = currentBalance < s_minimumPoolThreshold;
         
-        // すべてのチェーンのプール状態を更新
         for (uint256 i = 0; i < s_supportedSelectorsArray.length; i++) {
             s_chainPoolsLow[s_supportedSelectorsArray[i]] = isLow;
         }
@@ -401,14 +424,11 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
     function replenishPool(uint256 amount) external onlyOwner {
         require(amount > 0, "Amount must be greater than 0");
         
-        // オーナーからコントラクトにUSDCを転送
         IERC20 usdc = IERC20(s_usdcAddress);
         require(usdc.transferFrom(msg.sender, address(this), amount), "USDC transfer failed");
         
-        // プール状態を更新
         _updatePoolStatus();
         
-        // イベント発行
         emit PoolReplenished(amount);
     }
 
@@ -570,31 +590,30 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         address receiver,
         uint256 amount
     ) external view returns (uint256 fee) {
-        // 基本チェック
         require(s_supportedChains[destinationChainSelector], "ERR:UNSUPPORTED_CHAIN");
         require(amount > 0, "ERR:INVALID_AMOUNT");
         
         address destinationBridge = s_destinationBridgeContracts[destinationChainSelector];
         require(destinationBridge != address(0), "ERR:NO_DESTINATION_BRIDGE");
         
-        address routerAddress = s_defaultRouter; // ✅ ソースチェーンのルーター
+        address routerAddress = s_defaultRouter;
         require(routerAddress != address(0), "ERR:NO_ROUTER");
         
         bytes memory messageData = abi.encode(receiver, amount);
         
-        // ✅ Pool Pattern: トークン転送なしのメッセージ
-        CCIPInterface.EVM2AnyMessage memory message = CCIPInterface.EVM2AnyMessage({
+        // ✅ Pool Pattern: トークン転送なしのメッセージ - 公式Client.EVM2AnyMessageを使用
+        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(destinationBridge),
             data: messageData,
-            tokenAmounts: new CCIPInterface.EVMTokenAmount[](0), // ✅ 空の配列
+            tokenAmounts: new Client.EVMTokenAmount[](0),
             feeToken: address(0),
             extraArgs: abi.encodePacked(
                 bytes4(0x97a657c9),
-                abi.encode(uint256(200_000))
+                abi.encode(uint256(500_000))
             )
         });
         
-        return CCIPInterface(routerAddress).getFee(destinationChainSelector, message);
+        return IRouterClient(routerAddress).getFee(destinationChainSelector, message);
     }
 
     /**
@@ -609,6 +628,17 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
     }
 
     /**
+     * @notice ERC165 supportsInterface implementation
+     * @dev CCIPが要求するIAny2EVMMessageReceiverインターフェースをサポート
+     * @param interfaceId インターフェースID
+     * @return bool インターフェースをサポートするかどうか
+     */
+    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
+        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || 
+               interfaceId == 0x01ffc9a7; // ERC165
+    }
+
+    /**
      * @notice ユーザーの承認状況を確認するヘルパー関数
      * @param user ユーザーアドレス
      * @return allowance ブリッジコントラクトへの承認額
@@ -619,8 +649,116 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable {
         uint256 balance
     ) {
         IERC20 usdc = IERC20(s_usdcAddress);
-        allowance = usdc.allowance(user, address(this)); // ✅ ブリッジコントラクトへの承認
+        allowance = usdc.allowance(user, address(this));
         balance = usdc.balanceOf(user);
+    }
+
+    /**
+     * @notice デバッグ用: ccipReceive の前提条件をすべて確認
+     */
+    function debugCcipReceiveConditions() external view returns (
+        address currentRouter,
+        address usdcToken, 
+        uint256 poolBalance,
+        bool routerValid,
+        bool usdcValid,
+        bool poolSufficient
+    ) {
+        currentRouter = s_defaultRouter;
+        usdcToken = s_usdcAddress;
+        poolBalance = IERC20(s_usdcAddress).balanceOf(address(this));
+        routerValid = currentRouter != address(0);
+        usdcValid = usdcToken != address(0);
+        poolSufficient = poolBalance > 0;
+        
+        return (currentRouter, usdcToken, poolBalance, routerValid, usdcValid, poolSufficient);
+    }
+
+    /**
+     * @notice デバッグ用: CCIPルーターの詳細情報取得
+     */
+    function debugRouterInfo() external view returns (
+        address defaultRouter,
+        bool isContract,
+        uint256 codeSize
+    ) {
+        defaultRouter = s_defaultRouter;
+        isContract = defaultRouter.code.length > 0;
+        codeSize = defaultRouter.code.length;
+        
+        return (defaultRouter, isContract, codeSize);
+    }
+
+    // ============ 緊急デバッグ・修正機能 ============
+    
+    /**
+     * @notice 緊急用: 手動でccipReceiveを実行
+     */
+    function emergencyExecuteCcipReceive(
+        bytes32 messageId,
+        uint64 sourceChainSelector,
+        address receiver,
+        uint256 amount
+    ) external onlyOwner {
+        emit DebugLog("emergencyExecute", "manual_execution", 1);
+        
+        // 人工的にメッセージを構築
+        Client.Any2EVMMessage memory artificialMessage = Client.Any2EVMMessage({
+            messageId: messageId,
+            sourceChainSelector: sourceChainSelector,
+            sender: abi.encode(address(0)), // 仮の送信者
+            data: abi.encode(receiver, amount),
+            destTokenAmounts: new Client.EVMTokenAmount[](0)
+        });
+        
+        // 内部的にccipReceiveロジックを実行（権限チェックなし）
+        _executeCcipReceive(artificialMessage);
+    }
+
+    /**
+     * @notice 内部ccipReceive実行関数（権限チェックなし）
+     */
+    function _executeCcipReceive(Client.Any2EVMMessage memory message) internal {
+        (address receiver, uint256 amount) = abi.decode(message.data, (address, uint256));
+        
+        IERC20 usdc = IERC20(s_usdcAddress);
+        uint256 poolBalance = usdc.balanceOf(address(this));
+        
+        emit DebugLogAddress("_executeCcipReceive", "receiver", receiver);
+        emit DebugLog("_executeCcipReceive", "amount", amount);
+        emit DebugLog("_executeCcipReceive", "pool_balance", poolBalance);
+        
+        require(poolBalance >= amount, "Insufficient pool balance");
+        
+        bool transferSuccess = usdc.transfer(receiver, amount);
+        emit DebugLogBool("_executeCcipReceive", "transfer_success", transferSuccess);
+        
+        require(transferSuccess, "Transfer failed");
+        
+        emit TokensReceived(
+            uint64(message.sourceChainSelector),
+            receiver,
+            amount,
+            message.messageId
+        );
+        
+        emit DebugLog("_executeCcipReceive", "completed", 1);
+    }
+
+    /**
+     * @notice フォールバック受信機能（緊急時用）
+     */
+    function fallbackReceive(
+        address receiver,
+        uint256 amount,
+        bytes32 messageId
+    ) external onlyOwner {
+        emit DebugLog("fallbackReceive", "executed", 1);
+        
+        IERC20 usdc = IERC20(s_usdcAddress);
+        require(usdc.transfer(receiver, amount), "Fallback transfer failed");
+        
+        emit TokensReceived(0, receiver, amount, messageId); // sourceChain = 0 for fallback
     }
 
     /**
