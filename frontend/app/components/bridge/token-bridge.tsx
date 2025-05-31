@@ -62,17 +62,14 @@ export function TokenBridge() {
   useEffect(() => {
     const getFee = async () => {
       if (activeAddress && destinationChainId && parseFloat(amount) > 0) {
-        console.log("============ 手数料見積もり実行 ============");
-        console.log(`宛先チェーンID: ${destinationChainId}`);
-        console.log(`金額: ${amount}`);
+
 
         const fee = await estimateBridgeFee(destinationChainId, amount);
 
         if (fee) {
           setCurrentFee(formatEther(fee));
-          console.log(`見積もり手数料: ${formatEther(fee)} ETH`);
-        } else {
-          console.error("手数料の見積もりに失敗しました");
+          // ✅ 重要情報ログ: 手数料、金額、宛先チェーン
+          console.log(`Fee Estimate: ${formatEther(fee)} ETH | Amount: ${amount} USDC | To: ${getChainName(destinationChainId)}`);
         }
       }
     };

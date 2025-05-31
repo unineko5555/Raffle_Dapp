@@ -188,7 +188,6 @@ export function useTokenBridge() {
         const chainName = chainNames[chainId] || "Unknown Chain";
 
         if (!bridgeAddress || !selector || !chain) {
-          console.warn(`チェーンID ${chainId} の基本情報が見つかりません`);
           return {
             chainId,
             poolBalance: "0",
@@ -367,9 +366,7 @@ export function useTokenBridge() {
         // チェーンIDからセレクタを取得
         const destinationSelector = chainSelectors[destinationChainId];
         if (!destinationSelector) {
-          console.warn(
-            `セレクタが見つかりません: チェーンID ${destinationChainId}`
-          );
+
           return null;
         }
 
@@ -388,11 +385,11 @@ export function useTokenBridge() {
           ],
         });
 
-        console.log("見積もり手数料:", formatUnits(fee as bigint, 18), "ETH");
+
         setEstimatedFee(fee as bigint);
         return fee as bigint;
       } catch (error) {
-        console.error("手数料見積もりエラー:", error);
+
         return null;
       }
     },
@@ -412,11 +409,8 @@ export function useTokenBridge() {
           currentChainId as keyof typeof contractConfig
         ]?.erc20Address as `0x${string}`;
 
-        console.log(
-          "============ ブリッジコントラクトへの承認開始 ============"
-        );
-        console.log("ブリッジコントラクトアドレス:", bridgeAddress);
-        console.log("USDCアドレス:", usdcAddress);
+        // ✅ 重要情報ログ: 承認実行 - アドレス
+        console.log(`Approving: ${bridgeAddress}`);
 
         // ブリッジコントラクトに対してUSDCを承認
         const { request } = await publicClient!.simulateContract({
@@ -440,7 +434,8 @@ export function useTokenBridge() {
           throw new Error("承認トランザクションが失敗しました");
         }
 
-        console.log("ブリッジコントラクトへの承認完了");
+        // ✅ 重要情報ログ: 承認完了
+        console.log(`Approval Complete`);
 
         toast({
           title: "承認完了",
@@ -451,7 +446,7 @@ export function useTokenBridge() {
         await fetchBridgeData();
         return hash;
       } catch (error) {
-        console.error("承認エラー:", error);
+
 
         toast({
           title: "承認エラー",
@@ -496,14 +491,8 @@ export function useTokenBridge() {
           throw new Error("手数料の見積もりに失敗しました");
         }
 
-        console.log(
-          "============ 修正済み: 2段階転送パターンでブリッジ実行 ============"
-        );
-        console.log("送金者アドレス:", activeAddress);
-        console.log("ブリッジコントラクトアドレス:", bridgeAddress);
-        console.log(
-          "転送パターン: ユーザー → ブリッジコントラクト → CCIPルーター"
-        );
+        // ✅ 重要情報ログ: 金額、宛先チェーン、手数料、アドレス
+        console.log(`Bridge Start: ${amount} USDC to Chain ${destinationChainId} | Fee: ${formatUnits(fee, 18)} ETH | From: ${activeAddress}`);
 
         // ブリッジコントラクトへの承認確認（修正確認）
         const bridgeAllowance = await publicClient!.readContract({
@@ -513,11 +502,7 @@ export function useTokenBridge() {
           args: [activeAddress as `0x${string}`, bridgeAddress],
         });
 
-        console.log(
-          "✅ 修正版: ブリッジコントラクト承認額:",
-          formatUnits(bridgeAllowance as bigint, 6),
-          "USDC"
-        );
+
 
         if ((bridgeAllowance as bigint) < parsedAmount) {
           throw new Error(
@@ -548,7 +533,8 @@ export function useTokenBridge() {
           gas: 500000n,
         });
 
-        console.log("ブリッジトランザクション送信成功:", tx);
+        // ✅ 重要情報ログ: ブリッジ成功
+        console.log(`Bridge Success: ${tx} | ${amount} USDC to Chain ${destinationChainId}`);
 
         toast({
           title: "ブリッジ送信",
@@ -607,7 +593,7 @@ export function useTokenBridge() {
 
         return tx;
       } catch (error) {
-        console.error("ブリッジエラー:", error);
+
 
         toast({
           title: "ブリッジエラー",
@@ -646,8 +632,8 @@ export function useTokenBridge() {
         ]?.erc20Address as `0x${string}`;
         const parsedAmount = parseUnits(amount, 6);
 
-        console.log("============ プール初期化開始 ============");
-        console.log("初期化量:", amount, "USDC");
+        // ✅ 重要情報ログ: プール初期化 - 金額
+        console.log(`Pool Init: ${amount} USDC`);
 
         // USDCをブリッジコントラクトに承認
         const approveRequest = await publicClient!.simulateContract({
@@ -693,7 +679,7 @@ export function useTokenBridge() {
         await fetchBridgeData();
         return tx;
       } catch (error) {
-        console.error("プール初期化エラー:", error);
+
 
         toast({
           title: "プール初期化エラー",
@@ -733,8 +719,8 @@ export function useTokenBridge() {
         ]?.erc20Address as `0x${string}`;
         const parsedAmount = parseUnits(amount, 6);
 
-        console.log("============ プール補充開始 ============");
-        console.log("補充量:", amount, "USDC");
+        // ✅ 重要情報ログ: プール補充 - 金額
+        console.log(`Pool Replenish: ${amount} USDC`);
 
         // USDCをブリッジコントラクトに承認
         const approveRequest = await publicClient!.simulateContract({
@@ -780,7 +766,7 @@ export function useTokenBridge() {
         await fetchBridgeData();
         return tx;
       } catch (error) {
-        console.error("プール補充エラー:", error);
+
 
         toast({
           title: "プール補充エラー",
@@ -814,7 +800,7 @@ export function useTokenBridge() {
         // Note: 現在のバージョンではアドレスでのフィルタリングは行っていない
         setTransactions(parsedTxs);
       } catch (error) {
-        console.error("保存されたトランザクションの解析エラー:", error);
+
       }
     }
   }, []);
@@ -870,22 +856,21 @@ export function useTokenBridge() {
       }
 
       try {
-        console.log("============ 承認+ブリッジ自動実行開始 ============");
-        console.log(`宛先チェーンID: ${destinationChainId}`);
-        console.log(`金額: ${amount} USDC`);
+        // ✅ 重要情報ログ: 自動承認+ブリッジ開始
+        console.log(`Auto Process: ${amount} USDC to Chain ${destinationChainId}`);
 
         // 1. 承認が必要かチェック
         if (needsApproval(amount, destinationChainId)) {
-          console.log("承認が必要です。承認を実行します...");
+
 
           const approveTx = await approveUSDC(amount, destinationChainId);
           if (!approveTx) {
             throw new Error("承認に失敗しました。ブリッジを中止します。");
           }
 
-          console.log("承認完了。ブリッジを実行します...");
+
         } else {
-          console.log("承認は既に十分です。直接ブリッジを実行します...");
+
         }
 
         // 2. ブリッジを実行
@@ -894,12 +879,12 @@ export function useTokenBridge() {
           throw new Error("ブリッジに失敗しました。");
         }
 
-        console.log("============ 承認+ブリッジ自動実行完了 ============");
-        console.log(`ブリッジトランザクション: ${bridgeTx}`);
+        // ✅ 重要情報ログ: 自動実行完了
+        console.log(`Auto Process Complete: ${bridgeTx}`);
 
         return bridgeTx;
       } catch (error) {
-        console.error("承認+ブリッジ自動実行エラー:", error);
+
 
         toast({
           title: "エラー",
@@ -923,226 +908,7 @@ export function useTokenBridge() {
     ]
   );
 
-  // デバッグ用：宛先チェーン設定の確認
-  const debugDestinationSettings = useCallback(
-    async (destinationChainId: number) => {
-      if (!publicClient) return null;
 
-      try {
-        const bridgeAddress = bridgeAddresses[currentChainId] as `0x${string}`;
-        const destinationSelector = chainSelectors[destinationChainId];
-
-        console.log("========== 🔍 宛先チェーン設定確認 ==========");
-        console.log("現在のチェーンID:", currentChainId);
-        console.log("宛先チェーンID:", destinationChainId);
-        console.log("宛先チェーンセレクタ:", destinationSelector.toString());
-        console.log("ブリッジコントラクトアドレス:", bridgeAddress);
-
-        // debugDestinationInfo関数を呼び出し
-        const destinationInfo = await publicClient.readContract({
-          address: bridgeAddress,
-          abi: BRIDGE_ABI,
-          functionName: "debugDestinationInfo",
-          args: [destinationSelector],
-        });
-
-        const [destinationAddress, isSet, chainName, supported] = destinationInfo as [
-          string,
-          boolean,
-          string,
-          boolean
-        ];
-
-        console.log("📊 宛先チェーン設定結果:");
-        console.log("  宛先ブリッジアドレス:", destinationAddress);
-        console.log("  アドレス設定済み:", isSet);
-        console.log("  チェーン名:", chainName);
-        console.log("  サポート済み:", supported);
-        console.log("  設定状態:", isSet && supported ? "✅ 正常" : "❌ 問題あり");
-
-        if (!isSet) {
-          console.error("❌ 宛先ブリッジアドレスが設定されていません！");
-        }
-        if (!supported) {
-          console.error("❌ 宛先チェーンがサポートされていません！");
-        }
-
-        console.log("========== 🔍 設定確認終了 ==========");
-
-        return {
-          destinationAddress,
-          isSet,
-          chainName,
-          supported,
-          isValid: isSet && supported,
-        };
-      } catch (error) {
-        console.error("❌ 宛先チェーン設定確認エラー:", error);
-        return null;
-      }
-    },
-    [currentChainId, publicClient]
-  );
-
-  // デバッグ用：詳細なコントラクト状態調査
-  const debugContractState = useCallback(
-    async (amount: string) => {
-      if (!activeAddress || !publicClient) return;
-
-      try {
-        const bridgeAddress = bridgeAddresses[currentChainId] as `0x${string}`;
-        const usdcAddress = contractConfig[
-          currentChainId as keyof typeof contractConfig
-        ]?.erc20Address as `0x${string}`;
-        const parsedAmount = parseUnits(amount, 6);
-
-        console.log("========== 🔍 詳細デバッグ開始 ==========");
-
-        // 1. ユーザーのUSDC残高
-        const userBalance = await publicClient.readContract({
-          address: usdcAddress,
-          abi: ERC20ABI,
-          functionName: "balanceOf",
-          args: [activeAddress as `0x${string}`],
-        });
-
-        console.log(
-          "👤 ユーザーUSDC残高:",
-          formatUnits(userBalance as bigint, 6),
-          "USDC"
-        );
-        console.log(
-          "👤 ユーザーUSDC残高(Raw):",
-          (userBalance as bigint).toString()
-        );
-
-        // 2. ブリッジコントラクトのUSDC残高
-        const contractBalance = await publicClient.readContract({
-          address: usdcAddress,
-          abi: ERC20ABI,
-          functionName: "balanceOf",
-          args: [bridgeAddress],
-        });
-
-        console.log(
-          "🏦 ブリッジコントラクトUSDC残高:",
-          formatUnits(contractBalance as bigint, 6),
-          "USDC"
-        );
-        console.log(
-          "🏦 ブリッジコントラクトUSDC残高(Raw):",
-          (contractBalance as bigint).toString()
-        );
-
-        // 3. ユーザーからブリッジコントラクトへの承認額（修正確認）
-        const bridgeAllowance = await publicClient.readContract({
-          address: usdcAddress,
-          abi: ERC20ABI,
-          functionName: "allowance",
-          args: [activeAddress as `0x${string}`, bridgeAddress],
-        });
-
-        console.log(
-          "✅ 修正版: ユーザー → ブリッジコントラクト承認額:",
-          formatUnits(bridgeAllowance as bigint, 6),
-          "USDC"
-        );
-        console.log(
-          "✅ 修正版: ユーザー → ブリッジコントラクト承認額(Raw):",
-          (bridgeAllowance as bigint).toString()
-        );
-
-        // 追加: 承認先アドレスの確認
-        console.log("🔍 承認先ブリッジコントラクトアドレス:", bridgeAddress);
-        console.log("🔍 USDCアドレス:", usdcAddress);
-        console.log("🔍 ユーザーアドレス:", activeAddress);
-
-        // 4. USDCコントラクトの詳細情報
-        const [name, symbol, decimals, totalSupply] = await Promise.all([
-          publicClient.readContract({
-            address: usdcAddress,
-            abi: ERC20ABI,
-            functionName: "name",
-          }),
-          publicClient.readContract({
-            address: usdcAddress,
-            abi: ERC20ABI,
-            functionName: "symbol",
-          }),
-          publicClient.readContract({
-            address: usdcAddress,
-            abi: ERC20ABI,
-            functionName: "decimals",
-          }),
-          publicClient.readContract({
-            address: usdcAddress,
-            abi: ERC20ABI,
-            functionName: "totalSupply",
-          }),
-        ]);
-
-        console.log("🪙 USDCコントラクト情報:");
-        console.log("  名前:", name);
-        console.log("  シンボル:", symbol);
-        console.log("  桁数:", decimals);
-        console.log(
-          "  総供給量:",
-          formatUnits(totalSupply as bigint, Number(decimals)),
-          symbol
-        );
-
-        // 5. ブリッジコントラクトの設定確認
-        try {
-          const defaultRouter = await publicClient.readContract({
-            address: bridgeAddress,
-            abi: BRIDGE_ABI,
-            functionName: "getDefaultRouter",
-          });
-
-          console.log(
-            "🌐 ブリッジコントラクトのデフォルトルーター:",
-            defaultRouter
-          );
-        } catch (error) {
-          console.log("⚠️ デフォルトルーター取得エラー:", error);
-        }
-
-        // 6. チェーン情報
-        const blockNumber = await publicClient.getBlockNumber();
-        const gasPrice = await publicClient.getGasPrice();
-
-        console.log("⛓️ チェーン情報:");
-        console.log("  チェーンID:", currentChainId);
-        console.log("  ブロック番号:", blockNumber.toString());
-        console.log("  ガス価格:", formatUnits(gasPrice, 9), "Gwei");
-
-        // 7. 送信予定量との比較
-        console.log("📊 送信予定量との比較:");
-        console.log("  送信予定量:", formatUnits(parsedAmount, 6), "USDC");
-        console.log("  送信予定量(Raw):", parsedAmount.toString());
-        console.log("  残高は十分か:", (userBalance as bigint) >= parsedAmount);
-        console.log(
-          "  承認は十分か:",
-          (bridgeAllowance as bigint) >= parsedAmount
-        );
-
-        console.log("========== 🔍 詳細デバッグ終了 ==========");
-
-        return {
-          userBalance: userBalance as bigint,
-          contractBalance: contractBalance as bigint,
-          bridgeAllowance: bridgeAllowance as bigint,
-          parsedAmount,
-          hasEnoughBalance: (userBalance as bigint) >= parsedAmount,
-          hasEnoughAllowance: (bridgeAllowance as bigint) >= parsedAmount,
-        };
-      } catch (error) {
-        console.error("❌ デバッグ調査エラー:", error);
-        return null;
-      }
-    },
-    [activeAddress, currentChainId, publicClient]
-  );
 
   return {
     activeAddress,
@@ -1161,6 +927,6 @@ export function useTokenBridge() {
     fetchBridgeData,
     initializePool,
     replenishPool,
-    debugContractState, // デバッグ関数を追加
+
   };
 }
