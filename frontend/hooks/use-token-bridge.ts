@@ -17,6 +17,7 @@ import {
   createPublicClient,
   http,
   maxUint256,
+  encodeFunctionData,
 } from "viem";
 import { sepolia, baseSepolia, arbitrumSepolia } from "viem/chains";
 import { contractConfig, ERC20ABI } from "@/app/lib/contract-config";
@@ -129,7 +130,8 @@ export function useTokenBridge() {
   const currentChainId = useChainId();
   const publicClient = usePublicClient();
   const { toast } = useToast();
-  const { smartAccountAddress, isReadyToSendTx } = useSmartAccountContext();
+  const { smartAccountAddress, isReadyToSendTx, sendUserOperation } = useSmartAccountContext();
+  const smartAccountContext = { sendUserOperation };
 
   // Active address - EOA or Smart Wallet
   const activeAddress = isReadyToSendTx ? smartAccountAddress : address;
@@ -399,7 +401,7 @@ export function useTokenBridge() {
   // USDC承認関数（ブリッジコントラクトへの承認）
   const approveUSDC = useCallback(
     async (amount: string, destinationChainId?: number) => {
-      if (!activeAddress || !writeContractAsync) return null;
+      if (!activeAddress) return null;
 
       try {
         setIsApproving(true);
@@ -412,27 +414,56 @@ export function useTokenBridge() {
         // ✅ 重要情報ログ: 承認実行 - アドレス
         console.log(`Approving: ${bridgeAddress}`);
 
-        // ブリッジコントラクトに対してUSDCを承認
-        const { request } = await publicClient!.simulateContract({
-          address: usdcAddress,
-          abi: ERC20ABI,
-          functionName: "approve",
-          args: [bridgeAddress, maxUint256],
-          account: activeAddress as `0x${string}`,
-        });
+        let hash: `0x${string}`;
 
-        const hash = await writeContractAsync(request);
+        // スマートウォレットかEOAかで実行方法を分岐
+        if (isReadyToSendTx && smartAccountAddress) {
+          // スマートウォレットの場合
+          console.log("Using Smart Wallet for approval");
+          
+          // ERC20のapprove関数のエンコード
+          const approveData = encodeFunctionData({
+            abi: ERC20ABI,
+            functionName: "approve",
+            args: [bridgeAddress, maxUint256],
+          });
+
+          const result = await sendUserOperation(
+            usdcAddress,
+            approveData,
+            BigInt(0)
+          );
+          
+          hash = result.txHash as `0x${string}`;
+        } else {
+          // EOAの場合
+          console.log("Using EOA for approval");
+          
+          if (!writeContractAsync) {
+            throw new Error("writeContractAsync is not available");
+          }
+
+          const { request } = await publicClient!.simulateContract({
+            address: usdcAddress,
+            abi: ERC20ABI,
+            functionName: "approve",
+            args: [bridgeAddress, maxUint256],
+            account: activeAddress as `0x${string}`,
+          });
+
+          hash = await writeContractAsync(request);
+
+          const receipt = await publicClient!.waitForTransactionReceipt({ hash });
+
+          if (receipt.status !== "success") {
+            throw new Error("承認トランザクションが失敗しました");
+          }
+        }
 
         toast({
           title: "承認送信",
           description: `ブリッジコントラクトへのUSDC承認トランザクションを送信しました`,
         });
-
-        const receipt = await publicClient!.waitForTransactionReceipt({ hash });
-
-        if (receipt.status !== "success") {
-          throw new Error("承認トランザクションが失敗しました");
-        }
 
         // ✅ 重要情報ログ: 承認完了
         console.log(`Approval Complete`);
@@ -446,7 +477,7 @@ export function useTokenBridge() {
         await fetchBridgeData();
         return hash;
       } catch (error) {
-
+        console.error("Approval error:", error);
 
         toast({
           title: "承認エラー",
@@ -467,13 +498,16 @@ export function useTokenBridge() {
       publicClient,
       toast,
       fetchBridgeData,
+      isReadyToSendTx,
+      smartAccountAddress,
+      sendUserOperation,
     ]
   );
 
   // USDC ブリッジ関数（修正済み：2段階転送パターン）
   const bridgeUSDC = useCallback(
     async (destinationChainId: number, amount: string) => {
-      if (!activeAddress || !writeContractAsync) return null;
+      if (!activeAddress) return null;
 
       try {
         setIsLoading(true);
@@ -502,8 +536,6 @@ export function useTokenBridge() {
           args: [activeAddress as `0x${string}`, bridgeAddress],
         });
 
-
-
         if ((bridgeAllowance as bigint) < parsedAmount) {
           throw new Error(
             `ブリッジコントラクトへの承認が不足しています。承認額: ${formatUnits(
@@ -513,25 +545,77 @@ export function useTokenBridge() {
           );
         }
 
-        // ブリッジトランザクションを実行
-        const { request } = await publicClient!.simulateContract({
-          address: bridgeAddress,
-          abi: BRIDGE_ABI,
-          functionName: "bridgeTokens",
-          args: [
-            destinationSelector,
-            activeAddress as `0x${string}`,
-            parsedAmount,
-          ],
-          value: fee,
-          account: activeAddress as `0x${string}`,
-          gas: 500000n,
-        });
+        let tx: `0x${string}`;
 
-        const tx = await writeContractAsync({
-          ...request,
-          gas: 500000n,
-        });
+        // スマートウォレットかEOAかで実行方法を分岐
+        if (isReadyToSendTx && smartAccountAddress) {
+          // スマートウォレットの場合
+          console.log("Using Smart Wallet for bridge");
+          
+          // bridgeTokens関数のエンコード
+          const bridgeData = encodeFunctionData({
+            abi: BRIDGE_ABI,
+            functionName: "bridgeTokens",
+            args: [
+              destinationSelector,
+              activeAddress as `0x${string}`,
+              parsedAmount,
+            ],
+          });
+
+          const result = await sendUserOperation(
+            bridgeAddress,
+            bridgeData,
+            fee
+          );
+          
+          tx = result.txHash as `0x${string}`;
+        } else {
+          // EOAの場合
+          console.log("Using EOA for bridge");
+          
+          if (!writeContractAsync) {
+            throw new Error("writeContractAsync is not available");
+          }
+
+          const { request } = await publicClient!.simulateContract({
+            address: bridgeAddress,
+            abi: BRIDGE_ABI,
+            functionName: "bridgeTokens",
+            args: [
+              destinationSelector,
+              activeAddress as `0x${string}`,
+              parsedAmount,
+            ],
+            value: fee,
+            account: activeAddress as `0x${string}`,
+            gas: 500000n,
+          });
+
+          tx = await writeContractAsync({
+            ...request,
+            gas: 500000n,
+          });
+
+          // EOAの場合のみトランザクション確認を待つ
+          try {
+            const receipt = await publicClient!.waitForTransactionReceipt({
+              hash: tx,
+            });
+
+            if (receipt.status !== "success") {
+              throw new Error(
+                `ブリッジトランザクションが失敗しました。ステータス: ${receipt.status}`
+              );
+            }
+          } catch (receiptError) {
+            // 失敗したトランザクションを更新
+            setTransactions((prev) =>
+              prev.map((t) => (t.txHash === tx ? { ...t, status: "failed" } : t))
+            );
+            throw receiptError;
+          }
+        }
 
         // ✅ 重要情報ログ: ブリッジ成功
         console.log(`Bridge Success: ${tx} | ${amount} USDC to Chain ${destinationChainId}`);
@@ -561,39 +645,19 @@ export function useTokenBridge() {
           JSON.stringify([newTransaction, ...parsedTxs])
         );
 
-        // トランザクション確認を待つ
-        try {
-          const receipt = await publicClient!.waitForTransactionReceipt({
-            hash: tx,
-          });
+        // 成功したトランザクションを更新
+        setTransactions((prev) =>
+          prev.map((t) => (t.txHash === tx ? { ...t, status: "success" } : t))
+        );
 
-          if (receipt.status !== "success") {
-            throw new Error(
-              `ブリッジトランザクションが失敗しました。ステータス: ${receipt.status}`
-            );
-          }
-
-          // 成功したトランザクションを更新
-          setTransactions((prev) =>
-            prev.map((t) => (t.txHash === tx ? { ...t, status: "success" } : t))
-          );
-
-          toast({
-            title: "ブリッジ成功",
-            description: `✨ ${amount} USDCを${chainNames[destinationChainId]}にブリッジしました！トークンが届くまで数分かかる場合があります。CCIP Explorer: https://ccip.chain.link/tx/${tx}`,
-          });
-        } catch (error) {
-          // 失敗したトランザクションを更新
-          setTransactions((prev) =>
-            prev.map((t) => (t.txHash === tx ? { ...t, status: "failed" } : t))
-          );
-
-          throw error;
-        }
+        toast({
+          title: "ブリッジ成功",
+          description: `✨ ${amount} USDCを${chainNames[destinationChainId]}にブリッジしました！トークンが届くまで数分かかる場合があります。CCIP Explorer: https://ccip.chain.link/tx/${tx}`,
+        });
 
         return tx;
       } catch (error) {
-
+        console.error("Bridge error:", error);
 
         toast({
           title: "ブリッジエラー",
@@ -615,6 +679,9 @@ export function useTokenBridge() {
       toast,
       estimateBridgeFee,
       fetchBridgeData,
+      isReadyToSendTx,
+      smartAccountAddress,
+      sendUserOperation,
     ]
   );
 
@@ -905,6 +972,9 @@ export function useTokenBridge() {
       needsApproval,
       approveUSDC,
       bridgeUSDC,
+      isReadyToSendTx,
+      smartAccountAddress,
+      sendUserOperation,
     ]
   );
 

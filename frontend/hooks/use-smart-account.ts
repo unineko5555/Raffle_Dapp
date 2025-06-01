@@ -274,8 +274,6 @@ export function useSmartAccount() {
     try {
       console.log(`現在のチェーンID: ${currentChainId}`);
       console.log(`トランザクション準備中: ${to}`);
-      console.log(`データ: ${data}`);
-      console.log(`値: ${value.toString()}`);
 
       // L2用のガスパラメータを準備
       let txOptions: any = {
@@ -291,11 +289,6 @@ export function useSmartAccount() {
           `L2チェーンのガス設定を、SDKに任せます (チェーンID: ${currentChainId})`
         );
       }
-
-      console.log(
-        `チェーンID ${currentChainId} でトランザクションデータを送信:`,
-        txOptions
-      );
 
       // 直接sendTransactionを使用する方法
       console.log(`チェーンID ${currentChainId} でトランザクション送信中...`);
