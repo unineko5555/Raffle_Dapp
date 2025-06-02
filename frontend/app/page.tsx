@@ -68,6 +68,8 @@ export default function RaffleDapp() {
     contractAddress,
     checkPlayerEntered,
     performManualUpkeep,
+    performManualUpkeepWithVRF,
+    performManualUpkeepWithMock,
     checkAutomationStatus,
     getContractEthBalance,
     getContractUsdcBalance,
@@ -227,69 +229,84 @@ export default function RaffleDapp() {
     return () => {};
   }, [chainId, watchTokenEvents]);
 
-  // 手動でラッフルを開始する
+  // 共通のラッフル開始処理
+  const executeRaffle = async (upkeepFunction: () => Promise<any>, mode: string) => {
+    if (raffleData.numberOfPlayers < 3) {
+      alert(
+        "ラッフルを開始するには少なくとも3人の参加者が必要です。\n現在の参加者数: " +
+          raffleData.numberOfPlayers
+      );
+      return;
+    }
+
+    const automationStatus = await checkAutomationStatus();
+    if (!automationStatus || !automationStatus.upkeepNeeded) {
+      alert(
+        "現在ラッフルを開始できません\n\n全ての条件が揃っているか確認してください。\n・最少参加者数を満たしている\n・ラッフルがオープン状態\n・参加から1分以上経過している"
+      );
+      return;
+    }
+
+    try {
+      const upkeepResult = await upkeepFunction();
+
+      if (upkeepResult) {
+        toast({
+          title: "ラッフル開始",
+          description: `ラッフルが開始されました！(${mode})`,
+          variant: "default",
+          icon: (
+            <ToastIcon variant="default" icon={<Zap className="w-5 h-5" />} />
+          ),
+        });
+
+        setIsTransactionSuccess(true);
+        setTimeout(() => setIsTransactionSuccess(false), 5000);
+      }
+    } catch (upkeepError) {
+      console.error("Upkeepエラー詳細:", upkeepError);
+      const errorMessage =
+        upkeepError instanceof Error ? upkeepError.message : "不明なエラー";
+
+      alert(
+        `ラッフル開始中にエラーが発生しました: ${errorMessage}\n\nブロックチェーンが混雑しているか、ガス代が不足している可能性があります。`
+      );
+    }
+  };
+
+  // 手動でラッフルを開始する（デフォルト）
   const startRaffle = async () => {
     try {
-      if (
-        !confirm(
-          "ラッフルを開始しますか？この操作は元に戻せません。\n\n参加者の中からランダムに当選者が選ばれます。"
-        )
-      ) {
-        return;
-      }
-
-      if (raffleData.numberOfPlayers < 3) {
-        alert(
-          "ラッフルを開始するには少なくとも3人の参加者が必要です。\n現在の参加者数: " +
-            raffleData.numberOfPlayers
-        );
-        return;
-      }
-
-      const automationStatus = await checkAutomationStatus();
-      if (!automationStatus || !automationStatus.upkeepNeeded) {
-        alert(
-          "現在ラッフルを開始できません\n\n全ての条件が揃っているか確認してください。\n・最少参加者数を満たしている\n・ラッフルがオープン状態\n・参加から1分以上経過している"
-        );
-        return;
-      }
-
-      try {
-        const upkeepResult = await performManualUpkeep();
-
-        if (upkeepResult) {
-          toast({
-            title: "ラッフル開始",
-            description: "ラッフルが開始されました！結果をお待ちください。",
-            variant: "default",
-            icon: (
-              <ToastIcon variant="default" icon={<Zap className="w-5 h-5" />} />
-            ),
-          });
-
-          alert("ラッフルが開始されました！トランザクション: " + upkeepResult);
-
-          setIsTransactionSuccess(true);
-          setTimeout(() => setIsTransactionSuccess(false), 5000);
-        } else {
-          alert(
-            "ラッフル開始トランザクションが生成されましたが、結果が不明です。\n後ほど確認してください。"
-          );
-        }
-      } catch (upkeepError) {
-        console.error("Upkeepエラー詳細:", upkeepError);
-        const errorMessage =
-          upkeepError instanceof Error ? upkeepError.message : "不明なエラー";
-
-        alert(
-          `ラッフル開始中にエラーが発生しました: ${errorMessage}\n\nブロックチェーンが混雑しているか、ガス代が不足している可能性があります。`
-        );
-      }
+      await executeRaffle(performManualUpkeep, "現在の設定");
     } catch (error) {
       console.error("ラッフル開始エラー:", error);
       const errorMessage =
         error instanceof Error ? error.message : "不明なエラー";
       alert(`エラーが発生しました: ${errorMessage}`);
+    }
+  };
+
+  // VRFでラッフルを開始する
+  const startRaffleWithVRF = async () => {
+    try {
+      await executeRaffle(performManualUpkeepWithVRF, "ChainlinkVRF");
+    } catch (error) {
+      console.error("VRFラッフル開始エラー:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "不明なエラー";
+      alert(`VRFラッフルエラー: ${errorMessage}`);
+    }
+  };
+
+  // Mockでラッフルを開始する
+  const startRaffleWithMock = async () => {
+    try {
+      await executeRaffle(performManualUpkeepWithMock, "Mock(RANDAO)");
+    } catch (error) {
+      console.error("Mockラッフル開始エラー:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "不明なエラー";
+      alert(`Mockラッフルエラー: ${errorMessage}`);
     }
   };
 
@@ -409,6 +426,8 @@ export default function RaffleDapp() {
               isLoading={isLoading}
               isSmartAccountLoading={isSmartAccountLoading}
               onStartRaffle={startRaffle}
+              onStartRaffleWithVRF={startRaffleWithVRF}
+              onStartRaffleWithMock={startRaffleWithMock}
             />
 
             <RaffleHistory

@@ -68,6 +68,8 @@ export function useRaffleContract() {
     checkAutomationStatus,
     checkUpkeepDebug,
     performManualUpkeep,
+    performManualUpkeepWithVRF,
+    performManualUpkeepWithMock,
     manualPerformUpkeepAsOwner,
   } = useRaffleAutomation(updateRaffleData);
 
@@ -166,6 +168,8 @@ export function useRaffleContract() {
     checkAutomationStatus,
     checkUpkeepDebug,
     performManualUpkeep,
+    performManualUpkeepWithVRF,
+    performManualUpkeepWithMock,
     manualPerformUpkeepAsOwner,
 
     // ユーティリティ関数
