@@ -111,14 +111,25 @@ export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) =>
     }
 
     // 現在のVRF設定を確認
+    let currentVRFStatus: any = null;
     try {
       if (publicClient) {
-        const currentVRFStatus = await publicClient.readContract({
+        currentVRFStatus = await publicClient.readContract({
           address: contractAddress as `0x${string}`,
           abi: RaffleABI,
           functionName: "getMockVRFStatus",
         });
         console.log("現在のVRF設定:", currentVRFStatus);
+        
+        // 既に正しい設定になっているかチェック
+        const isCurrentlyMockVRF = Array.isArray(currentVRFStatus) ? 
+          currentVRFStatus[0] === true : false;
+        
+        if (isCurrentlyMockVRF === useMockVRF) {
+          console.log(`VRF設定は既に正しい状態です (useMockVRF: ${useMockVRF})。変更をスキップします。`);
+          console.log("✅ 不要なトランザクションを回避しました");
+          return; // 早期リターンでトランザクションを回避
+        }
       }
     } catch (error) {
       console.warn("VRF設定確認エラー:", error);
@@ -221,9 +232,38 @@ export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) =>
   const performManualUpkeepWithMock = async () => {
     console.log("MockVRFラッフルを開始します...");
     
-    // MockVRF設定を確認
-    await setVRFMode(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // 現在のVRF設定を確認
+    let currentVRFStatus: any = null;
+    if (publicClient) {
+      try {
+        currentVRFStatus = await publicClient.readContract({
+          address: contractAddress as `0x${string}`,
+          abi: RaffleABI,
+          functionName: "getMockVRFStatus",
+        });
+        console.log("現在のVRF設定確認:", currentVRFStatus);
+      } catch (error) {
+        console.warn("VRF設定確認エラー:", error);
+      }
+    }
+    
+    // MockVRFが既に設定されているかチェック
+    const isCurrentlyMockVRF = Array.isArray(currentVRFStatus) ? 
+      currentVRFStatus[0] === true : false;
+    
+    if (!isCurrentlyMockVRF) {
+      console.log("MockVRFが設定されていません。設定を変更します...");
+      try {
+        await setVRFMode(true);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (setVRFError) {
+        console.error("MockVRF設定エラー:", setVRFError);
+        // VRF設定に失敗しても、既に正しく設定されている可能性があるため続行
+        console.log("設定に失敗しましたが、既に正しく設定されている可能性があります。続行します...");
+      }
+    } else {
+      console.log("MockVRFは既に設定済みです。設定変更をスキップします。");
+    }
     
     console.log("MockVRF設定でperformUpkeepを実行します...");
     console.log("※ MockVRFの場合、performUpkeep内でMock乱数が生成され、即座にラッフルが完了します。");

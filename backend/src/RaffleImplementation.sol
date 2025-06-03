@@ -119,6 +119,15 @@ contract RaffleImplementation is
         // MockVRF設定
         if (mockVRFProvider != address(0)) {
             s_mockVRFProvider = IMockRandomProvider(mockVRFProvider);
+            
+            // MockVRFProviderにこのコントラクトからの呼び出しを許可
+            if (useMockVRF) {
+                try IMockRandomProvider(mockVRFProvider).authorizeCaller(address(this)) {
+                    console.log("MockVRF: Authorized this contract as caller");
+                } catch {
+                    console.log("MockVRF: Failed to authorize caller - continuing anyway");
+                }
+            }
         }
         s_useMockVRF = useMockVRF;
         
@@ -271,7 +280,7 @@ contract RaffleImplementation is
     }
 
     /**
-     * @notice 抽選の実行を行う関数
+     * @notice 抽選の実行を行う関数（修正版）
      * @dev Automationによって自動的に呼び出される
      */
     function performUpkeep(bytes calldata /* performData */) external override(AutomationCompatibleInterface, IRaffle) {
@@ -284,30 +293,71 @@ contract RaffleImplementation is
 
         // 環境に応じてVRFかMockVRFを使用
         if (s_useMockVRF && address(s_mockVRFProvider) != address(0)) {
-            // MockVRFを使用する場合
-            uint256 requestId = s_mockVRFProvider.requestRandomWords(NUM_WORDS);
-            s_lastRequestId = requestId;
+            console.log("MockVRF: performUpkeep started");
             
-            // MockVRFは即座に結果を返すので、直接処理する
-            if (s_mockVRFProvider.randomWordsAvailable()) {
-                uint256[] memory randomWords = s_mockVRFProvider.getLatestRandomWords();
-                _processRandomWords(randomWords);
-                s_mockVRFProvider.resetRandomWords();
+            try s_mockVRFProvider.requestRandomWords(NUM_WORDS) returns (uint256 requestId) {
+                s_lastRequestId = requestId;
+                console.log("MockVRF: Request ID", requestId);
+                
+                // MockVRFの即座の結果を確認
+                if (s_mockVRFProvider.randomWordsAvailable()) {
+                    uint256[] memory randomWords = s_mockVRFProvider.getLatestRandomWords();
+                    console.log("MockVRF: Random words obtained, length", randomWords.length);
+                    
+                    _processRandomWords(randomWords);
+                    s_mockVRFProvider.resetRandomWords();
+                    console.log("MockVRF: Raffle completed");
+                } else {
+                    console.log("MockVRF: Random words not available");
+                    // フォールバック処理
+                    s_raffleState = RaffleState.OPEN;
+                    emit RaffleStateChanged(s_raffleState);
+                    revert("MockVRF: Random words not available");
+                }
+            } catch Error(string memory reason) {
+                console.log("MockVRF Error:", reason);
+                // フォールバック処理
+                s_raffleState = RaffleState.OPEN;
+                emit RaffleStateChanged(s_raffleState);
+                revert(string.concat("MockVRF failed: ", reason));
+            } catch (bytes memory lowLevelData) {
+                console.log("MockVRF low-level error");
+                // フォールバック処理
+                s_raffleState = RaffleState.OPEN;
+                emit RaffleStateChanged(s_raffleState);
+                revert("MockVRF failed with low-level error");
             }
         } else {
             // 通常のChainlink VRFを使用する場合
-            VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient.RandomWordsRequest({
-                keyHash: s_keyHash,
-                subId: s_subscriptionId,
-                requestConfirmations: REQUEST_CONFIRMATIONS,
-                callbackGasLimit: s_callbackGasLimit,
-                numWords: NUM_WORDS,
-                extraArgs: VRFV2PlusClient._argsToBytes(
-                    VRFV2PlusClient.ExtraArgsV1({nativePayment: s_nativePayment_v2})
-                )
-            });
-            uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
-            s_lastRequestId = requestId;
+            console.log("VRF: performUpkeep started");
+            
+            try s_vrfCoordinator.requestRandomWords(
+                VRFV2PlusClient.RandomWordsRequest({
+                    keyHash: s_keyHash,
+                    subId: s_subscriptionId,
+                    requestConfirmations: REQUEST_CONFIRMATIONS,
+                    callbackGasLimit: s_callbackGasLimit,
+                    numWords: NUM_WORDS,
+                    extraArgs: VRFV2PlusClient._argsToBytes(
+                        VRFV2PlusClient.ExtraArgsV1({nativePayment: s_nativePayment_v2})
+                    )
+                })
+            ) returns (uint256 requestId) {
+                s_lastRequestId = requestId;
+                console.log("VRF: Request ID", requestId);
+            } catch Error(string memory reason) {
+                console.log("VRF Error:", reason);
+                // フォールバック処理
+                s_raffleState = RaffleState.OPEN;
+                emit RaffleStateChanged(s_raffleState);
+                revert(string.concat("VRF failed: ", reason));
+            } catch (bytes memory lowLevelData) {
+                console.log("VRF low-level error");
+                // フォールバック処理
+                s_raffleState = RaffleState.OPEN;
+                emit RaffleStateChanged(s_raffleState);
+                revert("VRF failed with low-level error");
+            }
         }
     }
 
@@ -441,16 +491,31 @@ contract RaffleImplementation is
     }
     
     /**
-     * @notice MockVRF設定を変更する関数
+     * @notice MockVRF設定を変更する関数（修正版）
      * @param mockVRFProvider 新しいMockVRFプロバイダーのアドレス
      * @param useMockVRF MockVRFを使用するかどうか
      */
     function setMockVRF(address mockVRFProvider, bool useMockVRF) external {
         require(msg.sender == s_owner, "Only owner can set MockVRF");
+        
         if (mockVRFProvider != address(0)) {
             s_mockVRFProvider = IMockRandomProvider(mockVRFProvider);
+            
+            // 新しいMockVRFプロバイダーに認証を設定
+            if (useMockVRF) {
+                try IMockRandomProvider(mockVRFProvider).authorizeCaller(address(this)) {
+                    console.log("MockVRF: Contract authorization successful");
+                } catch Error(string memory reason) {
+                    console.log("MockVRF: Authorization error:", reason);
+                    revert(string.concat("MockVRF authorization failed: ", reason));
+                } catch {
+                    console.log("MockVRF: Authorization failed - continuing");
+                }
+            }
         }
+        
         s_useMockVRF = useMockVRF;
+        console.log("MockVRF settings updated: useMockVRF=", useMockVRF, ", provider=", mockVRFProvider);
     }
     
     /**
@@ -513,30 +578,71 @@ contract RaffleImplementation is
 
         // 環境に応じてVRFかMockVRFを使用
         if (s_useMockVRF && address(s_mockVRFProvider) != address(0)) {
-            // MockVRFを使用する場合
-            uint256 requestId = s_mockVRFProvider.requestRandomWords(NUM_WORDS);
-            s_lastRequestId = requestId;
+            console.log("Manual MockVRF: performUpkeep started");
             
-            // MockVRFは即座に結果を返すので、直接処理する
-            if (s_mockVRFProvider.randomWordsAvailable()) {
-                uint256[] memory randomWords = s_mockVRFProvider.getLatestRandomWords();
-                _processRandomWords(randomWords);
-                s_mockVRFProvider.resetRandomWords();
+            try s_mockVRFProvider.requestRandomWords(NUM_WORDS) returns (uint256 requestId) {
+                s_lastRequestId = requestId;
+                console.log("Manual MockVRF: Request ID", requestId);
+                
+                // MockVRFの即座の結果を確認
+                if (s_mockVRFProvider.randomWordsAvailable()) {
+                    uint256[] memory randomWords = s_mockVRFProvider.getLatestRandomWords();
+                    console.log("Manual MockVRF: Random words obtained, length", randomWords.length);
+                    
+                    _processRandomWords(randomWords);
+                    s_mockVRFProvider.resetRandomWords();
+                    console.log("Manual MockVRF: Raffle completed");
+                } else {
+                    console.log("Manual MockVRF: Random words not available");
+                    // フォールバック処理
+                    s_raffleState = RaffleState.OPEN;
+                    emit RaffleStateChanged(s_raffleState);
+                    revert("MockVRF: Random words not available");
+                }
+            } catch Error(string memory reason) {
+                console.log("Manual MockVRF Error:", reason);
+                // フォールバック処理
+                s_raffleState = RaffleState.OPEN;
+                emit RaffleStateChanged(s_raffleState);
+                revert(string.concat("MockVRF failed: ", reason));
+            } catch (bytes memory lowLevelData) {
+                console.log("Manual MockVRF low-level error");
+                // フォールバック処理
+                s_raffleState = RaffleState.OPEN;
+                emit RaffleStateChanged(s_raffleState);
+                revert("MockVRF failed with low-level error");
             }
         } else {
             // 通常のChainlink VRFを使用する場合
-            VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient.RandomWordsRequest({
-                keyHash: s_keyHash,
-                subId: s_subscriptionId,
-                requestConfirmations: REQUEST_CONFIRMATIONS,
-                callbackGasLimit: s_callbackGasLimit,
-                numWords: NUM_WORDS,
-                extraArgs: VRFV2PlusClient._argsToBytes(
-                    VRFV2PlusClient.ExtraArgsV1({nativePayment: s_nativePayment_v2})
-                )
-            });
-            uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
-            s_lastRequestId = requestId;
+            console.log("Manual VRF: performUpkeep started");
+            
+            try s_vrfCoordinator.requestRandomWords(
+                VRFV2PlusClient.RandomWordsRequest({
+                    keyHash: s_keyHash,
+                    subId: s_subscriptionId,
+                    requestConfirmations: REQUEST_CONFIRMATIONS,
+                    callbackGasLimit: s_callbackGasLimit,
+                    numWords: NUM_WORDS,
+                    extraArgs: VRFV2PlusClient._argsToBytes(
+                        VRFV2PlusClient.ExtraArgsV1({nativePayment: s_nativePayment_v2})
+                    )
+                })
+            ) returns (uint256 requestId) {
+                s_lastRequestId = requestId;
+                console.log("Manual VRF: Request ID", requestId);
+            } catch Error(string memory reason) {
+                console.log("Manual VRF Error:", reason);
+                // フォールバック処理
+                s_raffleState = RaffleState.OPEN;
+                emit RaffleStateChanged(s_raffleState);
+                revert(string.concat("VRF failed: ", reason));
+            } catch (bytes memory lowLevelData) {
+                console.log("Manual VRF low-level error");
+                // フォールバック処理
+                s_raffleState = RaffleState.OPEN;
+                emit RaffleStateChanged(s_raffleState);
+                revert("VRF failed with low-level error");
+            }
         }
     }
 
