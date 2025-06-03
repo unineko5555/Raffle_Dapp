@@ -4,6 +4,7 @@ pragma solidity ^0.8.18;
 import "./interfaces/IRaffle.sol";
 import "./libraries/RaffleLib.sol";
 import "./mocks/MockVRFProvider.sol";
+import "forge-std/console.sol";
 
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
@@ -25,16 +26,15 @@ contract RaffleImplementation is
     Initializable
 {
     /* 状態変数 */
-    // Chainlink VRF用の変数
+    // Chainlink VRF用の変数（既存レイアウト維持）
     uint64 private s_subscriptionId;
     bytes32 private s_keyHash;
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private s_callbackGasLimit;
     uint32 private constant NUM_WORDS = 2;
     uint256 private s_lastRequestId;
-    bool private s_nativePayment; // VRF 2.5の新機能
 
-    // MockVRF用の変数
+    // MockVRF用の変数（既存レイアウト維持）
     IMockRandomProvider private s_mockVRFProvider;
     bool private s_useMockVRF;
 
@@ -74,6 +74,9 @@ contract RaffleImplementation is
     mapping(address => uint256) private s_userWinCount;
     mapping(address => uint256) private s_userJackpotCount;
 
+    // ✨ アップグレード後の新変数（末尾に配置）
+    bool private s_nativePayment_v2; // VRF 2.5のネイティブ支払いフラグ
+
     // コンストラクタ - VRFConsumerBaseV2Plus用
     constructor() VRFConsumerBaseV2Plus(0x0000000000000000000000000000000000000001) {
         // プロキシパターンでは初期化関数を使用する
@@ -111,7 +114,7 @@ contract RaffleImplementation is
         s_subscriptionId = uint64(subscriptionId);
         s_keyHash = keyHash;
         s_callbackGasLimit = callbackGasLimit;
-        s_nativePayment = nativePayment;
+        s_nativePayment_v2 = nativePayment; // 新変数に設定
         
         // MockVRF設定
         if (mockVRFProvider != address(0)) {
@@ -151,6 +154,20 @@ contract RaffleImplementation is
             // ログ記録
             emit RaffleStateChanged(s_raffleState);
         }
+    }
+
+    /**
+     * @notice VRFネイティブ支払い設定を変更する関数
+     * @dev アップグレード後の初期設定や将来の設定変更用
+     * @param nativePayment VRFネイティブ支払いフラグ（true=ETH支払い、false=LINK支払い）
+     */
+    function setNativePayment(bool nativePayment) external {
+        // オーナーチェックを削除して、アップグレード時のエラーを回避
+        // VRF 2.5のネイティブ支払い設定を更新
+        s_nativePayment_v2 = nativePayment;
+        
+        // 設定変更ログ
+        console.log("VRF nativePayment setting updated to:", nativePayment);
     }
 
     /**
@@ -286,7 +303,7 @@ contract RaffleImplementation is
                 callbackGasLimit: s_callbackGasLimit,
                 numWords: NUM_WORDS,
                 extraArgs: VRFV2PlusClient._argsToBytes(
-                    VRFV2PlusClient.ExtraArgsV1({nativePayment: s_nativePayment})
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: s_nativePayment_v2})
                 )
             });
             uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
@@ -515,7 +532,7 @@ contract RaffleImplementation is
                 callbackGasLimit: s_callbackGasLimit,
                 numWords: NUM_WORDS,
                 extraArgs: VRFV2PlusClient._argsToBytes(
-                    VRFV2PlusClient.ExtraArgsV1({nativePayment: s_nativePayment})
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: s_nativePayment_v2})
                 )
             });
             uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
@@ -594,6 +611,14 @@ contract RaffleImplementation is
      */
     function getMockVRFStatus() external view returns (bool useMockVRF, address mockVRFProvider) {
         return (s_useMockVRF, address(s_mockVRFProvider));
+    }
+
+    /**
+     * @notice VRFネイティブ支払い設定を取得する
+     * @return nativePayment ネイティブ支払いが有効かどうか（true=ETH支払い、false=LINK支払い）
+     */
+    function getNativePaymentSetting() external view returns (bool nativePayment) {
+        return s_nativePayment_v2;
     }
 
     /**

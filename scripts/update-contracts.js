@@ -223,7 +223,6 @@ export const contractConfig = {
     name: "Ethereum Sepolia",
     raffleProxy: "${isUpgrade ? existingAddresses.sepolia : (newAddresses.sepolia || existingAddresses.sepolia || '0x659F54928a0Ac9EA822C356D05Ec53925A0228E8')}", // Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", // SepoliaのUSDC (またはモックトークン) アドレス
-    ccipRouter: "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59", // SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia.etherscan.io",
     rpcUrl: process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL,
   },
@@ -232,7 +231,6 @@ export const contractConfig = {
     name: "Base Sepolia",
     raffleProxy: "${isUpgrade ? existingAddresses.baseSepolia : (newAddresses.baseSepolia || existingAddresses.baseSepolia || '0xEEd88f19b0951a7BeE1B52F83Afd333eCdBB6e96')}", // Base Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base SepoliaのUSDC (またはモックトークン) アドレス
-    ccipRouter: "0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93", // Base SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia.basescan.org",
     rpcUrl: process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL,
   },
@@ -241,7 +239,6 @@ export const contractConfig = {
     name: "Arbitrum Sepolia",
     raffleProxy: "${isUpgrade ? existingAddresses.arbitrumSepolia : (newAddresses.arbitrumSepolia || existingAddresses.arbitrumSepolia || '0x0573F6fE1cf8F169181eEc83Ae65BEa5502b3162')}", // Arbitrum Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d", // Arbitrum SepoliaのUSDC (またはモックトークン) アドレス
-    ccipRouter: "0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165", // Arbitrum SepoliaのCCIPルーターアドレス
     blockExplorer: "https://sepolia-explorer.arbitrum.io",
     rpcUrl: process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_RPC_URL,
   },

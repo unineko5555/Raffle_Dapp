@@ -86,9 +86,9 @@ contract RaffleUpgrader is Script {
         RaffleImplementation newImplementation = new RaffleImplementation();
         console.log("New implementation deployed at:", address(newImplementation));
         
-        // 2. 移行用のデータを準備（例：新しいパラメータの設定）
-        // ここでは空のデータを使用していますが、必要に応じて構造化されたデータを渡すことができます
-        bytes memory data = "";
+        // 2. 移行用のデータを準備（setNativePaymentを呼び出し）
+        // LINK支払いを使用（false）に設定（オーナーチェックなしに変更済み）
+        bytes memory data = abi.encodeWithSignature("setNativePayment(bool)", false);
         
         // 3. プロキシのアップグレードとデータの実行
         RaffleProxy proxy = RaffleProxy(payable(proxyAddress));

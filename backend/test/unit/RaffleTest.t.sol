@@ -29,9 +29,9 @@ contract RaffleTest is Test {
     uint32 public callbackGasLimit;
     uint256 public entranceFee;
     address public usdcAddress;
-    address public ccipRouter;
     address public mockVRFProvider;
     bool public useMockVRF;
+    bool public nativePayment;
 
     // テストアドレス
     address public USER = makeAddr("user");
@@ -52,9 +52,9 @@ contract RaffleTest is Test {
             callbackGasLimit,
             entranceFee,
             usdcAddress,
-            ccipRouter,
             mockVRFProvider,
-            useMockVRF
+            useMockVRF,
+            nativePayment
         ) = helperConfig.activeNetworkConfig();
 
         // プロキシを通してラッフルコントラクトにアクセス

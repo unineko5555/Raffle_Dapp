@@ -16,9 +16,9 @@ contract HelperConfig is Script {
         uint32 callbackGasLimit;
         uint256 entranceFee;
         address usdcAddress;
-        address ccipRouter;
-        address mockVRFProvider; // 追加: MockVRFのアドレス
-        bool useMockVRF;        // 追加: MockVRFを使用するかどうか
+        address mockVRFProvider; // MockVRFのアドレス
+        bool useMockVRF;        // MockVRFを使用するかどうか
+        bool nativePayment;     // VRFネイティブ支払いフラグ
     }
 
     uint256 public constant DEFAULT_ANVIL_PRIVATE_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
@@ -58,9 +58,9 @@ contract HelperConfig is Script {
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238, // Sepolia USDC
-            ccipRouter: 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59, // Sepolia CCIP Router
             mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス
-            useMockVRF: true  // テストネットではMockVRFを使用
+            useMockVRF: true,  // テストネットではMockVRFを使用
+            nativePayment: false // VRFネイティブ支払いは無効
         });
     }
 
@@ -83,9 +83,9 @@ contract HelperConfig is Script {
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d, // Arbitrum Sepolia USDC
-            ccipRouter: 0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165, // Arbitrum Sepolia CCIP Router
             mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス
-            useMockVRF: true  // テストネットではMockVRFを使用
+            useMockVRF: true,  // テストネットではMockVRFを使用
+            nativePayment: false // VRFネイティブ支払いは無効
         });
     }
 
@@ -108,9 +108,9 @@ contract HelperConfig is Script {
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: 0x036CbD53842c5426634e7929541eC2318f3dCF7e, // Base Sepolia USDC
-            ccipRouter: 0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93, // Base Sepolia CCIP Router
             mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス
-            useMockVRF: true  // テストネットではMockVRFを使用
+            useMockVRF: true,  // テストネットではMockVRFを使用
+            nativePayment: false // VRFネイティブ支払いは無効
         });
     }
 
@@ -132,9 +132,6 @@ contract HelperConfig is Script {
         // 仮のUSDCトークンをデプロイ
         MockERC20 mockUsdc = new MockERC20("USD Coin", "USDC", 6);
         
-        // 仮のCCIPルーターをデプロイ
-        MockCCIPRouter mockCcipRouter = new MockCCIPRouter();
-        
         // MockVRFProviderをデプロイ
         MockVRFProvider mockVRFProvider = new MockVRFProvider();
 
@@ -153,9 +150,9 @@ contract HelperConfig is Script {
             callbackGasLimit: 500000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: address(mockUsdc),
-            ccipRouter: address(mockCcipRouter),
             mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス
-            useMockVRF: false  // Anvilテスト環境では従来のMockを使用
+            useMockVRF: false,  // Anvilテスト環境では従来のMockを使用
+            nativePayment: false // VRFネイティブ支払いは無効
         });
     }
 }
@@ -302,61 +299,5 @@ contract MockERC20 {
         totalSupply += amount;
         balanceOf[to] += amount;
         emit Transfer(address(0), to, amount);
-    }
-}
-
-/**
- * @title MockCCIPRouter
- * @notice テスト用のCCIPルーターモック
- */
-contract MockCCIPRouter {
-    struct EVMTokenAmount {
-        address token;
-        uint256 amount;
-    }
-
-    struct EVM2AnyMessage {
-        bytes receiver;
-        bytes data;
-        EVMTokenAmount[] tokenAmounts;
-        address feeToken;
-        bytes extraArgs;
-    }
-
-    event MessageSent(
-        bytes32 indexed messageId,
-        uint256 indexed destinationChainSelector,
-        address sender,
-        bytes receiver,
-        bytes data
-    );
-
-    // モック用カウンター
-    uint256 private messageIdCounter;
-
-    function getFee(
-        uint256 destinationChainSelector,
-        EVM2AnyMessage memory message
-    ) external view returns (uint256) {
-        // 簡略化のためハードコードした手数料を返す
-        return 0.01 ether;
-    }
-
-    function ccipSend(
-        uint256 destinationChainSelector,
-        EVM2AnyMessage calldata message
-    ) external payable returns (bytes32) {
-        // メッセージIDを生成
-        bytes32 messageId = bytes32(keccak256(abi.encode(messageIdCounter++, msg.sender, block.timestamp)));
-        
-        emit MessageSent(
-            messageId,
-            destinationChainSelector,
-            msg.sender,
-            message.receiver,
-            message.data
-        );
-        
-        return messageId;
     }
 }
