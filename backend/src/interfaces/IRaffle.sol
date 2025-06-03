@@ -69,20 +69,6 @@ interface IRaffle {
     function getEntranceFee() external view returns (uint256 fee);
 
     /**
-     * @dev クロスチェーン通信を開始する関数
-     * @param destinationChainSelector 送信先チェーンのセレクタ
-     * @param winner 当選者のアドレス
-     * @param prize 賞金額
-     * @param isJackpot ジャックポット当選かどうか
-     */
-    function sendCrossChainMessage(
-        uint256 destinationChainSelector,
-        address winner,
-        uint256 prize,
-        bool isJackpot
-    ) external;
-
-    /**
      * @dev ユーザーの統計情報を取得する関数
      * @param user 統計情報を取得するユーザーのアドレス
      * @return entryCount ラッフル参加回数
@@ -155,13 +141,6 @@ interface IRaffle {
      * @param newState 新しいラッフル状態
      */
     event RaffleStateChanged(RaffleState newState);
-
-    /**
-     * @dev クロスチェーンメッセージを送信した時に発火するイベント
-     * @param destinationChainSelector 送信先チェーンのセレクタ
-     * @param messageId CCIPのメッセージID
-     */
-    event CrossChainMessageSent(uint256 indexed destinationChainSelector, bytes32 indexed messageId);
 
     /**
      * @dev ラッフルから参加を取り消した時に発火するイベント

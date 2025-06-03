@@ -2,15 +2,16 @@
 pragma solidity ^0.8.18;
 
 import "./interfaces/IRaffle.sol";
-import "./interfaces/VRFCoordinatorV2_5Interface.sol";
-import "./interfaces/VRFConsumerBaseV2_5.sol";
-import "./interfaces/AutomationCompatibleInterface.sol";
-import "./interfaces/CCIPInterface.sol";
-import "./interfaces/IERC20.sol";
 import "./libraries/RaffleLib.sol";
-import "./interfaces/IUUPSUpgradeable.sol";
 import "./mocks/MockVRFProvider.sol";
 
+import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
+import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+import {IVRFCoordinatorV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/interfaces/IVRFCoordinatorV2Plus.sol";
+import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 /**
  * @title RaffleImplementation
  * @notice クロスチェーン対応のラッフルアプリケーション実装
@@ -18,19 +19,20 @@ import "./mocks/MockVRFProvider.sol";
  */
 contract RaffleImplementation is 
     IRaffle, 
-    VRFConsumerBaseV2_5, 
+    VRFConsumerBaseV2Plus, 
     AutomationCompatibleInterface,
-    IUUPSUpgradeable
+    UUPSUpgradeable,
+    Initializable
 {
     /* 状態変数 */
-    // Chainklink VRF用の変数
-    VRFCoordinatorV2_5Interface private s_vrfCoordinator;
+    // Chainlink VRF用の変数
     uint64 private s_subscriptionId;
     bytes32 private s_keyHash;
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private s_callbackGasLimit;
     uint32 private constant NUM_WORDS = 2;
     uint256 private s_lastRequestId;
+    bool private s_nativePayment; // VRF 2.5の新機能
 
     // MockVRF用の変数
     IMockRandomProvider private s_mockVRFProvider;
@@ -52,12 +54,6 @@ contract RaffleImplementation is
     uint256 private s_lastRaffleTime;
     uint256 private s_minPlayersReachedTime;
 
-    // Chainlink CCIP用の変数
-    CCIPInterface private s_ccipRouter;
-
-    // 初期化状態管理
-    bool private s_initialized;
-
     // オーナー管理
     address private s_owner;
 
@@ -78,10 +74,10 @@ contract RaffleImplementation is
     mapping(address => uint256) private s_userWinCount;
     mapping(address => uint256) private s_userJackpotCount;
 
-    // コンストラクタ - シンプルな実装
-    constructor() VRFConsumerBaseV2_5(address(0)) {
-        // コンストラクタはそのまま使用されない
+    // コンストラクタ - VRFConsumerBaseV2Plus用
+    constructor() VRFConsumerBaseV2Plus(0x0000000000000000000000000000000000000001) {
         // プロキシパターンでは初期化関数を使用する
+        _disableInitializers();
     }
 
     /**
@@ -92,7 +88,6 @@ contract RaffleImplementation is
      * @param callbackGasLimit VRFコールバックのガスリミット
      * @param entranceFee ラッフル参加料
      * @param usdcAddress USDCトークンのアドレス
-     * @param ccipRouter CCIPルーターのアドレス
      * @param addMockPlayers テスト用にモックプレイヤーを追加するかどうか
      * @param mockVRFProvider MockVRFプロバイダーのアドレス
      * @param useMockVRF MockVRFを使用するかどうか
@@ -104,19 +99,19 @@ contract RaffleImplementation is
         uint32 callbackGasLimit,
         uint256 entranceFee,
         address usdcAddress,
-        address ccipRouter,
         bool addMockPlayers,
         address mockVRFProvider,
-        bool useMockVRF
-    ) external {
-        // 初期化は一度だけ
-        require(!s_initialized, "Already initialized");
-        
+        bool useMockVRF,
+        bool nativePayment
+    ) external initializer {
         // VRFコーディネーターを設定
-        s_vrfCoordinator = VRFCoordinatorV2_5Interface(vrfCoordinatorV2);
+        if (vrfCoordinatorV2 != address(0)) {
+            s_vrfCoordinator = IVRFCoordinatorV2Plus(vrfCoordinatorV2);
+        }
         s_subscriptionId = uint64(subscriptionId);
         s_keyHash = keyHash;
         s_callbackGasLimit = callbackGasLimit;
+        s_nativePayment = nativePayment;
         
         // MockVRF設定
         if (mockVRFProvider != address(0)) {
@@ -127,7 +122,6 @@ contract RaffleImplementation is
         // ラッフル設定
         s_entranceFee = entranceFee;
         s_usdcAddress = usdcAddress;
-        s_ccipRouter = CCIPInterface(ccipRouter);
         s_minimumPlayers = 3;
         s_minTimeAfterMinPlayers = 1 minutes;
         s_raffleState = RaffleState.OPEN;
@@ -157,9 +151,6 @@ contract RaffleImplementation is
             // ログ記録
             emit RaffleStateChanged(s_raffleState);
         }
-        
-        // 初期化完了をマーク
-        s_initialized = true;
     }
 
     /**
@@ -283,18 +274,22 @@ contract RaffleImplementation is
             // MockVRFは即座に結果を返すので、直接処理する
             if (s_mockVRFProvider.randomWordsAvailable()) {
                 uint256[] memory randomWords = s_mockVRFProvider.getLatestRandomWords();
-                processRandomWords(randomWords);
+                _processRandomWords(randomWords);
                 s_mockVRFProvider.resetRandomWords();
             }
         } else {
             // 通常のChainlink VRFを使用する場合
-            uint256 requestId = s_vrfCoordinator.requestRandomWords(
-                s_keyHash,
-                s_subscriptionId,
-                REQUEST_CONFIRMATIONS,
-                s_callbackGasLimit,
-                NUM_WORDS
-            );
+            VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient.RandomWordsRequest({
+                keyHash: s_keyHash,
+                subId: s_subscriptionId,
+                requestConfirmations: REQUEST_CONFIRMATIONS,
+                callbackGasLimit: s_callbackGasLimit,
+                numWords: NUM_WORDS,
+                extraArgs: VRFV2PlusClient._argsToBytes(
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: s_nativePayment})
+                )
+            });
+            uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
             s_lastRequestId = requestId;
         }
     }
@@ -304,8 +299,8 @@ contract RaffleImplementation is
      * @dev Chainlink VRFノードによって呼び出される
      * @param randomWords 生成された乱数配列
      */
-    function fulfillRandomWords(uint256 /* requestId */, uint256[] memory randomWords) internal override {
-        processRandomWords(randomWords);
+    function fulfillRandomWords(uint256 /* requestId */, uint256[] calldata randomWords) internal override {
+        _processRandomWords(randomWords);
     }
     
     /**
@@ -313,7 +308,7 @@ contract RaffleImplementation is
      * @dev VRFとMockVRFで共通の処理を行う
      * @param randomWords 生成された乱数配列
      */
-    function processRandomWords(uint256[] memory randomWords) internal {
+    function _processRandomWords(uint256[] memory randomWords) internal {
         // 参加者の中から当選者を選ぶ
         uint256 winnerIndex = randomWords[0] % s_players.length;
         address winner = s_players[winnerIndex];
@@ -393,50 +388,6 @@ contract RaffleImplementation is
     }
 
     /**
-     * @notice クロスチェーンにラッフル結果を送信する関数
-     * @dev オプションで使用される、クロスチェーン通信機能
-     * @param destinationChainSelector 宛先チェーンのセレクタ
-     * @param winner 当選者のアドレス
-     * @param prize 当選金額
-     * @param isJackpot ジャックポット当選かどうか
-     */
-    function sendCrossChainMessage(
-        uint256 destinationChainSelector,
-        address winner,
-        uint256 prize,
-        bool isJackpot
-    ) external override {
-        require(msg.sender == s_owner, "Only owner can send cross-chain messages");
-
-        // エンコードするメッセージデータ
-        bytes memory messageData = abi.encode(
-            winner,
-            prize,
-            isJackpot,
-            block.timestamp
-        );
-
-        // CCIPメッセージ構造体の作成
-        CCIPInterface.EVM2AnyMessage memory message = CCIPInterface.EVM2AnyMessage({
-            receiver: abi.encode(address(this)),
-            data: messageData,
-            tokenAmounts: new CCIPInterface.EVMTokenAmount[](0),
-            feeToken: address(0), // ネイティブトークンで支払い
-            extraArgs: ""
-        });
-
-        // メッセージ送信の手数料を計算
-        uint256 fee = s_ccipRouter.getFee(uint64(destinationChainSelector), message);
-        require(address(this).balance >= fee, "Insufficient balance for fee");
-
-        // メッセージを送信
-        bytes32 messageId = s_ccipRouter.ccipSend{value: fee}(uint64(destinationChainSelector), message);
-
-        // イベント発行
-        emit CrossChainMessageSent(destinationChainSelector, messageId);
-    }
-
-    /**
      * @notice 資金引き出し関数
      * @dev コントラクトの残高をオーナーに送金
      * @param token 引き出すトークンのアドレス（0アドレスの場合はネイティブトークン）
@@ -489,7 +440,7 @@ contract RaffleImplementation is
      * @dev UUPSアップグレード用の関数
      * @param newImplementation 新しい実装コントラクトのアドレス
      */
-    function upgradeTo(address newImplementation) external override {
+    function upgradeTo(address newImplementation) external {
         require(msg.sender == s_owner, "Only owner can upgrade");
         _authorizeUpgrade(newImplementation);
         // コードスロットに新しい実装を書き込む
@@ -503,7 +454,7 @@ contract RaffleImplementation is
      * @param newImplementation 新しい実装コントラクトのアドレス
      * @param data 初期化データ
      */
-    function upgradeToAndCall(address newImplementation, bytes memory data) external payable override {
+    function upgradeToAndCall(address newImplementation, bytes memory data) public payable override {
         require(msg.sender == s_owner, "Only owner can upgrade");
         _authorizeUpgrade(newImplementation);
         // コードスロットに新しい実装を書き込む
@@ -552,18 +503,22 @@ contract RaffleImplementation is
             // MockVRFは即座に結果を返すので、直接処理する
             if (s_mockVRFProvider.randomWordsAvailable()) {
                 uint256[] memory randomWords = s_mockVRFProvider.getLatestRandomWords();
-                processRandomWords(randomWords);
+                _processRandomWords(randomWords);
                 s_mockVRFProvider.resetRandomWords();
             }
         } else {
             // 通常のChainlink VRFを使用する場合
-            uint256 requestId = s_vrfCoordinator.requestRandomWords(
-                s_keyHash,
-                s_subscriptionId,
-                REQUEST_CONFIRMATIONS,
-                s_callbackGasLimit,
-                NUM_WORDS
-            );
+            VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient.RandomWordsRequest({
+                keyHash: s_keyHash,
+                subId: s_subscriptionId,
+                requestConfirmations: REQUEST_CONFIRMATIONS,
+                callbackGasLimit: s_callbackGasLimit,
+                numWords: NUM_WORDS,
+                extraArgs: VRFV2PlusClient._argsToBytes(
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: s_nativePayment})
+                )
+            });
+            uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
             s_lastRequestId = requestId;
         }
     }

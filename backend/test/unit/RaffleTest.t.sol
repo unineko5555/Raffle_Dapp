@@ -6,7 +6,7 @@ import {DeployRaffle} from "../../script/RaffleProxyDeployer.s.sol";
 import {RaffleImplementation} from "../../src/RaffleImplementation.sol";
 import {RaffleProxy} from "../../src/RaffleProxy.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
-import {IERC20} from "../../src/interfaces/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IRaffle} from "../../src/interfaces/IRaffle.sol";
 
 /**
@@ -18,7 +18,6 @@ contract RaffleTest is Test {
     event RaffleEnter(address indexed player, uint256 entranceFee);
     event WinnerPicked(address indexed winner, uint256 prize, bool isJackpot);
     event RaffleStateChanged(IRaffle.RaffleState newState);
-    event CrossChainMessageSent(uint256 indexed destinationChainSelector, bytes32 indexed messageId);
 
     // テスト用変数
     RaffleImplementation public raffleImplementation;
@@ -294,31 +293,6 @@ contract RaffleTest is Test {
         
         // プレイヤーリストがリセットされていることを確認
         assertEq(raffle.getNumberOfPlayers(), 0);
-    }
-
-    /**
-     * @notice クロスチェーンメッセージ送信機能をテスト
-     */
-     //CCIPの設定が必要
-    function testSendCrossChainMessage() public {
-        RaffleImplementation raffle = RaffleImplementation(payable(address(raffleProxy)));
-        
-        // オーナーとしてメッセージを送信
-        uint256 destinationChainSelector = 1234;
-        address winner = USER;
-        uint256 prize = 100 * 1e6; // 100 USDC
-        bool isJackpot = false;
-        
-        // ETHをプロキシに送信してCCIP手数料を支払えるようにする
-        vm.deal(address(raffleProxy), 1 ether);
-        
-        // イベントが発火することを確認
-        vm.expectEmit(true, true, false, false);
-        emit CrossChainMessageSent(destinationChainSelector, bytes32(0));
-        
-        // オーナーとしてクロスチェーンメッセージを送信
-        vm.prank(raffle.getOwner());
-        raffle.sendCrossChainMessage(destinationChainSelector, winner, prize, isJackpot);
     }
 
     /**

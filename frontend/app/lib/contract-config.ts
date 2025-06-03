@@ -42,6 +42,26 @@ export const RaffleABI = [
   },
   {
     "type": "function",
+    "name": "UPGRADE_INTERFACE_VERSION",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "acceptOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "cancelEntry",
     "inputs": [],
     "outputs": [],
@@ -419,11 +439,6 @@ export const RaffleABI = [
         "internalType": "address"
       },
       {
-        "name": "ccipRouter",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
         "name": "addMockPlayers",
         "type": "bool",
         "internalType": "bool"
@@ -435,6 +450,11 @@ export const RaffleABI = [
       },
       {
         "name": "useMockVRF",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "nativePayment",
         "type": "bool",
         "internalType": "bool"
       }
@@ -451,6 +471,19 @@ export const RaffleABI = [
   },
   {
     "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "performUpkeep",
     "inputs": [
       {
@@ -461,6 +494,19 @@ export const RaffleABI = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "proxiableUUID",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -482,27 +528,25 @@ export const RaffleABI = [
   },
   {
     "type": "function",
-    "name": "sendCrossChainMessage",
+    "name": "s_vrfCoordinator",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IVRFCoordinatorV2Plus"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "setCoordinator",
     "inputs": [
       {
-        "name": "destinationChainSelector",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "winner",
+        "name": "_vrfCoordinator",
         "type": "address",
         "internalType": "address"
-      },
-      {
-        "name": "prize",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "isJackpot",
-        "type": "bool",
-        "internalType": "bool"
       }
     ],
     "outputs": [],
@@ -532,6 +576,19 @@ export const RaffleABI = [
     "inputs": [
       {
         "name": "newOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      {
+        "name": "to",
         "type": "address",
         "internalType": "address"
       }
@@ -585,19 +642,64 @@ export const RaffleABI = [
   },
   {
     "type": "event",
-    "name": "CrossChainMessageSent",
+    "name": "CoordinatorSet",
     "inputs": [
       {
-        "name": "destinationChainSelector",
-        "type": "uint256",
+        "name": "vrfCoordinator",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Initialized",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferRequested",
+    "inputs": [
+      {
+        "name": "from",
+        "type": "address",
         "indexed": true,
-        "internalType": "uint256"
+        "internalType": "address"
       },
       {
-        "name": "messageId",
-        "type": "bytes32",
+        "name": "to",
+        "type": "address",
         "indexed": true,
-        "internalType": "bytes32"
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -680,6 +782,16 @@ export const RaffleABI = [
   },
   {
     "type": "error",
+    "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotInitializing",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "OnlyCoordinatorCanFulfill",
     "inputs": [
       {
@@ -693,6 +805,48 @@ export const RaffleABI = [
         "internalType": "address"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "OnlyOwnerOrCoordinator",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "coordinator",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "UUPSUnauthorizedCallContext",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UUPSUnsupportedProxiableUUID",
+    "inputs": [
+      {
+        "name": "slot",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
   }
 ];
 

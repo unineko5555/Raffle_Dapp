@@ -2,20 +2,21 @@
 pragma solidity ^0.8.18;
 
 import "./interfaces/IRaffle.sol";
-import "./interfaces/IERC20.sol";
-import "./interfaces/IUUPSUpgradeable.sol";
 
-import {IAny2EVMMessageReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
-import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
-import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
-import {IERC165} from "@openzeppelin/utils/introspection/IERC165.sol";
+import {IAny2EVMMessageReceiver} from "@chainlink/contracts/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
+import {Client} from "@chainlink/contracts/src/v0.8/ccip/libraries/Client.sol";
+import {IRouterClient} from "@chainlink/contracts/src/v0.8/ccip/interfaces/IRouterClient.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 /**
  * @title RaffleBridgeImplementation
  * @notice CCIPを使用して各チェーン間でUSDCをブリッジするためのコントラクト
  * @dev UUPS upgradeable pattern対応の実装コントラクト
  */
-contract RaffleBridgeImplementation is IUUPSUpgradeable, IAny2EVMMessageReceiver, IERC165 {
+contract RaffleBridgeImplementation is UUPSUpgradeable, Initializable, IAny2EVMMessageReceiver, IERC165 {
     /* 状態変数 */
     // CCIP Router
     address private s_defaultRouter;
@@ -84,14 +85,7 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable, IAny2EVMMessageReceiver
         _;
     }
 
-    /**
-     * @dev 初期化確認の修飾子
-     */
-    modifier initializer() {
-        require(!s_initialized, "Already initialized");
-        _;
-        s_initialized = true;
-    }
+
 
     /**
      * @notice 初期化関数
@@ -114,6 +108,8 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable, IAny2EVMMessageReceiver
         string[] memory chainNames,
         uint256 minimumPoolThreshold
     ) external initializer {
+        // UUPSUpgradeableの初期化（v4.9以降では不要）
+        // __UUPSUpgradeable_init();
         require(router != address(0), "Router cannot be zero address");
         require(usdcAddress != address(0), "USDC address cannot be zero address");
         require(
@@ -146,29 +142,6 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable, IAny2EVMMessageReceiver
     }
 
     /**
-     * @notice コントラクトをアップグレードするための関数
-     * @param newImplementation 新しい実装アドレス
-     */
-    function upgradeTo(address newImplementation) external override onlyOwner {
-        _authorizeUpgrade(newImplementation);
-        _upgradeTo(newImplementation);
-    }
-
-    /**
-     * @notice コントラクトをアップグレードし、初期化関数を呼び出す関数
-     * @param newImplementation 新しい実装アドレス
-     * @param data 初期化データ
-     */
-    function upgradeToAndCall(address newImplementation, bytes memory data) external payable override onlyOwner {
-        _authorizeUpgrade(newImplementation);
-        _upgradeTo(newImplementation);
-        
-        // 初期化関数を呼び出す
-        (bool success, ) = newImplementation.delegatecall(data);
-        require(success, "Call failed");
-    }
-
-    /**
      * @notice UUPSアップグレードの承認関数
      * @param newImplementation 新しい実装コントラクトのアドレス
      */
@@ -176,20 +149,7 @@ contract RaffleBridgeImplementation is IUUPSUpgradeable, IAny2EVMMessageReceiver
         require(newImplementation != address(0), "Invalid implementation address");
     }
 
-    /**
-     * @dev 実装コントラクトを更新する内部関数
-     * @param newImplementation 新しい実装コントラクトのアドレス
-     */
-    function _upgradeTo(address newImplementation) internal {
-        require(newImplementation != address(0), "Implementation cannot be zero address");
-        
-        // コードスロットに新しい実装を書き込む
-        assembly {
-            sstore(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc, newImplementation)
-        }
-        
-        emit Upgraded(newImplementation);
-    }
+
 
     /**
      * @notice チェーンセレクタに対応するルーターアドレスを取得する内部関数

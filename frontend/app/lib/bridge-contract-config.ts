@@ -19,6 +19,19 @@ export const BRIDGE_ABI = [
   },
   {
     "type": "function",
+    "name": "UPGRADE_INTERFACE_VERSION",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "bridgeTokens",
     "inputs": [
       {
@@ -94,95 +107,6 @@ export const BRIDGE_ABI = [
   },
   {
     "type": "function",
-    "name": "debugCcipReceiveConditions",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "currentRouter",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "usdcToken",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "poolBalance",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "routerValid",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "usdcValid",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "poolSufficient",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "debugRouterInfo",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "defaultRouter",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "isContract",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "codeSize",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "emergencyExecuteCcipReceive",
-    "inputs": [
-      {
-        "name": "messageId",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "sourceChainSelector",
-        "type": "uint64",
-        "internalType": "uint64"
-      },
-      {
-        "name": "receiver",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "emergencyWithdraw",
     "inputs": [
       {
@@ -222,29 +146,6 @@ export const BRIDGE_ABI = [
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "fallbackReceive",
-    "inputs": [
-      {
-        "name": "receiver",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "messageId",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -482,6 +383,19 @@ export const BRIDGE_ABI = [
   },
   {
     "type": "function",
+    "name": "proxiableUUID",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "replenishPool",
     "inputs": [
       {
@@ -602,19 +516,6 @@ export const BRIDGE_ABI = [
   },
   {
     "type": "function",
-    "name": "upgradeTo",
-    "inputs": [
-      {
-        "name": "newImplementation",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "upgradeToAndCall",
     "inputs": [
       {
@@ -633,81 +534,6 @@ export const BRIDGE_ABI = [
   },
   {
     "type": "event",
-    "name": "DebugLog",
-    "inputs": [
-      {
-        "name": "functionName",
-        "type": "string",
-        "indexed": true,
-        "internalType": "string"
-      },
-      {
-        "name": "stage",
-        "type": "string",
-        "indexed": true,
-        "internalType": "string"
-      },
-      {
-        "name": "value",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "DebugLogAddress",
-    "inputs": [
-      {
-        "name": "functionName",
-        "type": "string",
-        "indexed": true,
-        "internalType": "string"
-      },
-      {
-        "name": "stage",
-        "type": "string",
-        "indexed": true,
-        "internalType": "string"
-      },
-      {
-        "name": "addr",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "DebugLogBool",
-    "inputs": [
-      {
-        "name": "functionName",
-        "type": "string",
-        "indexed": true,
-        "internalType": "string"
-      },
-      {
-        "name": "stage",
-        "type": "string",
-        "indexed": true,
-        "internalType": "string"
-      },
-      {
-        "name": "flag",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
     "name": "DefaultRouterUpdated",
     "inputs": [
       {
@@ -715,6 +541,19 @@ export const BRIDGE_ABI = [
         "type": "address",
         "indexed": true,
         "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Initialized",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
       }
     ],
     "anonymous": false
@@ -850,6 +689,19 @@ export const BRIDGE_ABI = [
     "name": "Upgraded",
     "inputs": [
       {
+        "name": "implementation",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Upgraded",
+    "inputs": [
+      {
         "name": "newImplementation",
         "type": "address",
         "indexed": true,
@@ -857,6 +709,64 @@ export const BRIDGE_ABI = [
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AddressEmptyCode",
+    "inputs": [
+      {
+        "name": "target",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC1967InvalidImplementation",
+    "inputs": [
+      {
+        "name": "implementation",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC1967NonPayable",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FailedCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotInitializing",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UUPSUnauthorizedCallContext",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UUPSUnsupportedProxiableUUID",
+    "inputs": [
+      {
+        "name": "slot",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
   }
 ] as const;
 
@@ -867,7 +777,7 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "ccipSelector": "10344971235874465080",
     "bridgeAddress": "0x8AB90AB3013Df24BdF7adCEA73706c62b311cC67",
     "ccipRouterAddress": "0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93",
-    "implementationAddress": "0x1a2158e984ad39217f138bb9eb4004f46dc68b41"
+    "implementationAddress": "0x0bba43b2afdf7661c05c6ac0fc292359407d0f71"
   },
   {
     "networkId": 421614,
@@ -875,7 +785,7 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "ccipSelector": "3478487238524512106",
     "bridgeAddress": "0xF786e2292cfc0d8dabEd7D59b636C16289753e1C",
     "ccipRouterAddress": "0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165",
-    "implementationAddress": "0x3967e5f40615ae03ab709bfffc14fb8e5c309721"
+    "implementationAddress": "0x65b8bf0adcf48b5966ce9cc7a73ac10581a13d3d"
   },
   {
     "networkId": 11155111,
@@ -883,7 +793,7 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "ccipSelector": "16015286601757825753",
     "bridgeAddress": "0x6F801df32713c7F33ACEf6318B92CD16829aD17e",
     "ccipRouterAddress": "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59",
-    "implementationAddress": "0xf2db7d017aed1e7857cbb3b449774d1abcf1e6a4"
+    "implementationAddress": "0xd8db26e96ceffa011e8fd0698cb3f2d60bc11124"
   }
 ];
 

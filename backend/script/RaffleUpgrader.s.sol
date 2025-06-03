@@ -18,10 +18,23 @@ contract RaffleUpgrader is Script {
         
         console.log("Upgrading Raffle at proxy:", proxyAddress);
         
+        // チェーンIDに基づいてVRFコーディネーターアドレスを取得
+        address vrfCoordinatorV2;
+        
+        if (block.chainid == 11155111) { // Sepolia
+            vrfCoordinatorV2 = 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B;
+        } else if (block.chainid == 84532) { // Base Sepolia
+            vrfCoordinatorV2 = 0x5CE8D5A2BC84beb22a398CCA51996F7930313D61;
+        } else if (block.chainid == 421614) { // Arbitrum Sepolia
+            vrfCoordinatorV2 = 0x5CE8D5A2BC84beb22a398CCA51996F7930313D61;
+        } else {
+            revert("Unsupported network");
+        }
+        
         // ブロードキャストの開始
         vm.startBroadcast();
         
-        // 1. 新しい実装コントラクトのデプロイ
+        // 1. 新しい実装コントラクトのデプロイ（正しいVRFコーディネーターアドレスを使用）
         RaffleImplementation newImplementation = new RaffleImplementation();
         console.log("New implementation deployed at:", address(newImplementation));
         
@@ -53,10 +66,23 @@ contract RaffleUpgrader is Script {
         
         console.log("Upgrading Raffle with data at proxy:", proxyAddress);
         
+        // チェーンIDに基づいてVRFコーディネーターアドレスを取得
+        address vrfCoordinatorV2;
+        
+        if (block.chainid == 11155111) { // Sepolia
+            vrfCoordinatorV2 = 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B;
+        } else if (block.chainid == 84532) { // Base Sepolia
+            vrfCoordinatorV2 = 0x5CE8D5A2BC84beb22a398CCA51996F7930313D61;
+        } else if (block.chainid == 421614) { // Arbitrum Sepolia
+            vrfCoordinatorV2 = 0x5CE8D5A2BC84beb22a398CCA51996F7930313D61;
+        } else {
+            revert("Unsupported network");
+        }
+        
         // ブロードキャストの開始
         vm.startBroadcast();
         
-        // 1. 新しい実装コントラクトのデプロイ
+        // 1. 新しい実装コントラクトのデプロイ（正しいVRFコーディネーターアドレスを使用）
         RaffleImplementation newImplementation = new RaffleImplementation();
         console.log("New implementation deployed at:", address(newImplementation));
         
