@@ -312,10 +312,13 @@ export default function RaffleDapp() {
 
   // Wagmiの接続状態監視
   useEffect(() => {
-    if (isConnected && address) {
-      checkPlayerEntered();
+    if (isConnected && address && checkPlayerEntered) {
+      checkPlayerEntered(address);
     }
-  }, [isConnected, address, checkPlayerEntered]);
+    if (smartAccountAddress && checkPlayerEntered) {
+      checkPlayerEntered(smartAccountAddress);
+    }
+  }, [isConnected, address, smartAccountAddress, checkPlayerEntered]);
 
   // チェーンが変更されたときに強制更新フラグを設定し、残高を更新
   useEffect(() => {
