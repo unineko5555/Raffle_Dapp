@@ -1,4 +1,15 @@
 {
     "IDX.aI.enableInlineCompletion": true,
-    "IDX.aI.enableCodebaseIndexing": true
+    "IDX.aI.enableCodebaseIndexing": true,
+    "files.autoSave": "off",
+    "files.hotExit": "onExitAndWindowClose",
+    "files.defaultLanguage": "",
+    "files.associations": {
+        "*.ts": "typescript"
+    },
+    "typescript.preferences.renameShorthandProperties": false,
+    "typescript.preferences.includePackageJsonAutoImports": "off",
+    "git.autoRepositoryDetection": true,
+    "git.autoStash": false,
+    "workbench.settings.enableNaturalLanguageSearch": false
 }
