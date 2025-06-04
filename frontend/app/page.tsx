@@ -67,7 +67,7 @@ export default function RaffleDapp() {
     isLoading,
     contractAddress,
     checkPlayerEntered,
-    performManualUpkeep,
+    performUpkeep,
     performManualUpkeepWithVRF,
     performManualUpkeepWithMock,
     checkAutomationStatus,
@@ -277,7 +277,7 @@ export default function RaffleDapp() {
   // 手動でラッフルを開始する（デフォルト）
   const startRaffle = async () => {
     try {
-      await executeRaffle(performManualUpkeep, "現在の設定");
+      await executeRaffle(performUpkeep, "現在の設定");
     } catch (error) {
       console.error("ラッフル開始エラー:", error);
       const errorMessage =
@@ -464,7 +464,7 @@ export default function RaffleDapp() {
                   onUpgradeContract={(newImplementation, initData) =>
                     console.log("Upgrade contract", newImplementation, initData)
                   }
-                  onManualPerformUpkeep={performManualUpkeep}
+                  onManualPerformUpkeep={performUpkeep}
                   isLoading={isLoading}
                 />
               </div>

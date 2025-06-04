@@ -67,10 +67,9 @@ export function useRaffleContract() {
     isUpkeepNeeded,
     checkAutomationStatus,
     checkUpkeepDebug,
-    performManualUpkeep,
+    performUpkeep,
     performManualUpkeepWithVRF,
     performManualUpkeepWithMock,
-    manualPerformUpkeepAsOwner,
   } = useRaffleAutomation(updateRaffleData);
 
   // エラー状態の統合
@@ -167,10 +166,9 @@ export function useRaffleContract() {
     isUpkeepNeeded,
     checkAutomationStatus,
     checkUpkeepDebug,
-    performManualUpkeep,
+    performUpkeep,
     performManualUpkeepWithVRF,
     performManualUpkeepWithMock,
-    manualPerformUpkeepAsOwner,
 
     // ユーティリティ関数
     updateRaffleData,

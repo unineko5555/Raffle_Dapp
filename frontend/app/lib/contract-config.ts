@@ -474,13 +474,6 @@ export const RaffleABI = [
   },
   {
     "type": "function",
-    "name": "manualPerformUpkeep",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "owner",
     "inputs": [],
     "outputs": [

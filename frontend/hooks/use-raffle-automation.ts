@@ -25,15 +25,18 @@ type UpkeepDebugInfo = {
   playerCount: bigint;
 };
 
-export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) => Promise<void>) {
+export function useRaffleAutomation(
+  updateRaffleData?: (forceUpdate: boolean) => Promise<void>
+) {
   const chainId = useChainId();
   const { address, isConnected } = useAccount();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // スマートアカウント機能を使用
-  const { smartAccountAddress, isReadyToSendTx, sendUserOperation } = useSmartAccountContext();
-  
+  const { smartAccountAddress, isReadyToSendTx, sendUserOperation } =
+    useSmartAccountContext();
+
   // upkeepNeededの状態を管理
   const [isUpkeepNeeded, setIsUpkeepNeeded] = useState(false);
 
@@ -41,7 +44,7 @@ export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) =>
   const currentChainId = chainId || 11155111; // デフォルトはSepolia
   const contractAddress =
     contractConfig[currentChainId as SupportedChainId]?.raffleProxy || null;
-  
+
   // プロバイダーチェック
   const publicClient = usePublicClient({ chainId: currentChainId });
 
@@ -119,11 +122,12 @@ export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) =>
           abi: RaffleABI,
           functionName: "getMockVRFStatus",
         });
-        
+
         // 既に正しい設定になっているかチェック
-        const isCurrentlyMockVRF = Array.isArray(currentVRFStatus) ? 
-          currentVRFStatus[0] === true : false;
-        
+        const isCurrentlyMockVRF = Array.isArray(currentVRFStatus)
+          ? currentVRFStatus[0] === true
+          : false;
+
         if (isCurrentlyMockVRF === useMockVRF) {
           console.log(`VRF設定は既に正しい状態です (MockVRF: ${useMockVRF})`);
           return; // 早期リターンでトランザクションを回避
@@ -133,7 +137,8 @@ export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) =>
       console.warn("VRF設定確認エラー:", error);
     }
 
-    const useSmartAccount = isReadyToSendTx && smartAccountAddress && sendUserOperation;
+    const useSmartAccount =
+      isReadyToSendTx && smartAccountAddress && sendUserOperation;
     const mockVRFProvider = useSmartAccount ? smartAccountAddress : address;
 
     console.log(`VRFモード変更中: MockVRF=${useMockVRF}`);
@@ -152,9 +157,9 @@ export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) =>
           BigInt(0)
         );
         console.log(`VRFモード変更完了 (MockVRF: ${useMockVRF})`);
-        
+
         // 設定反映を待つ
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       } else if (isConnected && address && publicClient && writeContractAsync) {
         const txHash = await writeContractAsync({
           address: contractAddress as `0x${string}`,
@@ -163,22 +168,24 @@ export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) =>
           args: [mockVRFProvider, useMockVRF],
           account: address,
         });
-        
+
         if (!txHash) {
           throw new Error("setMockVRFトランザクションの送信に失敗しました");
         }
-        
+
         // トランザクションの確定を待つ
-        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-        
-        if (receipt.status === 'reverted') {
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: txHash,
+        });
+
+        if (receipt.status === "reverted") {
           throw new Error(`setMockVRFトランザクションが失敗しました`);
         }
-        
+
         console.log(`VRFモード変更完了 (MockVRF: ${useMockVRF})`);
-        
+
         // 設定反映を待つ
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     } catch (error) {
       console.error("VRFモード変更エラー:", error);
@@ -189,14 +196,14 @@ export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) =>
   // VRF付きUpkeep実行
   const performManualUpkeepWithVRF = async () => {
     await setVRFMode(false); // 正式VRFを有効化
-    await new Promise(resolve => setTimeout(resolve, 2000)); // 設定反映待ち
-    return await performManualUpkeep();
+    await new Promise((resolve) => setTimeout(resolve, 2000)); // 設定反映待ち
+    return await performUpkeep();
   };
 
   // Mock付きUpkeep実行
   const performManualUpkeepWithMock = async () => {
     console.log("MockVRFラッフルを開始します...");
-    
+
     // 現在のVRF設定を確認
     let currentVRFStatus: any = null;
     if (publicClient) {
@@ -210,16 +217,17 @@ export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) =>
         console.warn("VRF設定確認エラー:", error);
       }
     }
-    
+
     // MockVRFが既に設定されているかチェック
-    const isCurrentlyMockVRF = Array.isArray(currentVRFStatus) ? 
-      currentVRFStatus[0] === true : false;
-    
+    const isCurrentlyMockVRF = Array.isArray(currentVRFStatus)
+      ? currentVRFStatus[0] === true
+      : false;
+
     if (!isCurrentlyMockVRF) {
       console.log("MockVRFを設定します...");
       try {
         await setVRFMode(true);
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       } catch (setVRFError) {
         console.error("MockVRF設定エラー:", setVRFError);
         console.log("設定に失敗しましたが、続行します...");
@@ -227,19 +235,21 @@ export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) =>
     } else {
       console.log("MockVRFは既に設定済みです。");
     }
-    
+
     // 条件を確認
     const automationStatus = await checkAutomationStatus();
     if (!automationStatus?.upkeepNeeded) {
       throw new Error("ラッフル実行条件が満たされていません");
     }
-    
+
     // MockVRFでperformUpkeepを実行
-    return await executePerformUpkeepForMock();
+    return await performUpkeep();
   };
 
-  // MockVRF用のperformUpkeep実行関数
-  const executePerformUpkeepForMock = async () => {
+  // 統合されたperformUpkeep実行関数
+  const performUpkeep = async (options?: {
+    skipUpkeepCheck?: boolean;
+  }) => {
     if (
       (!isConnected && !isReadyToSendTx) ||
       (!address && !smartAccountAddress) ||
@@ -248,16 +258,34 @@ export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) =>
       return null;
     }
 
-    const useSmartAccount = isReadyToSendTx && smartAccountAddress && sendUserOperation;
+    const useSmartAccount =
+      isReadyToSendTx && smartAccountAddress && sendUserOperation;
+    const { skipUpkeepCheck = false } = options || {};
 
     try {
       setIsLoading(true);
 
+      // upkeepNeeded条件チェック（スキップ可能）
+      if (!skipUpkeepCheck) {
+        const automationStatus = await checkAutomationStatus();
+        if (!automationStatus?.upkeepNeeded) {
+          alert(
+            "現在のラッフル状態ではUpkeepを実行できません。\n参加者数または時間経過などの条件を確認してください。"
+          );
+          setIsLoading(false);
+          return null;
+        }
+      }
+
+      // 常にperformUpkeep関数を使用（詰み制限なし）
+      const functionName = "performUpkeep";
+      const args = ["0x"];
+
       if (useSmartAccount && sendUserOperation) {
         const performUpkeepCallData = encodeFunctionData({
           abi: RaffleABI,
-          functionName: "performUpkeep",
-          args: ["0x"],
+          functionName,
+          args,
         });
 
         const upkeepResult = await sendUserOperation(
@@ -267,6 +295,7 @@ export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) =>
         );
         
         if (upkeepResult?.txHash) {
+          console.log("スマートアカウントでラッフルを実行:", upkeepResult.txHash);
           await new Promise(resolve => setTimeout(resolve, 3000));
           
           if (updateRaffleData) {
@@ -276,22 +305,54 @@ export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) =>
         
         return upkeepResult?.txHash || null;
       } else if (isConnected && address && publicClient && writeContractAsync) {
-        const txHash = await writeContractAsync({
+        // performUpkeep関数を使用
+        let txParams: any = {
           address: contractAddress as `0x${string}`,
           abi: RaffleABI,
           functionName: "performUpkeep",
           args: ["0x"],
           account: address,
+        };
+        
+        // Arbitrum Sepoliaの場合のガス設定最適化
+        if (chainId === 421614) {
+          console.log("Arbitrum Sepolia: ガス設定を最適化");
+          
+          try {
+            const gasEstimate = await publicClient.estimateContractGas({
+              address: contractAddress as `0x${string}`,
+              abi: RaffleABI,
+              functionName: "performUpkeep",
+              args: ["0x"],
+              account: address,
+            });
+            
+            console.log("ガス估算結果:", gasEstimate.toString());
+            
+            // ガスリミットに20%のバッファを追加
+            txParams.gas = gasEstimate + (gasEstimate * BigInt(20)) / BigInt(100);
+            
+          } catch (gasError) {
+            console.warn("ガス估算エラー - デフォルト値を使用:", gasError);
+            txParams.gas = BigInt(2000000); // フォールバック値
+          }
+        }
+        
+        console.log("performUpkeepパラメータ:", {
+          ...txParams,
+          gas: txParams.gas?.toString()
         });
+        
+        const txHash = await writeContractAsync(txParams);
 
         if (txHash) {
           const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
           
           if (receipt.status === 'reverted') {
-            throw new Error(`MockVRF performUpkeepが失敗しました`);
+            throw new Error(`performUpkeepが失敗しました: ${txHash}`);
           }
           
-          console.log("MockVRF: ラッフルが完了しました");
+          console.log("ラッフルが完了しました");
           
           await new Promise(resolve => setTimeout(resolve, 2000));
           if (updateRaffleData) {
@@ -304,159 +365,10 @@ export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) =>
       
       return null;
     } catch (error) {
-      console.error("MockVRF performUpkeepエラー:", error);
+      console.error("performUpkeep実行エラー:", error);
       throw error;
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // 手動でUpkeepを実行するための関数
-  const performManualUpkeep = async () => {
-    if (
-      (!isConnected && !isReadyToSendTx) ||
-      (!address && !smartAccountAddress) ||
-      !contractAddress
-    ) {
-      return null;
-    }
-
-    const useSmartAccount = isReadyToSendTx && smartAccountAddress && sendUserOperation;
-
-    try {
-      setIsLoading(true);
-
-      const automationStatus = await checkAutomationStatus();
-
-      if (!automationStatus || !automationStatus.upkeepNeeded) {
-        alert(
-          "現在のラッフル状態ではUpkeepを実行できません。\n参加者数または時間経過などの条件を確認してください。"
-        );
-        setIsLoading(false);
-        return null;
-      }
-
-      if (useSmartAccount && sendUserOperation) {
-        const performUpkeepCallData = encodeFunctionData({
-          abi: RaffleABI,
-          functionName: "performUpkeep",
-          args: ["0x"],
-        });
-
-        const upkeepResult = await sendUserOperation(
-          contractAddress as `0x${string}`,
-          performUpkeepCallData,
-          BigInt(0)
-        );
-
-        if (upkeepResult?.txHash) {
-          console.log("スマートアカウントでラッフルを実行:", upkeepResult.txHash);
-          
-          // データ更新
-          setTimeout(async () => {
-            if (updateRaffleData) {
-              await updateRaffleData(true);
-            }
-          }, 5000);
-        }
-
-        return upkeepResult?.txHash || null;
-      } else if (isConnected && address && publicClient && writeContract) {
-        const { request } = await publicClient.simulateContract({
-          address: contractAddress as `0x${string}`,
-          abi: RaffleABI,
-          functionName: "performUpkeep",
-          args: ["0x"],
-          account: address,
-        });
-
-        if (!request) {
-          throw new Error("リクエストの準備に失敗しました");
-        }
-
-        await writeContract({
-          ...request,
-          gas: BigInt(1000000),
-        });
-
-        if (contractWriteData) {
-          console.log("EOAでラッフルを実行:", contractWriteData);
-          
-          // データ更新
-          setTimeout(async () => {
-            if (updateRaffleData) {
-              await updateRaffleData(true);
-            }
-          }, 3000);
-        }
-
-        return contractWriteData;
-      }
-      
-      return null;
-    } catch (error) {
-      console.error("手動Upkeep実行エラー:", error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 管理者用ラッフル開始関数
-  const manualPerformUpkeepAsOwner = async () => {
-    if (
-      !isConnected ||
-      !address ||
-      !contractAddress ||
-      !publicClient ||
-      !writeContract
-    ) {
-      return;
-    }
-
-    try {
-      const ownerAddress = await publicClient.readContract({
-        address: contractAddress as `0x${string}`,
-        abi: RaffleABI,
-        functionName: "getOwner",
-      });
-
-      if (
-        ownerAddress &&
-        ownerAddress.toString().toLowerCase() !== address.toLowerCase()
-      ) {
-        alert("このコマンドはコントラクトの所有者のみが実行できます。");
-        return null;
-      }
-
-      const { request } = await publicClient.simulateContract({
-        address: contractAddress as `0x${string}`,
-        abi: RaffleABI,
-        functionName: "manualPerformUpkeep",
-        account: address,
-      });
-
-      if (!request) {
-        throw new Error("リクエストの準備に失敗しました");
-      }
-
-      await writeContract({
-        ...request,
-        gas: BigInt(1000000),
-      });
-
-      if (contractWriteData) {
-        if (!publicClient) throw new Error("Public client is not available");
-        await publicClient.waitForTransactionReceipt({
-          hash: contractWriteData,
-        });
-        return contractWriteData;
-      }
-
-      return null;
-    } catch (error) {
-      console.error("管理者コマンド実行エラー:", error);
-      throw error;
     }
   };
 
@@ -467,9 +379,8 @@ export function useRaffleAutomation(updateRaffleData?: (forceUpdate: boolean) =>
     contractAddress,
     checkAutomationStatus,
     checkUpkeepDebug,
-    performManualUpkeep,
+    performUpkeep,
     performManualUpkeepWithVRF,
     performManualUpkeepWithMock,
-    manualPerformUpkeepAsOwner,
   };
 }
