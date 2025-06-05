@@ -59,8 +59,8 @@ contract HelperConfig is Script {
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238, // Sepolia USDC
             mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス
-            useMockVRF: true,  // テストネットではMockVRFを使用
-            nativePayment: false // VRFネイティブ支払いは無効
+            useMockVRF: false,  // デフォルトはChainlink VRF
+            nativePayment: true // ETH支払いをデフォルト
         });
     }
 
@@ -84,8 +84,8 @@ contract HelperConfig is Script {
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d, // Arbitrum Sepolia USDC
             mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス
-            useMockVRF: true,  // テストネットではMockVRFを使用
-            nativePayment: false // VRFネイティブ支払いは無効
+            useMockVRF: false,  // デフォルトはChainlink VRF
+            nativePayment: true // ETH支払いをデフォルト
         });
     }
 
@@ -109,8 +109,8 @@ contract HelperConfig is Script {
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: 0x036CbD53842c5426634e7929541eC2318f3dCF7e, // Base Sepolia USDC
             mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス
-            useMockVRF: true,  // テストネットではMockVRFを使用
-            nativePayment: false // VRFネイティブ支払いは無効
+            useMockVRF: false,  // デフォルトはChainlink VRF
+            nativePayment: true // ETH支払いをデフォルト
         });
     }
 

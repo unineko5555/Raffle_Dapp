@@ -107,6 +107,67 @@ export function useRaffleAutomation(
     }
   };
 
+  // VRFネイティブ支払い設定関数
+  const setNativePayment = async (nativePayment: boolean) => {
+    if (!contractAddress || (!isConnected && !isReadyToSendTx)) {
+      throw new Error("ウォレットが接続されていません");
+    }
+
+    const useSmartAccount =
+      isReadyToSendTx && smartAccountAddress && sendUserOperation;
+
+    console.log(`VRFネイティブ支払い設定中: ${nativePayment}`);
+
+    try {
+      if (useSmartAccount && sendUserOperation) {
+        const setNativePaymentCallData = encodeFunctionData({
+          abi: RaffleABI,
+          functionName: "setNativePayment",
+          args: [nativePayment],
+        });
+
+        const result = await sendUserOperation(
+          contractAddress as `0x${string}`,
+          setNativePaymentCallData,
+          BigInt(0)
+        );
+        console.log(`VRFネイティブ支払い設定完了: ${nativePayment}`);
+
+        // 設定反映を待つ
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      } else if (isConnected && address && publicClient && writeContractAsync) {
+        const txHash = await writeContractAsync({
+          address: contractAddress as `0x${string}`,
+          abi: RaffleABI,
+          functionName: "setNativePayment",
+          args: [nativePayment],
+          account: address,
+        });
+
+        if (!txHash) {
+          throw new Error("setNativePaymentトランザクションの送信に失敗しました");
+        }
+
+        // トランザクションの確定を待つ
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: txHash,
+        });
+
+        if (receipt.status === "reverted") {
+          throw new Error(`setNativePaymentトランザクションが失敗しました`);
+        }
+
+        console.log(`VRFネイティブ支払い設定完了: ${nativePayment}`);
+
+        // 設定反映を待つ
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    } catch (error) {
+      console.error("VRFネイティブ支払い設定エラー:", error);
+      throw error;
+    }
+  };
+
   // VRF設定を変更する関数
   const setVRFMode = async (useMockVRF: boolean) => {
     if (!contractAddress || (!isConnected && !isReadyToSendTx)) {
@@ -195,8 +256,18 @@ export function useRaffleAutomation(
 
   // VRF付きUpkeep実行
   const performManualUpkeepWithVRF = async () => {
-    await setVRFMode(false); // 正式VRFを有効化
-    await new Promise((resolve) => setTimeout(resolve, 2000)); // 設定反映待ち
+    // 権限エラーを回避して、直接VRFネイティブ支払いで実行
+    console.log("VRFラッフルを開始します（ネイティブ支払い）...");
+    
+    // VRFネイティブ支払いを有効化する関数を呼び出し
+    try {
+      await setNativePayment(true);
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // 設定反映待ち
+    } catch (setNativeError) {
+      console.warn("VRFネイティブ支払い設定エラー:", setNativeError);
+      console.log("ネイティブ支払い設定に失敗しましたが、続行します...");
+    }
+    
     return await performUpkeep();
   };
 
@@ -204,45 +275,13 @@ export function useRaffleAutomation(
   const performManualUpkeepWithMock = async () => {
     console.log("MockVRFラッフルを開始します...");
 
-    // 現在のVRF設定を確認
-    let currentVRFStatus: any = null;
-    if (publicClient) {
-      try {
-        currentVRFStatus = await publicClient.readContract({
-          address: contractAddress as `0x${string}`,
-          abi: RaffleABI,
-          functionName: "getMockVRFStatus",
-        });
-      } catch (error) {
-        console.warn("VRF設定確認エラー:", error);
-      }
-    }
-
-    // MockVRFが既に設定されているかチェック
-    const isCurrentlyMockVRF = Array.isArray(currentVRFStatus)
-      ? currentVRFStatus[0] === true
-      : false;
-
-    if (!isCurrentlyMockVRF) {
-      console.log("MockVRFを設定します...");
-      try {
-        await setVRFMode(true);
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      } catch (setVRFError) {
-        console.error("MockVRF設定エラー:", setVRFError);
-        console.log("設定に失敗しましたが、続行します...");
-      }
-    } else {
-      console.log("MockVRFは既に設定済みです。");
-    }
-
     // 条件を確認
     const automationStatus = await checkAutomationStatus();
     if (!automationStatus?.upkeepNeeded) {
       throw new Error("ラッフル実行条件が満たされていません");
     }
 
-    // MockVRFでperformUpkeepを実行
+    // 直接performUpkeepを実行（MockVRF設定は変更せず）
     return await performUpkeep();
   };
 
