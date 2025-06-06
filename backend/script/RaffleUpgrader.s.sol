@@ -87,8 +87,8 @@ contract RaffleUpgrader is Script {
         console.log("New implementation deployed at:", address(newImplementation));
         
         // 2. 移行用のデータを準備（setNativePaymentを呼び出し）
-        // LINK支払いを使用（false）に設定（オーナーチェックなしに変更済み）
-        bytes memory data = abi.encodeWithSignature("setNativePayment(bool)", false);
+        // ETH支払いを使用（true）に設定（VRF 2.5のネイティブ支払い）
+        bytes memory data = abi.encodeWithSignature("setNativePayment(bool)", true);
         
         // 3. プロキシのアップグレードとデータの実行
         RaffleProxy proxy = RaffleProxy(payable(proxyAddress));

@@ -138,7 +138,7 @@ contract HelperConfig is Script {
         vm.stopBroadcast();
 
         // サブスクリプションを作成
-        uint64 subscriptionId = vrfCoordinatorV2Mock.createSubscription();
+        uint256 subscriptionId = vrfCoordinatorV2Mock.createSubscription();
         
         // コンシューマーをサブスクリプションに追加（実際のコントラクトデプロイ後に行う必要あり）
         // vrfCoordinatorV2Mock.addConsumer(subscriptionId, address(raffleContract));
@@ -166,14 +166,14 @@ contract MockVRFCoordinatorV2_5 {
     uint96 public GAS_PRICE_LINK = 1e9; // 1 gwei LINK
 
     mapping(uint256 => address) public s_requests;
-    mapping(uint64 => address) public s_subscriptions;
-    uint64 private s_currentSubId;
+    mapping(uint256 => address) public s_subscriptions;
+    uint256 private s_currentSubId;
 
     event RandomWordsRequested(
         bytes32 indexed keyHash,
         uint256 requestId,
         uint256 preSeed,
-        uint64 indexed subId,
+        uint256 indexed subId,
         uint16 minimumRequestConfirmations,
         uint32 callbackGasLimit,
         uint32 numWords,
@@ -186,27 +186,27 @@ contract MockVRFCoordinatorV2_5 {
         uint256 payment
     );
 
-    event SubscriptionCreated(uint64 indexed subId, address owner);
-    event SubscriptionFunded(uint64 indexed subId, uint256 oldBalance, uint256 newBalance);
+    event SubscriptionCreated(uint256 indexed subId, address owner);
+    event SubscriptionFunded(uint256 indexed subId, uint256 oldBalance, uint256 newBalance);
     
-    function createSubscription() external returns (uint64) {
+    function createSubscription() external returns (uint256) {
         s_currentSubId++;
         s_subscriptions[s_currentSubId] = msg.sender;
         emit SubscriptionCreated(s_currentSubId, msg.sender);
         return s_currentSubId;
     }
 
-    function addConsumer(uint64 subId, address consumer) external {
+    function addConsumer(uint256 subId, address consumer) external {
         // 簡略化のため実装を省略
     }
 
-    function removeConsumer(uint64 subId, address consumer) external {
+    function removeConsumer(uint256 subId, address consumer) external {
         // 簡略化のため実装を省略
     }
 
     function requestRandomWords(
         bytes32 keyHash,
-        uint64 subId,
+        uint256 subId,
         uint16 minimumRequestConfirmations,
         uint32 callbackGasLimit,
         uint32 numWords

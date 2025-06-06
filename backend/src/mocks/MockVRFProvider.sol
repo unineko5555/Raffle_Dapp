@@ -152,7 +152,7 @@ contract MockVRFProvider is IMockRandomProvider {
         // より確実な乱数生成方法
         uint256 baseSeed = uint256(keccak256(abi.encode(
             block.timestamp,
-            block.difficulty, // または block.prevrandao (London upgrade後)
+            block.prevrandao, // Parisハードフォーク後のランダムソース
             msg.sender,
             s_nonce,
             address(this),

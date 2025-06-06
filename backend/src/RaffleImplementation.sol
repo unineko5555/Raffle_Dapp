@@ -27,7 +27,7 @@ contract RaffleImplementation is
 {
     /* 状態変数 */
     // Chainlink VRF用の変数（既存レイアウト維持）
-    uint64 private s_subscriptionId;
+    uint256 private s_subscriptionId;
     bytes32 private s_keyHash;
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private s_callbackGasLimit;
@@ -111,7 +111,7 @@ contract RaffleImplementation is
         if (vrfCoordinatorV2 != address(0)) {
             s_vrfCoordinator = IVRFCoordinatorV2Plus(vrfCoordinatorV2);
         }
-        s_subscriptionId = uint64(subscriptionId);
+        s_subscriptionId = subscriptionId;
         s_keyHash = keyHash;
         s_callbackGasLimit = callbackGasLimit;
         s_nativePayment_v2 = nativePayment; // 新変数に設定
@@ -328,10 +328,10 @@ contract RaffleImplementation is
                 revert("MockVRF failed with low-level error");
             }
         } else {
-            // 通常のChainlink VRFを使用する場合
+            // 通常のChainlink VRF2.5を使用する場合
             console.log("VRF: performUpkeep started");
             
-            try s_vrfCoordinator.requestRandomWords(
+            uint256 requestId = s_vrfCoordinator.requestRandomWords(
                 VRFV2PlusClient.RandomWordsRequest({
                     keyHash: s_keyHash,
                     subId: s_subscriptionId,
@@ -342,22 +342,10 @@ contract RaffleImplementation is
                         VRFV2PlusClient.ExtraArgsV1({nativePayment: s_nativePayment_v2})
                     )
                 })
-            ) returns (uint256 requestId) {
-                s_lastRequestId = requestId;
-                console.log("VRF: Request ID", requestId);
-            } catch Error(string memory reason) {
-                console.log("VRF Error:", reason);
-                // フォールバック処理
-                s_raffleState = RaffleState.OPEN;
-                emit RaffleStateChanged(s_raffleState);
-                revert(string.concat("VRF failed: ", reason));
-            } catch (bytes memory lowLevelData) {
-                console.log("VRF low-level error");
-                // フォールバック処理
-                s_raffleState = RaffleState.OPEN;
-                emit RaffleStateChanged(s_raffleState);
-                revert("VRF failed with low-level error");
-            }
+            );
+            
+            s_lastRequestId = requestId;
+            console.log("VRF: Request ID", requestId);
         }
     }
 
