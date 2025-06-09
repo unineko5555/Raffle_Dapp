@@ -55,7 +55,7 @@ contract HelperConfig is Script {
             vrfCoordinatorV2: 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B, // VRF 2.5のコーディネーターアドレス
             subscriptionId: 35215710747108285885424679702400045098207236400821432776421763953481952749017,
             keyHash: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
-            callbackGasLimit: 500000,
+            callbackGasLimit: 100000, // 500,000から100,000に削減
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238, // Sepolia USDC
             mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス

@@ -53,7 +53,7 @@ contract DeployRaffle is Script {
             callbackGasLimit,
             entranceFee,
             usdcAddress,
-            true,  // addMockPlayers: テスト用にモックプレイヤーを2人追加
+            false, // addMockPlayers: 初期は0人、管理パネルから手動追加
             mockVRFProvider,
             useMockVRF,
             nativePayment

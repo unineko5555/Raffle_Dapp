@@ -9,12 +9,14 @@ interface IRaffle {
     /**
      * @dev ラッフルの状態を表す列挙型
      * OPEN: ラッフル参加受付中
-     * CALCULATING_WINNER: 当選者計算中
+     * CALCULATING_WINNER: 当選者計算中（VRF待機中）
+     * WINNER_SELECTED: 当選者選出済み（処理待機中）
      * CLOSED: ラッフル終了
      */
     enum RaffleState {
         OPEN,
         CALCULATING_WINNER,
+        WINNER_SELECTED,
         CLOSED
     }
 
@@ -126,6 +128,12 @@ interface IRaffle {
      */
     function setRaffleState(RaffleState newState) external;
 
+    /**
+     * @dev VRFで選出された当選者を処理する関数
+     * WINNER_SELECTED状態で実行可能
+     */
+    function processWinner() external;
+
     // イベント
     /**
      * @dev ラッフルに参加した時に発火するイベント
@@ -154,4 +162,11 @@ interface IRaffle {
      * @param refundAmount 返金額
      */
     event RaffleExit(address indexed player, uint256 refundAmount);
+
+    /**
+     * @dev VRFから乱数を受信した時に発火するイベント
+     * @param requestId VRFリクエストID
+     * @param randomWord 受信した乱数
+     */
+    event RandomWordsReceived(uint256 indexed requestId, uint256 randomWord);
 }

@@ -59,6 +59,13 @@ export const RaffleABI = [
   },
   {
     "type": "function",
+    "name": "addMockPlayer",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "cancelEntry",
     "inputs": [],
     "outputs": [],
@@ -500,6 +507,13 @@ export const RaffleABI = [
   },
   {
     "type": "function",
+    "name": "processWinner",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "proxiableUUID",
     "inputs": [],
     "outputs": [
@@ -531,6 +545,13 @@ export const RaffleABI = [
   },
   {
     "type": "function",
+    "name": "resetPlayers",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "s_vrfCoordinator",
     "inputs": [],
     "outputs": [
@@ -541,6 +562,19 @@ export const RaffleABI = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "setCallbackGasLimit",
+    "inputs": [
+      {
+        "name": "callbackGasLimit",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -780,6 +814,25 @@ export const RaffleABI = [
         "type": "uint8",
         "indexed": false,
         "internalType": "enum IRaffle.RaffleState"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RandomWordsReceived",
+    "inputs": [
+      {
+        "name": "requestId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "randomWord",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false

@@ -76,6 +76,10 @@ contract RaffleImplementation is
 
     // ✨ アップグレード後の新変数（末尾に配置）
     bool private s_nativePayment_v2; // VRF 2.5のネイティブ支払いフラグ
+    
+    // VRF軽量化のための変数
+    uint256 private s_pendingRandomWord; // VRFから受信した乱数
+    address[] private s_pendingPlayers; // 当選者決定時のプレイヤー配列のコピー
 
     // コンストラクタ - VRFConsumerBaseV2Plus用
     constructor() VRFConsumerBaseV2Plus(0x0000000000000000000000000000000000000001) {
@@ -139,30 +143,8 @@ contract RaffleImplementation is
         s_raffleState = RaffleState.OPEN;
         s_owner = msg.sender;
         
-        // テスト環境用にモックプレイヤーを追加
-        if (addMockPlayers) {
-            // 2つのモックアドレスを生成して追加
-            address mockPlayer1 = address(uint160(uint256(keccak256(abi.encodePacked("mockPlayer1", block.timestamp)))));
-            address mockPlayer2 = address(uint160(uint256(keccak256(abi.encodePacked("mockPlayer2", block.timestamp)))));
-            
-            s_players.push(mockPlayer1);
-            s_players.push(mockPlayer2);
-            
-            // ジャックポットへの寄与を追加 (2人分の10%)
-            s_jackpotAmount += (entranceFee / 10) * 2;
-            
-            // イベントを発行
-            emit RaffleEnter(mockPlayer1, entranceFee);
-            emit RaffleEnter(mockPlayer2, entranceFee);
-            
-            // 最小プレイヤー数に達した場合のタイムスタンプを設定
-            if (s_players.length >= s_minimumPlayers) {
-                s_minPlayersReachedTime = block.timestamp;
-            }
-            
-            // ログ記録
-            emit RaffleStateChanged(s_raffleState);
-        }
+        // 初期状態では参加者は0人からスタート
+        // Mockプレイヤーは管理パネルから手動で追加可能
     }
 
     /**
@@ -177,6 +159,74 @@ contract RaffleImplementation is
         
         // 設定変更ログ
         console.log("VRF nativePayment setting updated to:", nativePayment);
+    }
+
+    /**
+     * @notice VRFコールバックガスリミットを変更する関数
+     * @dev ガス料金を最適化するために使用
+     * @param callbackGasLimit 新しいコールバックガスリミット
+     */
+    function setCallbackGasLimit(uint32 callbackGasLimit) external {
+        require(msg.sender == s_owner, "Only owner can set callback gas limit");
+        require(callbackGasLimit >= 40000 && callbackGasLimit <= 2500000, "Invalid gas limit");
+        s_callbackGasLimit = callbackGasLimit;
+        
+        console.log("VRF callback gas limit updated to:", callbackGasLimit);
+    }
+
+    /**
+     * @notice Mockプレイヤーを手動で追加する関数
+     * @dev 管理パネルから呼び出される
+     */
+    function addMockPlayer() external {
+        require(msg.sender == s_owner, "Only owner can add mock player");
+        require(s_raffleState == RaffleState.OPEN, "Raffle is not open");
+        
+        // ユニークなモックアドレスを生成
+        address mockPlayer = address(uint160(uint256(keccak256(abi.encodePacked(
+            "mockPlayer", 
+            block.timestamp, 
+            s_players.length,
+            msg.sender
+        )))));
+        
+        // プレイヤーリストに追加
+        s_players.push(mockPlayer);
+        
+        // ジャックポットへの寄与を追加
+        s_jackpotAmount += s_entranceFee / 10;
+        
+        // 最小プレイヤー数に達した場合のタイムスタンプを設定
+        if (s_players.length == s_minimumPlayers) {
+            s_minPlayersReachedTime = block.timestamp;
+        }
+        
+        // イベントを発行
+        emit RaffleEnter(mockPlayer, s_entranceFee);
+        
+        console.log("Mock player added:", mockPlayer);
+    }
+
+    /**
+     * @notice すべてのプレイヤーをリセットする関数
+     * @dev 管理パネルから呼び出される、オーナーのみ実行可能
+     */
+    function resetPlayers() external {
+        require(msg.sender == s_owner, "Only owner can reset players");
+        require(s_raffleState == RaffleState.OPEN, "Raffle is not open");
+        
+        uint256 playerCount = s_players.length;
+        
+        // プレイヤーリストをクリア
+        s_players = new address[](0);
+        
+        // 最小プレイヤー到達時間をリセット
+        s_minPlayersReachedTime = 0;
+        
+        console.log("Players reset - removed", playerCount, "players");
+        
+        // リセットイベントを発行（カスタムイベント）
+        emit RaffleStateChanged(s_raffleState); // 状態変更イベントで更新を通知
     }
 
     /**
@@ -318,8 +368,8 @@ contract RaffleImplementation is
                             console.log("MockVRF: Second random word:", randomWords[1]);
                         }
                         
-                        // ランダムワードを処理
-                        _processRandomWords(randomWords);
+                        // MockVRFの場合は直接処理（軽量化対象外）
+                        _processMockVRFRandomWords(randomWords);
                         
                         // MockVRFをリセット
                         s_mockVRFProvider.resetRandomWords();
@@ -370,20 +420,140 @@ contract RaffleImplementation is
     }
 
     /**
-     * @notice VRFからの乱数を受け取るコールバック関数
-     * @dev Chainlink VRFノードによって呼び出される
+     * @notice 軽量化されたChainlink VRFコールバック関数
+     * @dev Chainlink VRFノードによって呼び出される - 最小限の処理のみ
+     * @param requestId VRFリクエストID
      * @param randomWords 生成された乱数配列
      */
-    function fulfillRandomWords(uint256 /* requestId */, uint256[] calldata randomWords) internal override {
-        _processRandomWords(randomWords);
+    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
+        require(randomWords.length > 0, "No random words provided");
+        require(s_players.length > 0, "No players to process");
+        
+        // 軽量処理: 乱数とプレイヤー配列を保存のみ
+        s_pendingRandomWord = randomWords[0];
+        
+        // プレイヤー配列をコピー保存
+        delete s_pendingPlayers;
+        for (uint256 i = 0; i < s_players.length; i++) {
+            s_pendingPlayers.push(s_players[i]);
+        }
+        
+        // 状態を変更
+        s_raffleState = RaffleState.WINNER_SELECTED;
+        
+        // イベント発行
+        emit RandomWordsReceived(requestId, randomWords[0]);
+        emit RaffleStateChanged(s_raffleState);
     }
     
     /**
-     * @notice 乱数を処理して当選者を決定する内部関数
-     * @dev VRFとMockVRFで共通の処理を行う
+     * @notice VRFで選出された当選者を処理する関数
+     * @dev WINNER_SELECTED状態で実行可能な公開関数
+     */
+    function processWinner() external {
+        require(s_raffleState == RaffleState.WINNER_SELECTED, "No winner to process");
+        require(s_pendingRandomWord > 0, "No random word available");
+        require(s_pendingPlayers.length > 0, "No pending players");
+        
+        // 保存された乱数とプレイヤー配列を使用
+        console.log("Processing winner from pending data");
+        console.log("Pending players count:", s_pendingPlayers.length);
+        console.log("Random word:", s_pendingRandomWord);
+        
+        // 参加者の中から当選者を選ぶ
+        uint256 winnerIndex = s_pendingRandomWord % s_pendingPlayers.length;
+        address winner = s_pendingPlayers[winnerIndex];
+        s_recentWinner = winner;
+        
+        console.log("Selected winner index:", winnerIndex);
+        console.log("Selected winner address:", winner);
+
+        // 賞金額を計算（pendingPlayersの数を使用）
+        uint256 prize = (s_entranceFee * s_pendingPlayers.length) * 90 / 100; // 参加料の90%が賞金
+        s_recentPrize = prize;
+        
+        console.log("Base prize calculated:", prize);
+
+        // ジャックポット当選判定 - 保存された乱数を使用
+        bool isJackpotWinner = RaffleLib.isWinner(s_pendingRandomWord, RaffleLib.getJackpotProbability());
+        s_recentJackpotWon = isJackpotWinner;
+        
+        console.log("Jackpot winner:", isJackpotWinner);
+        console.log("Current jackpot amount:", s_jackpotAmount);
+        
+        // ジャックポットを当選した場合は、ジャックポット額も賞金に上乗せ
+        if (isJackpotWinner && s_jackpotAmount > 0) {
+            prize += s_jackpotAmount;
+            s_jackpotAmount = 0;
+        }
+        
+        console.log("Final prize amount:", prize);
+
+        // USDCの残高をチェック
+        IERC20 usdc = IERC20(s_usdcAddress);
+        uint256 contractBalance = usdc.balanceOf(address(this));
+        console.log("Contract USDC balance:", contractBalance);
+        console.log("Required prize amount:", prize);
+        
+        // 残高が不足している場合は調整
+        if (contractBalance < prize) {
+            console.log("Insufficient USDC balance, adjusting prize");
+            prize = contractBalance;
+            s_recentPrize = prize;
+        }
+
+        // 当選者に賞金を送金
+        if (prize > 0) {
+            bool transferSuccess = usdc.transfer(winner, prize);
+            require(transferSuccess, "Prize transfer failed");
+            console.log("Prize transferred successfully to winner");
+        } else {
+            console.log("No prize to transfer (amount is 0)");
+        }
+
+        // 当選者の統計情報を更新
+        s_userWinCount[winner] += 1;
+        if (isJackpotWinner) {
+            s_userJackpotCount[winner] += 1;
+        }
+
+        // ラッフルの履歴を記録
+        s_raffleHistory.push(RaffleHistory({
+            winner: winner,
+            prize: prize,
+            jackpotWon: isJackpotWinner,
+            timestamp: block.timestamp,
+            playerCount: s_pendingPlayers.length
+        }));
+        
+        console.log("Winner recorded in history");
+
+        // ラッフルをリセット
+        s_players = new address[](0);
+        s_raffleState = RaffleState.OPEN;
+        s_lastRaffleTime = block.timestamp;
+        s_minPlayersReachedTime = 0;
+        
+        // ペンディングデータをクリーンアップ
+        s_pendingRandomWord = 0;
+        delete s_pendingPlayers;
+
+        // イベント発行
+        emit WinnerPicked(winner, prize, isJackpotWinner);
+        emit RaffleStateChanged(s_raffleState);
+        
+        console.log("Raffle completed and reset");
+        
+        // ラッフル完了後は0人の状態からスタート
+        // Mockプレイヤーは管理パネルから手動で追加可能
+    }
+    
+    /**
+     * @notice MockVRF用の乱数処理関数
+     * @dev MockVRFは軽量化の対象外とし、従来通りの処理を行う
      * @param randomWords 生成された乱数配列
      */
-    function _processRandomWords(uint256[] memory randomWords) internal {
+    function _processMockVRFRandomWords(uint256[] memory randomWords) internal {
         console.log("Processing random words, array length:", randomWords.length);
         console.log("Current players count:", s_players.length);
         
@@ -476,33 +646,6 @@ contract RaffleImplementation is
         emit RaffleStateChanged(s_raffleState);
         
         console.log("Raffle completed and reset");
-        
-        // ラッフルリセット後に新しいモックプレイヤーを追加（テスト環境用）
-        if (s_useMockVRF) {
-            console.log("Adding new mock players for next round");
-            
-            // 新しいタイムスタンプベースで2つのモックアドレスを生成
-            address mockPlayer1 = address(uint160(uint256(keccak256(abi.encodePacked("mockPlayer1", block.timestamp)))));
-            address mockPlayer2 = address(uint160(uint256(keccak256(abi.encodePacked("mockPlayer2", block.timestamp)))));
-            
-            // プレイヤーリストに追加
-            s_players.push(mockPlayer1);
-            s_players.push(mockPlayer2);
-            
-            // ジャックポットへの寄与を追加 (2人分の10%)
-            s_jackpotAmount += (s_entranceFee / 10) * 2;
-            
-            // イベントを発行
-            emit RaffleEnter(mockPlayer1, s_entranceFee);
-            emit RaffleEnter(mockPlayer2, s_entranceFee);
-            
-            // 最小プレイヤー数に達した場合のタイムスタンプを設定
-            if (s_players.length >= s_minimumPlayers) {
-                s_minPlayersReachedTime = block.timestamp;
-            }
-            
-            console.log("Mock players added for next round");
-        }
     }
 
     /**
