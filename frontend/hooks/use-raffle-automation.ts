@@ -256,13 +256,25 @@ export function useRaffleAutomation(
 
   // VRF付きUpkeep実行
   const performManualUpkeepWithVRF = async () => {
-    // 権限エラーを回避して、直接VRFネイティブ支払いで実行
     console.log("VRFラッフルを開始します（ネイティブ支払い）...");
     
-    // VRFネイティブ支払いを有効化する関数を呼び出し
+    // 1. まずMockVRFを無効化する
     try {
+      console.log("MockVRFを無効化中...");
+      await setVRFMode(false); // MockVRFを無効にする
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // 設定反映待ち
+      console.log("MockVRF無効化完了");
+    } catch (mockVRFError) {
+      console.warn("MockVRF無効化エラー:", mockVRFError);
+      console.log("MockVRF無効化に失敗しましたが、続行します...");
+    }
+    
+    // 2. VRFネイティブ支払いを有効化する
+    try {
+      console.log("VRFネイティブ支払い設定中...");
       await setNativePayment(true);
       await new Promise((resolve) => setTimeout(resolve, 2000)); // 設定反映待ち
+      console.log("VRFネイティブ支払い設定完了");
     } catch (setNativeError) {
       console.warn("VRFネイティブ支払い設定エラー:", setNativeError);
       console.log("ネイティブ支払い設定に失敗しましたが、続行します...");
@@ -275,7 +287,18 @@ export function useRaffleAutomation(
   const performManualUpkeepWithMock = async () => {
     console.log("MockVRFラッフルを開始します...");
 
-    // 条件を確認
+    // 1. まずMockVRFを有効化する
+    try {
+      console.log("MockVRFを有効化中...");
+      await setVRFMode(true); // MockVRFを有効にする
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // 設定反映待ち
+      console.log("MockVRF有効化完了");
+    } catch (mockVRFError) {
+      console.warn("MockVRF有効化エラー:", mockVRFError);
+      console.log("MockVRF有効化に失敗しましたが、続行します...");
+    }
+
+    // 2. 条件を確認
     const automationStatus = await checkAutomationStatus();
     if (!automationStatus?.upkeepNeeded) {
       console.log("ラッフル実行条件チェック失敗 - 詳細確認を行います");
@@ -353,12 +376,39 @@ export function useRaffleAutomation(
           BigInt(0)
         );
         
-        if (upkeepResult?.txHash) {
+        if (upkeepResult?.txHash && publicClient) {
           console.log("スマートアカウントでラッフルを実行:", upkeepResult.txHash);
-          await new Promise(resolve => setTimeout(resolve, 3000));
           
-          if (updateRaffleData) {
-            await updateRaffleData(true);
+          try {
+            // トランザクションの確認を待つ（EOAと同様の処理）
+            console.log("スマートアカウント: トランザクション確認を待機中...");
+            const receipt = await publicClient.waitForTransactionReceipt({ 
+              hash: upkeepResult.txHash as `0x${string}`,
+              timeout: 60000 // 60秒のタイムアウト
+            });
+            
+            console.log("スマートアカウント: トランザクション確認済み、ステータス:", receipt.status);
+            console.log("スマートアカウント: ガス使用量:", receipt.gasUsed?.toString());
+            
+            if (receipt.status === 'reverted') {
+              throw new Error(`スマートアカウント: performUpkeepがリバートしました: ${upkeepResult.txHash}`);
+            }
+            
+            console.log("スマートアカウント: ラッフルが正常に完了しました");
+            
+            // 結果の反映を待つ（EOAより少し長めに設定）
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            
+            if (updateRaffleData) {
+              await updateRaffleData(true);
+            }
+          } catch (receiptError: any) {
+            console.error("スマートアカウント: トランザクション確認エラー:", receiptError);
+            // エラーでも基本的な待機とデータ更新は行う
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            if (updateRaffleData) {
+              await updateRaffleData(true);
+            }
           }
         }
         

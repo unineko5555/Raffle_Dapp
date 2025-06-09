@@ -220,6 +220,21 @@ export function useRaffleWinEvents() {
           
           console.log("Winner picked event:", winner, amount.toString(), jackpotWon);
           
+          // イベントの一意性を確認（ブロック番号 + トランザクションインデックス + ログインデックス）
+          const eventId = `${log.blockNumber}-${log.transactionIndex}-${log.logIndex}`;
+          
+          // 既に処理済みのイベントかチェック
+          if ((window as any).processedRaffleEvents && (window as any).processedRaffleEvents.has(eventId)) {
+            console.log('既に処理済みのイベントをスキップ(ウォッチ):', eventId);
+            return;
+          }
+          
+          // イベントを処理済みとしてマーク
+          if (!(window as any).processedRaffleEvents) {
+            (window as any).processedRaffleEvents = new Set();
+          }
+          (window as any).processedRaffleEvents.add(eventId);
+          
           // 既に同じ勝者を表示済みかチェック - 複数のチェック機構を使用
           // 1. グローバルな追跡セットで確認
           if ((window as any).winnerDisplayTracker && (window as any).winnerDisplayTracker.has(winner)) {
