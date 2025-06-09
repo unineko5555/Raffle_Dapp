@@ -43,6 +43,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useRaffleStateManagement, RaffleState } from "@/hooks/use-raffle-state-management";
+import { useAccount, useWriteContract, usePublicClient } from "wagmi";
+import { encodeFunctionData } from "viem";
+import { RaffleABI } from "@/app/lib/contract-config";
+import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
 
 interface OwnerAdminPanelProps {
   isOwner: boolean;
@@ -98,6 +102,20 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
     setRaffleState,
     getStateName,
   } = useRaffleStateManagement();
+  
+  // ウォレット接続とコントラクト関連
+  const { address, isConnected } = useAccount();
+  const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
+  const { smartAccountAddress, isReadyToSendTx, sendUserOperation } = useSmartAccountContext();
+  
+  // Mockプレイヤー追加の状態管理
+  const [isMockPlayerLoading, setIsMockPlayerLoading] = useState(false);
+  const [mockPlayerError, setMockPlayerError] = useState<string | null>(null);
+  
+  // プレイヤーリセットの状態管理
+  const [isResetLoading, setIsResetLoading] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
   
   // USDCの6桁小数点を考慮してフォーマット
   const formatUSDC = (amount: string | number) => {
@@ -159,6 +177,181 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
       onStateChanged?.();
     } catch (error) {
       console.error("状態変更エラー:", error);
+    }
+  };
+  
+  // Mockプレイヤー追加処理
+  const addMockPlayer = async () => {
+    if (!contractAddress || (!isConnected && !isReadyToSendTx)) {
+      setMockPlayerError("ウォレットが接続されていません");
+      return;
+    }
+    
+    setIsMockPlayerLoading(true);
+    setMockPlayerError(null);
+    
+    const useSmartAccount = isReadyToSendTx && smartAccountAddress && sendUserOperation;
+    
+    try {
+      console.log('Mockプレイヤー追加を開始...');
+      
+      if (useSmartAccount && sendUserOperation) {
+        // スマートアカウント経由での実行
+        const addMockPlayerCallData = encodeFunctionData({
+          abi: RaffleABI,
+          functionName: "addMockPlayer",
+          args: [],
+        });
+
+        const result = await sendUserOperation(
+          contractAddress as `0x${string}`,
+          addMockPlayerCallData,
+          BigInt(0)
+        );
+        
+        if (result?.txHash && publicClient) {
+          console.log("スマートアカウントでMockプレイヤー追加:", result.txHash);
+          
+          // トランザクション確認を待つ
+          const receipt = await publicClient.waitForTransactionReceipt({ 
+            hash: result.txHash as `0x${string}`,
+            timeout: 60000
+          });
+          
+          if (receipt.status === 'reverted') {
+            throw new Error('Mockプレイヤー追加がリバートしました');
+          }
+          
+          console.log('スマートアカウント: Mockプレイヤー追加完了');
+        }
+      } else if (isConnected && address && publicClient && writeContractAsync) {
+        // EOA経由での実行
+        const txHash = await writeContractAsync({
+          address: contractAddress as `0x${string}`,
+          abi: RaffleABI,
+          functionName: "addMockPlayer",
+          args: [],
+          account: address,
+        });
+
+        if (!txHash) {
+          throw new Error("Mockプレイヤー追加トランザクションの送信に失敗しました");
+        }
+
+        // トランザクション確認を待つ
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: txHash,
+          timeout: 60000
+        });
+
+        if (receipt.status === "reverted") {
+          throw new Error("Mockプレイヤー追加トランザクションが失敗しました");
+        }
+
+        console.log("EOA: Mockプレイヤー追加完了");
+      }
+      
+      // 成功後にデータを更新
+      setTimeout(() => {
+        onStateChanged?.();
+      }, 2000);
+      
+    } catch (error: any) {
+      console.error("Mockプレイヤー追加エラー:", error);
+      setMockPlayerError(error.message || "Mockプレイヤー追加に失敗しました");
+    } finally {
+      setIsMockPlayerLoading(false);
+    }
+  };
+  
+  // プレイヤーリセット処理
+  const resetPlayers = async () => {
+    if (!contractAddress || (!isConnected && !isReadyToSendTx)) {
+      setResetError("ウォレットが接続されていません");
+      return;
+    }
+    
+    setIsResetLoading(true);
+    setResetError(null);
+    
+    const useSmartAccount = isReadyToSendTx && smartAccountAddress && sendUserOperation;
+    
+    try {
+      console.log('プレイヤーリセットを開始...');
+      
+      if (useSmartAccount && sendUserOperation) {
+        // スマートアカウント経由での実行
+        const resetPlayersCallData = encodeFunctionData({
+          abi: RaffleABI,
+          functionName: "resetPlayers",
+          args: [],
+        });
+
+        const result = await sendUserOperation(
+          contractAddress as `0x${string}`,
+          resetPlayersCallData,
+          BigInt(0)
+        );
+        
+        if (result?.txHash && publicClient) {
+          console.log("スマートアカウントでプレイヤーリセット:", result.txHash);
+          
+          // トランザクション確認を待つ
+          const receipt = await publicClient.waitForTransactionReceipt({ 
+            hash: result.txHash as `0x${string}`,
+            timeout: 60000
+          });
+          
+          if (receipt.status === 'reverted') {
+            throw new Error('プレイヤーリセットがリバートしました');
+          }
+          
+          console.log('スマートアカウント: プレイヤーリセット完了');
+        }
+      } else if (isConnected && address && publicClient && writeContractAsync) {
+        // EOA経由での実行
+        const txHash = await writeContractAsync({
+          address: contractAddress as `0x${string}`,
+          abi: RaffleABI,
+          functionName: "resetPlayers",
+          args: [],
+          account: address,
+        });
+
+        if (!txHash) {
+          throw new Error("プレイヤーリセットトランザクションの送信に失敗しました");
+        }
+
+        // トランザクション確認を待つ
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: txHash,
+          timeout: 60000
+        });
+
+        if (receipt.status === "reverted") {
+          throw new Error("プレイヤーリセットトランザクションが失敗しました");
+        }
+
+        console.log("EOA: プレイヤーリセット完了");
+      }
+      
+      // 成功後にデータを更新（より長い待機時間とログ追加）
+      setTimeout(() => {
+        console.log('プレイヤーリセット: データ更新を実行中...');
+        onStateChanged?.();
+        
+        // さらに追加の更新を実行
+        setTimeout(() => {
+          console.log('プレイヤーリセット: 追加データ更新を実行中...');
+          onStateChanged?.();
+        }, 3000);
+      }, 5000);
+      
+    } catch (error: any) {
+      console.error("プレイヤーリセットエラー:", error);
+      setResetError(error.message || "プレイヤーリセットに失敗しました");
+    } finally {
+      setIsResetLoading(false);
     }
   };
   
@@ -357,6 +550,66 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
               
               <div className="text-xs text-slate-500 mt-2">
                 ※この機能はテストやデバッグ目的でのみ使用してください。
+              </div>
+            </div>
+            
+            {/* Mockユーザー管理セクション */}
+            <div className="space-y-4">
+              <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-md text-purple-600 dark:text-purple-400 text-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <User className="w-4 h-4" />
+                  <span className="font-semibold">Mockユーザー管理</span>
+                </div>
+                <p>テスト用のMockユーザーを追加して、ラッフルの参加者数を調整できます。</p>
+                <p className="mt-1 text-xs">注意: ラッフルがOPEN状態の時のみ追加可能です。</p>
+              </div>
+              
+              <div className="space-y-3">
+                <Button
+                  onClick={addMockPlayer}
+                  className="w-full"
+                  variant="outline"
+                  disabled={isMockPlayerLoading || currentRaffleState !== 0}
+                >
+                  {isMockPlayerLoading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <User className="w-4 h-4 mr-2" />
+                  )}
+                  Mockユーザーを1人追加
+                </Button>
+                
+                <Button
+                  onClick={resetPlayers}
+                  className="w-full"
+                  variant="destructive"
+                  disabled={isResetLoading || currentRaffleState !== 0}
+                >
+                  {isResetLoading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <User className="w-4 h-4 mr-2" />
+                  )}
+                  すべてのプレイヤーをリセット
+                </Button>
+              </div>
+              
+              {mockPlayerError && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-md text-red-600 dark:text-red-400 text-sm">
+                  {mockPlayerError}
+                </div>
+              )}
+              
+              {resetError && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-md text-red-600 dark:text-red-400 text-sm">
+                  {resetError}
+                </div>
+              )}
+              
+              <div className="text-xs text-slate-500 space-y-1">
+                <p>※各Mockユーザーは自動的にジャックポットに寄与し、最小プレイヤー数到達時にタイマーが開始されます。</p>
+                <p>※リセット機能は既存のMockプレイヤーを全て削除します。</p>
+                <p>※リセット後、表示が更新されない場合はページをリロードしてください。</p>
               </div>
             </div>
           </TabsContent>

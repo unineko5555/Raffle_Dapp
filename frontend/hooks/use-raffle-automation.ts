@@ -269,12 +269,12 @@ export function useRaffleAutomation(
       console.log("MockVRF無効化に失敗しましたが、続行します...");
     }
     
-    // 2. VRFネイティブ支払いを有効化する
+    // 2. VRFネイティブ支払い（ETH）を設定する
     try {
-      console.log("VRFネイティブ支払い設定中...");
-      await setNativePayment(true);
+      console.log("VRFネイティブ支払い（ETH）設定中...");
+      await setNativePayment(true); // ETH支払いに設定
       await new Promise((resolve) => setTimeout(resolve, 2000)); // 設定反映待ち
-      console.log("VRFネイティブ支払い設定完了");
+      console.log("VRFネイティブ支払い（ETH）設定完了");
     } catch (setNativeError) {
       console.warn("VRFネイティブ支払い設定エラー:", setNativeError);
       console.log("ネイティブ支払い設定に失敗しましたが、続行します...");
