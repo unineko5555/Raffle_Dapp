@@ -6,6 +6,7 @@ import {console} from "forge-std/console.sol";
 import {RaffleImplementation} from "../src/RaffleImplementation.sol";
 import {RaffleProxy} from "../src/RaffleProxy.sol";
 import {HelperConfig} from "./HelperConfig.s.sol";
+import {IMockRandomProvider} from "../src/mocks/MockVRFProvider.sol";
 
 /**
  * @title DeployRaffle
@@ -64,6 +65,29 @@ contract DeployRaffle is Script {
             initData
         );
         console.log("Proxy deployed at: ", address(proxy));
+
+        // MockVRFを使用する場合、プロキシアドレスをMockVRFプロバイダーに認証する
+        if (useMockVRF && mockVRFProvider != address(0)) {
+            console.log("Setting up MockVRF authorization...");
+            
+            try IMockRandomProvider(mockVRFProvider).authorizeCaller(address(proxy)) {
+                console.log("Successfully authorized proxy in MockVRF provider");
+                
+                // プロキシ経由でMockVRF設定を有効化
+                (bool success, ) = address(proxy).call(
+                    abi.encodeWithSelector(RaffleImplementation.setMockVRF.selector, mockVRFProvider, true)
+                );
+                require(success, "Failed to enable MockVRF on proxy");
+                console.log("MockVRF enabled on proxy contract");
+                
+            } catch Error(string memory reason) {
+                console.log("MockVRF authorization failed:", reason);
+                console.log("You may need to manually authorize the proxy later");
+            } catch {
+                console.log("MockVRF authorization failed with low-level error");
+                console.log("You may need to manually authorize the proxy later");
+            }
+        }
 
         vm.stopBroadcast();
 

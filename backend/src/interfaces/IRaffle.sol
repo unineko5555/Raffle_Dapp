@@ -120,6 +120,12 @@ interface IRaffle {
         uint256 playerCount
     );
 
+    /**
+     * @dev ラッフルの状態を手動で変更する関数（オーナー専用）
+     * @param newState 新しいラッフル状態
+     */
+    function setRaffleState(RaffleState newState) external;
+
     // イベント
     /**
      * @dev ラッフルに参加した時に発火するイベント

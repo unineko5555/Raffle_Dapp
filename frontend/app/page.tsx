@@ -73,6 +73,7 @@ export default function RaffleDapp() {
     checkAutomationStatus,
     getContractEthBalance,
     getContractUsdcBalance,
+    updateRaffleData,
   } = useRaffleContract();
 
   // コントラクト残高データ
@@ -460,6 +461,7 @@ export default function RaffleDapp() {
                   usdcBalance={contractBalances.usdcBalance || "0"}
                   jackpotAmount={raffleData.jackpotAmount || "0"}
                   ownerAddress={raffleData.owner || ""}
+                  currentRaffleState={raffleData.raffleState || 0}
                   supportedChains={supportedChains}
                   onChangeOwner={(newOwner) =>
                     console.log("Change owner", newOwner)
@@ -467,7 +469,10 @@ export default function RaffleDapp() {
                   onUpgradeContract={(newImplementation, initData) =>
                     console.log("Upgrade contract", newImplementation, initData)
                   }
-                  onManualPerformUpkeep={performUpkeep}
+                  onStateChanged={() => {
+                    // 状態変更後にデータを更新
+                    updateRaffleData(true);
+                  }}
                   isLoading={isLoading}
                 />
               </div>

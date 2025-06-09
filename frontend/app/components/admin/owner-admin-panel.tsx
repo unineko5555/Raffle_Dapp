@@ -24,8 +24,7 @@ import {
   CheckCircle,
   LinkIcon,
   History,
-  Play,
-  AlertTriangle
+  Settings
 } from "lucide-react";
 import {
   Select,
@@ -43,6 +42,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useRaffleStateManagement, RaffleState } from "@/hooks/use-raffle-state-management";
 
 interface OwnerAdminPanelProps {
   isOwner: boolean;
@@ -51,6 +51,7 @@ interface OwnerAdminPanelProps {
   usdcBalance: string | number; // 文字列または数値として受け取れるように型を変更
   jackpotAmount: string | number; // 文字列または数値として受け取れるように型を変更
   ownerAddress: string;
+  currentRaffleState?: number; // 追加: 現在のラッフル状態
   supportedChains: {
     id: number;
     name: string;
@@ -66,7 +67,7 @@ interface OwnerAdminPanelProps {
   }[];
   onChangeOwner: (newOwner: any) => void;
   onUpgradeContract: (newImplementation: any, initData: any) => void;
-  onManualPerformUpkeep: () => void;
+  onStateChanged?: () => void; // 追加: 状態変更後のコールバック
   isLoading: boolean;
 }
 
@@ -77,16 +78,26 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
   usdcBalance,
   jackpotAmount,
   ownerAddress,
+  currentRaffleState = 0,
   supportedChains,
   onChangeOwner,
   onUpgradeContract,
-  onManualPerformUpkeep,
+  onStateChanged,
   isLoading,
 }: OwnerAdminPanelProps) => {
   const [copied, setCopied] = useState(false);
   const [newOwnerAddress, setNewOwnerAddress] = useState("");
   const [newImplementationAddress, setNewImplementationAddress] = useState("");
   const [upgradeInitData, setUpgradeInitData] = useState("");
+  const [selectedState, setSelectedState] = useState<string>("0");
+  
+  // 状態管理フックを使用
+  const {
+    isLoading: isStateLoading,
+    error: stateError,
+    setRaffleState,
+    getStateName,
+  } = useRaffleStateManagement();
   
   // USDCの6桁小数点を考慮してフォーマット
   const formatUSDC = (amount: string | number) => {
@@ -133,6 +144,24 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   };
   
+  // 現在の状態名を取得
+  const getCurrentStateName = () => {
+    return getStateName(currentRaffleState as RaffleState);
+  };
+
+  // 状態変更処理
+  const handleStateChange = async () => {
+    try {
+      console.log('状態変更を開始:', selectedState, '→', getStateName(parseInt(selectedState) as RaffleState));
+      const result = await setRaffleState(parseInt(selectedState) as RaffleState);
+      
+      console.log('状態変更成功');
+      onStateChanged?.();
+    } catch (error) {
+      console.error("状態変更エラー:", error);
+    }
+  };
+  
   // テストモードの場合は常に表示する
   // if (!isOwner) return null;
   
@@ -152,7 +181,7 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
         <Tabs defaultValue="overview" className="flex flex-col gap-6">
           <TabsList className="grid grid-cols-3 gap-2">
             <TabsTrigger value="overview" className="text-sm py-2">概要</TabsTrigger>
-            <TabsTrigger value="manual" className="text-sm py-2">手動実行</TabsTrigger>
+            <TabsTrigger value="state" className="text-sm py-2">状態管理</TabsTrigger>
             <TabsTrigger value="upgrade" className="text-sm py-2">アップグレード</TabsTrigger>
           </TabsList>
           
@@ -217,79 +246,118 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
             </div>
           </TabsContent>
           
-          {/* 手動実行タブ */}
-          <TabsContent value="manual" className="space-y-6">
-            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-md text-amber-600 dark:text-amber-400 text-sm">
+          {/* 状態管理タブ */}
+          <TabsContent value="state" className="space-y-6">
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md text-blue-600 dark:text-blue-400 text-sm">
               <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="w-4 h-4" />
-                <span className="font-semibold">注意：管理者用手動実行機能</span>
+                <Settings className="w-4 h-4" />
+                <span className="font-semibold">ラッフル状態の手動管理</span>
               </div>
-              <p>この機能はオートメーションの問題や特定の状況でラッフルを手動で進行させるためのものです。</p>
-              <p className="mt-2">以下の条件が揃っている場合のみ使用してください：</p>
-              <ul className="list-disc list-inside mt-1 ml-2">
-                <li>プレイヤー数が最小人数（通常3人）以上</li>
-                <li>ラッフルがOPEN状態であること</li>
-                <li>参加から1分以上経過していること</li>
-              </ul>
+              <p>テストやデバッグ目的でラッフルの状態を手動で変更できます。</p>
+              <p className="mt-1 text-xs">注意: オーナーのみがこの操作を実行できます。</p>
             </div>
             
-            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-md">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-md">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">接続中のアドレス</span>
+                </div>
+                <div className="text-sm font-medium">
+                  <code className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
+                    {shortenAddress(ownerAddress || "未接続")}
+                  </code>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-md">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">現在の状態</span>
+                </div>
+                <div className="text-sm font-medium">
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    currentRaffleState === 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' :
+                    currentRaffleState === 1 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                    'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                  }`}>
+                    {getCurrentStateName()}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <Label htmlFor="state-select">新しい状態を選択</Label>
+                <Select value={selectedState} onValueChange={setSelectedState}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="状態を選択してください" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">OPEN (参加受付中)</SelectItem>
+                    <SelectItem value="1">CALCULATING_WINNER (抽選中)</SelectItem>
+                    <SelectItem value="2">CLOSED (終了)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
               <Dialog>
                 <DialogTrigger asChild>
                   <Button
                     className="w-full"
-                    variant="default"
-                    disabled={isLoading}
+                    variant="outline"
+                    disabled={isStateLoading || selectedState === currentRaffleState.toString()}
                   >
-                    {isLoading ? (
+                    {isStateLoading ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : (
-                      <Play className="w-4 h-4 mr-2" />
+                      <Settings className="w-4 h-4 mr-2" />
                     )}
-                    ラッフルを手動で実行する
+                    状態を変更する
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>ラッフルの手動実行の確認</DialogTitle>
+                    <DialogTitle>ラッフル状態変更の確認</DialogTitle>
                     <DialogDescription>
-                      この操作は手動でラッフルの抽選プロセスを開始します。必要な条件が揃っている場合のみ実行してください。
+                      ラッフルの状態を手動で変更します。この操作は注意して実行してください。
                     </DialogDescription>
                   </DialogHeader>
                   
                   <div className="space-y-3 py-4">
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-600 dark:text-slate-400">コントラクトアドレス</span>
-                      <code className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
-                        {shortenAddress(contractAddress)}
-                      </code>
+                      <span className="text-slate-600 dark:text-slate-400">現在の状態</span>
+                      <span className="font-medium">{getCurrentStateName()}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-600 dark:text-slate-400">操作</span>
-                      <span className="font-medium text-amber-600">手動ラッフル実行</span>
+                      <span className="text-slate-600 dark:text-slate-400">新しい状態</span>
+                      <span className="font-medium text-blue-600">{getStateName(parseInt(selectedState) as RaffleState)}</span>
                     </div>
                   </div>
+                  
+                  {stateError && (
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-md text-red-600 dark:text-red-400 text-sm">
+                      {stateError}
+                    </div>
+                  )}
                   
                   <DialogFooter>
                     <Button variant="outline" className="w-full sm:w-auto">キャンセル</Button>
                     <Button 
-                      onClick={() => onManualPerformUpkeep()}
+                      onClick={handleStateChange}
                       className="w-full sm:w-auto"
-                      disabled={isLoading}
+                      disabled={isStateLoading}
                     >
-                      {isLoading ? (
+                      {isStateLoading ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       ) : (
-                        "実行する"
+                        "変更する"
                       )}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-            </div>
-            
-            <div className="text-xs text-slate-500 mt-2">
-              ※この機能はChainlink AutomationやKeepersが正常に動作しない場合のバックアップです
+              
+              <div className="text-xs text-slate-500 mt-2">
+                ※この機能はテストやデバッグ目的でのみ使用してください。
+              </div>
             </div>
           </TabsContent>
           

@@ -601,6 +601,19 @@ export const RaffleABI = [
   },
   {
     "type": "function",
+    "name": "setRaffleState",
+    "inputs": [
+      {
+        "name": "newState",
+        "type": "uint8",
+        "internalType": "enum IRaffle.RaffleState"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "transferOwnership",
     "inputs": [
       {
