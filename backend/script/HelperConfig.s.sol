@@ -55,7 +55,7 @@ contract HelperConfig is Script {
             vrfCoordinatorV2: 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B, // VRF 2.5のコーディネーターアドレス
             subscriptionId: 35215710747108285885424679702400045098207236400821432776421763953481952749017,
             keyHash: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
-            callbackGasLimit: 100000, // 500,000から100,000に削減
+            callbackGasLimit: 150000, // 100,000から150,000に増加
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238, // Sepolia USDC
             mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス
@@ -80,7 +80,7 @@ contract HelperConfig is Script {
             vrfCoordinatorV2: 0x5CE8D5A2BC84beb22a398CCA51996F7930313D61, // Arbitrum Sepolia VRF 2.5
             subscriptionId: 101240342784025722467677436226156457361476948824878688464903340927284469428368, // 実際のサブスクリプションIDに更新する必要あり
             keyHash: 0x1770bdc7eec7771f7ba4ffd640f34260d7f095b79c92d34a5b2551d6f6cfd2be,
-            callbackGasLimit: 500000,
+            callbackGasLimit: 150000,
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d, // Arbitrum Sepolia USDC
             mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス
