@@ -470,6 +470,7 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
                   <span className={`px-2 py-1 rounded text-xs ${
                     currentRaffleState === 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' :
                     currentRaffleState === 1 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                    currentRaffleState === 2 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' :
                     'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400'
                   }`}>
                     {getCurrentStateName()}
@@ -486,7 +487,8 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
                   <SelectContent>
                     <SelectItem value="0">OPEN (参加受付中)</SelectItem>
                     <SelectItem value="1">CALCULATING_WINNER (抽選中)</SelectItem>
-                    <SelectItem value="2">CLOSED (終了)</SelectItem>
+                    <SelectItem value="2">WINNER_SELECTED (勝者選択済み)</SelectItem>
+                    <SelectItem value="3">CLOSED (終了)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

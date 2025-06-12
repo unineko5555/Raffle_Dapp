@@ -12,7 +12,8 @@ type SupportedChainId = keyof typeof contractConfig;
 export enum RaffleState {
   OPEN = 0,
   CALCULATING_WINNER = 1,
-  CLOSED = 2,
+  WINNER_SELECTED = 2,
+  CLOSED = 3,
 }
 
 export function useRaffleStateManagement() {
@@ -44,6 +45,8 @@ export function useRaffleStateManagement() {
         return "OPEN";
       case RaffleState.CALCULATING_WINNER:
         return "CALCULATING_WINNER";
+      case RaffleState.WINNER_SELECTED:
+        return "WINNER_SELECTED";
       case RaffleState.CLOSED:
         return "CLOSED";
       default:

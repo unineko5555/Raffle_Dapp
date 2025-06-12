@@ -145,7 +145,9 @@ export function useRaffleAutomation(
         });
 
         if (!txHash) {
-          throw new Error("setNativePaymentトランザクションの送信に失敗しました");
+          throw new Error(
+            "setNativePaymentトランザクションの送信に失敗しました"
+          );
         }
 
         // トランザクションの確定を待つ
@@ -257,7 +259,7 @@ export function useRaffleAutomation(
   // VRF付きUpkeep実行
   const performManualUpkeepWithVRF = async () => {
     console.log("VRFラッフルを開始します（ネイティブ支払い）...");
-    
+
     // 1. まずMockVRFを無効化する
     try {
       console.log("MockVRFを無効化中...");
@@ -268,7 +270,7 @@ export function useRaffleAutomation(
       console.warn("MockVRF無効化エラー:", mockVRFError);
       console.log("MockVRF無効化に失敗しましたが、続行します...");
     }
-    
+
     // 2. VRFネイティブ支払い（ETH）を設定する
     try {
       console.log("VRFネイティブ支払い（ETH）設定中...");
@@ -279,7 +281,7 @@ export function useRaffleAutomation(
       console.warn("VRFネイティブ支払い設定エラー:", setNativeError);
       console.log("ネイティブ支払い設定に失敗しましたが、続行します...");
     }
-    
+
     return await performUpkeep();
   };
 
@@ -302,25 +304,29 @@ export function useRaffleAutomation(
     const automationStatus = await checkAutomationStatus();
     if (!automationStatus?.upkeepNeeded) {
       console.log("ラッフル実行条件チェック失敗 - 詳細確認を行います");
-      
+
       // より詳細な条件確認
       const debugInfo = await checkUpkeepDebug();
       if (debugInfo) {
         console.log("詳細なUpkeep状態:", debugInfo);
-        
+
         // 条件が満たされていない理由を特定
         if (!debugInfo.isOpen) {
           throw new Error("ラッフルが開始されていません");
         }
         if (!debugInfo.hasPlayers) {
-          throw new Error(`最小プレイヤー数(${debugInfo.playerCount}/${debugInfo.requiredTime})に達していません`);
+          throw new Error(
+            `最小プレイヤー数(${debugInfo.playerCount}/${debugInfo.requiredTime})に達していません`
+          );
         }
         if (!debugInfo.hasTimePassed) {
-          const remaining = Number(debugInfo.requiredTime) - Number(debugInfo.timeSinceMinPlayers);
+          const remaining =
+            Number(debugInfo.requiredTime) -
+            Number(debugInfo.timeSinceMinPlayers);
           throw new Error(`必要な時間が経過していません (残り${remaining}秒)`);
         }
       }
-      
+
       throw new Error("ラッフル実行条件が満たされていません");
     }
 
@@ -329,9 +335,7 @@ export function useRaffleAutomation(
   };
 
   // 統合されたperformUpkeep実行関数
-  const performUpkeep = async (options?: {
-    skipUpkeepCheck?: boolean;
-  }) => {
+  const performUpkeep = async (options?: { skipUpkeepCheck?: boolean }) => {
     if (
       (!isConnected && !isReadyToSendTx) ||
       (!address && !smartAccountAddress) ||
@@ -375,43 +379,57 @@ export function useRaffleAutomation(
           performUpkeepCallData,
           BigInt(0)
         );
-        
+
         if (upkeepResult?.txHash && publicClient) {
-          console.log("スマートアカウントでラッフルを実行:", upkeepResult.txHash);
-          
+          console.log(
+            "スマートアカウントでラッフルを実行:",
+            upkeepResult.txHash
+          );
+
           try {
             // トランザクションの確認を待つ（EOAと同様の処理）
             console.log("スマートアカウント: トランザクション確認を待機中...");
-            const receipt = await publicClient.waitForTransactionReceipt({ 
+            const receipt = await publicClient.waitForTransactionReceipt({
               hash: upkeepResult.txHash as `0x${string}`,
-              timeout: 60000 // 60秒のタイムアウト
+              timeout: 60000, // 60秒のタイムアウト
             });
-            
-            console.log("スマートアカウント: トランザクション確認済み、ステータス:", receipt.status);
-            console.log("スマートアカウント: ガス使用量:", receipt.gasUsed?.toString());
-            
-            if (receipt.status === 'reverted') {
-              throw new Error(`スマートアカウント: performUpkeepがリバートしました: ${upkeepResult.txHash}`);
+
+            console.log(
+              "スマートアカウント: トランザクション確認済み、ステータス:",
+              receipt.status
+            );
+            console.log(
+              "スマートアカウント: ガス使用量:",
+              receipt.gasUsed?.toString()
+            );
+
+            if (receipt.status === "reverted") {
+              throw new Error(
+                `スマートアカウント: performUpkeepがリバートしました: ${upkeepResult.txHash}`
+              );
             }
-            
+
             console.log("スマートアカウント: ラッフルが正常に完了しました");
-            
+
             // 結果の反映を待つ（EOAより少し長めに設定）
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+
             if (updateRaffleData) {
               await updateRaffleData(true);
             }
           } catch (receiptError: any) {
-            console.error("スマートアカウント: トランザクション確認エラー:", receiptError);
+            console.error(
+              "スマートアカウント: トランザクション確認エラー:",
+              receiptError
+            );
             // エラーでも基本的な待機とデータ更新は行う
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            await new Promise((resolve) => setTimeout(resolve, 5000));
             if (updateRaffleData) {
               await updateRaffleData(true);
             }
           }
         }
-        
+
         return upkeepResult?.txHash || null;
       } else if (isConnected && address && publicClient && writeContractAsync) {
         // performUpkeep関数を使用
@@ -422,11 +440,11 @@ export function useRaffleAutomation(
           args: ["0x"],
           account: address,
         };
-        
+
         // Arbitrum Sepoliaの場合のガス設定最適化
         if (chainId === 421614) {
           console.log("Arbitrum Sepolia: ガス設定を最適化");
-          
+
           try {
             const gasEstimate = await publicClient.estimateContractGas({
               address: contractAddress as `0x${string}`,
@@ -435,74 +453,86 @@ export function useRaffleAutomation(
               args: ["0x"],
               account: address,
             });
-            
+
             console.log("ガス估算結果:", gasEstimate.toString());
-            
+
             // ガスリミットに20%のバッファを追加
-            txParams.gas = gasEstimate + (gasEstimate * BigInt(20)) / BigInt(100);
-            
+            txParams.gas =
+              gasEstimate + (gasEstimate * BigInt(20)) / BigInt(100);
           } catch (gasError) {
             console.warn("ガス估算エラー - デフォルト値を使用:", gasError);
             txParams.gas = BigInt(2000000); // フォールバック値
           }
         }
-        
+
         console.log("performUpkeepパラメータ:", {
           ...txParams,
-          gas: txParams.gas?.toString()
+          gas: txParams.gas?.toString(),
         });
-        
+
         const txHash = await writeContractAsync(txParams);
 
         if (txHash) {
-          console.log("performUpkeep送信完了、トランザクションハッシュ:", txHash);
-          
+          console.log(
+            "performUpkeep送信完了、トランザクションハッシュ:",
+            txHash
+          );
+
           try {
-            const receipt = await publicClient.waitForTransactionReceipt({ 
+            const receipt = await publicClient.waitForTransactionReceipt({
               hash: txHash,
-              timeout: 60000 // 60秒のタイムアウト
+              timeout: 60000, // 60秒のタイムアウト
             });
-            
-            console.log("トランザクション確認済み、ステータス:", receipt.status);
+
+            console.log(
+              "トランザクション確認済み、ステータス:",
+              receipt.status
+            );
             console.log("ガス使用量:", receipt.gasUsed?.toString());
-            
-            if (receipt.status === 'reverted') {
+
+            if (receipt.status === "reverted") {
               // リバートの詳細を取得
               try {
                 const tx = await publicClient.getTransaction({ hash: txHash });
                 console.log("リバートされたトランザクション詳細:", tx);
-                
+
                 // トランザクションを再実行してリバート理由を取得
                 await publicClient.call({
                   to: tx.to,
                   data: tx.input,
                   value: tx.value,
-                  blockNumber: receipt.blockNumber
+                  blockNumber: receipt.blockNumber,
                 });
               } catch (callError: any) {
                 console.log("リバート理由:", callError.message || callError);
-                throw new Error(`performUpkeepが失敗しました: ${callError.message || 'Unknown revert reason'}`);
+                throw new Error(
+                  `performUpkeepが失敗しました: ${
+                    callError.message || "Unknown revert reason"
+                  }`
+                );
               }
-              
+
               throw new Error(`performUpkeepがリバートしました: ${txHash}`);
             }
-            
+
             console.log("ラッフルが正常に完了しました");
-            
+
             // 結果の反映を待つ
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            await new Promise((resolve) => setTimeout(resolve, 3000));
             if (updateRaffleData) {
               await updateRaffleData(true);
             }
           } catch (receiptError: any) {
             console.error("トランザクション確認エラー:", receiptError);
-            throw new Error(`トランザクション確認に失敗しました: ${receiptError.message}`);
+            throw new Error(
+              `トランザクション確認に失敗しました: ${receiptError.message}`
+            );
           }
         }
-        
+
         return txHash;
       }
-      
+
       return null;
     } catch (error) {
       console.error("performUpkeep実行エラー:", error);
