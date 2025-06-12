@@ -41,12 +41,15 @@ export function useRaffleAutomation(
   const [isUpkeepNeeded, setIsUpkeepNeeded] = useState(false);
 
   // チェーンIDから正しいコントラクトアドレスを取得
-  const currentChainId = chainId || 11155111; // デフォルトはSepolia
-  const contractAddress =
-    contractConfig[currentChainId as SupportedChainId]?.raffleProxy || null;
+  // サポートされているチェーンIDのみを受け入れ、不正な場合はnullを返す
+  const supportedChainIds = [11155111, 84532, 421614] as const;
+  const isValidChainId = chainId && supportedChainIds.includes(chainId as any);
+  const currentChainId = isValidChainId ? chainId : null;
+  const contractAddress = currentChainId ? 
+    contractConfig[currentChainId as SupportedChainId]?.raffleProxy || null : null;
 
   // プロバイダーチェック
-  const publicClient = usePublicClient({ chainId: currentChainId });
+  const publicClient = usePublicClient({ chainId: currentChainId || undefined });
 
   // コントラクト書き込み関数
   const {

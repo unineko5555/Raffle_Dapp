@@ -40,12 +40,15 @@ export function useRaffleData() {
   const [uiLoading, setUiLoading] = useState(true);
 
   // チェーンIDから正しいコントラクトアドレスを取得
-  const currentChainId = chainId || 11155111; // デフォルトはSepolia
-  const contractAddress =
-    contractConfig[currentChainId as SupportedChainId]?.raffleProxy || null;
+  // サポートされているチェーンIDのみを受け入れ、不正な場合はnullを返す
+  const supportedChainIds = [11155111, 84532, 421614] as const;
+  const isValidChainId = chainId && supportedChainIds.includes(chainId as any);
+  const currentChainId = isValidChainId ? chainId : null;
+  const contractAddress = currentChainId ? 
+    contractConfig[currentChainId as SupportedChainId]?.raffleProxy || null : null;
   
   // プロバイダーチェック
-  const publicClient = usePublicClient({ chainId: currentChainId });
+  const publicClient = usePublicClient({ chainId: currentChainId || undefined });
 
   // コントラクト読み取り
   const { data: entranceFeeData } = useReadContract(
@@ -54,9 +57,9 @@ export function useRaffleData() {
           address: contractAddress as `0x${string}`,
           abi: RaffleABI,
           functionName: "getEntranceFee",
-          chainId: currentChainId,
+          chainId: currentChainId || undefined,
         }
-      : {}
+      : undefined
   );
 
   const { data: numberOfPlayersData } = useReadContract(
@@ -65,9 +68,9 @@ export function useRaffleData() {
           address: contractAddress as `0x${string}`,
           abi: RaffleABI,
           functionName: "getNumberOfPlayers",
-          chainId: currentChainId,
+          chainId: currentChainId || undefined,
         }
-      : {}
+      : undefined
   );
 
   const { data: raffleStateData } = useReadContract(
@@ -76,9 +79,9 @@ export function useRaffleData() {
           address: contractAddress as `0x${string}`,
           abi: RaffleABI,
           functionName: "getRaffleState",
-          chainId: currentChainId,
+          chainId: currentChainId || undefined,
         }
-      : {}
+      : undefined
   );
 
   const { data: jackpotAmountData } = useReadContract(
@@ -87,9 +90,9 @@ export function useRaffleData() {
           address: contractAddress as `0x${string}`,
           abi: RaffleABI,
           functionName: "getJackpotAmount",
-          chainId: currentChainId,
+          chainId: currentChainId || undefined,
         }
-      : {}
+      : undefined
   );
 
   const { data: recentWinnerData } = useReadContract(
@@ -98,9 +101,9 @@ export function useRaffleData() {
           address: contractAddress as `0x${string}`,
           abi: RaffleABI,
           functionName: "getRecentWinner",
-          chainId: currentChainId,
+          chainId: currentChainId || undefined,
         }
-      : {}
+      : undefined
   );
 
   const { data: ownerData } = useReadContract(
@@ -109,9 +112,9 @@ export function useRaffleData() {
           address: contractAddress as `0x${string}`,
           abi: RaffleABI,
           functionName: "getOwner",
-          chainId: currentChainId,
+          chainId: currentChainId || undefined,
         }
-      : {}
+      : undefined
   );
 
   // プレイヤーリストのキャッシュ用変数

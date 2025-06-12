@@ -144,8 +144,11 @@ export default function RaffleDapp() {
       return () => {}; // 空のクリーンアップ関数を返す
     }
     
-    // 現在のチェーンのERC20アドレスを取得
-    const erc20Address = contractConfig[chainId as keyof typeof contractConfig]?.erc20Address;
+    // 現在のチェーンのERC20アドレスを取得（サポートされているチェーンのみ）
+    const supportedChainIds = [11155111, 84532, 421614] as const;
+    const isValidChainId = chainId && supportedChainIds.includes(chainId as any);
+    const erc20Address = isValidChainId ? 
+      contractConfig[chainId as keyof typeof contractConfig]?.erc20Address : null;
     
     if (!erc20Address) {
       if (isDebugMode) console.log(`現在のチェーンID ${chainId} のERC20アドレスが見つかりません`);
