@@ -80,6 +80,7 @@ contract RaffleImplementation is
     // VRF軽量化のための変数
     uint256 private s_pendingRandomWord; // VRFから受信した乱数
     address[] private s_pendingPlayers; // 当選者決定時のプレイヤー配列のコピー
+    uint256 private s_pendingPlayerCount; // 当選者決定時のプレイヤー数
 
     // コンストラクタ - VRFConsumerBaseV2Plus用
     constructor() VRFConsumerBaseV2Plus(0x0000000000000000000000000000000000000001) {
@@ -426,22 +427,16 @@ contract RaffleImplementation is
      * @param randomWords 生成された乱数配列
      */
     function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
-        require(randomWords.length > 0, "No random words provided");
-        require(s_players.length > 0, "No players to process");
+        // 防御的チェック（revertではなくreturn）
+        if (randomWords.length == 0) return;
+        if (s_players.length == 0) return;
+        if (s_raffleState != RaffleState.CALCULATING_WINNER) return;
         
-        // 軽量処理: 乱数とプレイヤー配列を保存のみ
+        // 最小限の処理のみ
         s_pendingRandomWord = randomWords[0];
-        
-        // プレイヤー配列をコピー保存
-        delete s_pendingPlayers;
-        for (uint256 i = 0; i < s_players.length; i++) {
-            s_pendingPlayers.push(s_players[i]);
-        }
-        
-        // 状態を変更
+        s_pendingPlayerCount = s_players.length;  // 配列コピー削除
         s_raffleState = RaffleState.WINNER_SELECTED;
         
-        // イベント発行
         emit RandomWordsReceived(requestId, randomWords[0]);
         emit RaffleStateChanged(s_raffleState);
     }
@@ -453,23 +448,24 @@ contract RaffleImplementation is
     function processWinner() external {
         require(s_raffleState == RaffleState.WINNER_SELECTED, "No winner to process");
         require(s_pendingRandomWord > 0, "No random word available");
-        require(s_pendingPlayers.length > 0, "No pending players");
+        require(s_pendingPlayerCount > 0, "No pending players");
         
-        // 保存された乱数とプレイヤー配列を使用
+        // 保存された乱数とプレイヤー数を使用
         console.log("Processing winner from pending data");
-        console.log("Pending players count:", s_pendingPlayers.length);
+        console.log("Pending players count:", s_pendingPlayerCount);
         console.log("Random word:", s_pendingRandomWord);
         
-        // 参加者の中から当選者を選ぶ
-        uint256 winnerIndex = s_pendingRandomWord % s_pendingPlayers.length;
-        address winner = s_pendingPlayers[winnerIndex];
+        // 参加者の中から当選者を選ぶ（現在のプレイヤー配列を使用）
+        uint256 winnerIndex = s_pendingRandomWord % s_pendingPlayerCount;
+        require(winnerIndex < s_players.length, "Invalid winner index");
+        address winner = s_players[winnerIndex];
         s_recentWinner = winner;
         
         console.log("Selected winner index:", winnerIndex);
         console.log("Selected winner address:", winner);
 
-        // 賞金額を計算（pendingPlayersの数を使用）
-        uint256 prize = (s_entranceFee * s_pendingPlayers.length) * 90 / 100; // 参加料の90%が賞金
+        // 賞金額を計算（pendingPlayerCountを使用）
+        uint256 prize = (s_entranceFee * s_pendingPlayerCount) * 90 / 100; // 参加料の90%が賞金
         s_recentPrize = prize;
         
         console.log("Base prize calculated:", prize);
@@ -523,7 +519,7 @@ contract RaffleImplementation is
             prize: prize,
             jackpotWon: isJackpotWinner,
             timestamp: block.timestamp,
-            playerCount: s_pendingPlayers.length
+            playerCount: s_pendingPlayerCount
         }));
         
         console.log("Winner recorded in history");
@@ -536,6 +532,7 @@ contract RaffleImplementation is
         
         // ペンディングデータをクリーンアップ
         s_pendingRandomWord = 0;
+        s_pendingPlayerCount = 0;
         delete s_pendingPlayers;
 
         // イベント発行
