@@ -48,6 +48,7 @@ export default function RaffleDapp() {
   const {
     smartAccountAddress,
     isReadyToSendTx,
+    sendUserOperation,
     isLoading: isSmartAccountLoading,
   } = useSmartAccountContext();
 
