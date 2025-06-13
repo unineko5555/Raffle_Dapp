@@ -13,6 +13,9 @@ import { useRaffleWinEvents } from "@/hooks/use-raffle-win-events";
 import { useWeb3Auth } from "@/hooks/use-web3auth";
 import { useSmartAccountContext } from "./providers/smart-account-provider";
 import { useRaffleHistory } from "@/hooks/use-raffle-history";
+import { useWriteContract } from "wagmi";
+import { RaffleABI } from "@/app/lib/contract-config";
+import { encodeFunctionData } from "viem";
 
 // コンポーネントのインポート
 import { RafflePrizeInfo } from "./components/raffle/raffle-prize-info";
@@ -35,6 +38,7 @@ export default function RaffleDapp() {
   const { user } = useWeb3Auth();
   const { toast } = useToast();
   const publicClient = usePublicClient({ chainId });
+  const { writeContractAsync } = useWriteContract();
 
   // useRefフックをコンポーネントトップレベルで定義
   const tokenListenerChainIdRef = useRef<number | null>(null);
@@ -354,10 +358,98 @@ export default function RaffleDapp() {
     }
   }, [chainId, updateContractBalances, supportedChains]);
 
+  // 🎯 WINNER_SELECTED状態の自動監視と処理
+  useEffect(() => {
+    if (raffleData.raffleState === 2) { // WINNER_SELECTED状態を検出
+      console.log("🔍 WINNER_SELECTED状態を検出 - 3秒後に自動処理を開始");
+      
+      // 少し遅延させて状態が安定してから実行
+      const timer = setTimeout(() => {
+        autoProcessWinner();
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [raffleData.raffleState]); // raffleStateが変更されたときのみ実行
+
   // ラッフル参加成功時のコールバック
   const handleRaffleEntrySuccess = () => {
     // ラッフル参加後、自動的にデータが更新されるため何もしない
     console.log("ラッフル参加成功");
+  };
+
+  // 🎯 自動processWinner実行関数
+  const autoProcessWinner = async () => {
+    if (!contractAddress || (!isConnected && !isReadyToSendTx)) return;
+    if (raffleData.raffleState !== 2) return; // WINNER_SELECTED状態でない場合は何もしない
+    
+    console.log("🎯 WINNER_SELECTED状態を検出 - 自動で勝者処理を実行");
+    
+    try {
+      const useSmartAccount = isReadyToSendTx && smartAccountAddress && sendUserOperation;
+      
+      if (useSmartAccount && sendUserOperation) {
+        console.log("🤖 スマートアカウントで自動勝者処理を実行中...");
+        
+        const processWinnerCallData = encodeFunctionData({
+          abi: RaffleABI,
+          functionName: "processWinner",
+          args: [],
+        });
+
+        const result = await sendUserOperation(
+          contractAddress as `0x${string}`,
+          processWinnerCallData,
+          BigInt(0)
+        );
+        
+        console.log("✅ スマートアカウント: 自動勝者処理完了", result?.txHash);
+      } else if (isConnected && address && publicClient && writeContractAsync) {
+        console.log("🔑 EOAで自動勝者処理を実行中...");
+        
+        const txHash = await writeContractAsync({
+          address: contractAddress as `0x${string}`,
+          abi: RaffleABI,
+          functionName: "processWinner",
+          args: [],
+          account: address,
+        });
+
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: txHash,
+          timeout: 60000
+        });
+
+        if (receipt.status === "reverted") {
+          throw new Error("自動勝者処理トランザクションが失敗しました");
+        }
+
+        console.log("✅ EOA: 自動勝者処理完了");
+      }
+      
+      // 成功後にデータを更新
+      setTimeout(() => {
+        console.log('🔄 自動勝者処理後のデータ更新...');
+        updateRaffleData(true);
+      }, 3000);
+      
+      // 成功通知
+      toast({
+        title: "🏆 勝者決定完了",
+        description: "勝者が自動的に決定され、賞金が払い出されました！",
+        variant: "default",
+      });
+      
+    } catch (error: any) {
+      console.error("❌ 自動勝者処理エラー:", error);
+      
+      // エラー通知（ユーザーフレンドリー）
+      toast({
+        title: "⚠️ 自動処理エラー",
+        description: "管理パネルから手動で勝者処理を実行してください",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
