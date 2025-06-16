@@ -193,9 +193,9 @@ export function useRaffleHistory(userAddress: string | undefined | null) {
 
         let blockRange = 400n;
         if (chainId === 421614) { // Arbitrum Sepolia
-          blockRange = 5000n; // Arbitrumはブロック生成が高速なので範囲を広げる
+          blockRange = 500n; // Alchemyの制限に合わせて500ブロックに制限
         } else if (chainId === 84532) { // Base Sepolia
-          blockRange = 800n; // Baseも少し範囲を広げる
+          blockRange = 500n; // Baseも500ブロックに制限
         }
 
         // 最新ブロックを取得

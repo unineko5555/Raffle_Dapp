@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   useAccount,
   useReadContract,
@@ -128,8 +128,8 @@ export function useRaffleData() {
   let lastLoggedPlayerCount = -1;
   const LOG_INTERVAL = 30000; // 30秒に延長
 
-  // プレイヤーリストを取得
-  const getPlayers = async (knownPlayerCount?: number) => {
+  // プレイヤーリストを取得（useCallbackで最適化）
+  const getPlayers = useCallback(async (knownPlayerCount?: number) => {
     if (!contractAddress || !publicClient) return [];
 
     try {
@@ -153,13 +153,13 @@ export function useRaffleData() {
           });
           currentPlayerCount = Number(playerCountResult || 0);
 
-          // ログ出力の制御
+          // プレイヤー数取得ログを削除（UIで表示されるため不要）
           const currentNow = Date.now();
           if (
             currentNow - lastLogTime > LOG_INTERVAL &&
             currentPlayerCount !== lastLoggedPlayerCount
           ) {
-            console.log("プレイヤー数取得:", currentPlayerCount);
+            // プレイヤー数ログを削除 - レート制限変数を更新
             lastLogTime = currentNow;
             lastLoggedPlayerCount = currentPlayerCount;
           }
@@ -220,7 +220,7 @@ export function useRaffleData() {
       // エラー時はキャッシュがあれば再利用
       return cachedPlayers.length > 0 ? cachedPlayers : [];
     }
-  };
+  }, [contractAddress, publicClient]);
 
   // 前回取得したデータを保存する変数
   let lastRaffleState = 0;
@@ -228,8 +228,8 @@ export function useRaffleData() {
   let lastUpdateTime = 0;
   const UPDATE_INTERVAL = 20000; // 20秒に延長
 
-  // 共通のデータフォーマット関数
-  const formatRaffleData = (players: string[], playerCount?: number) => {
+  // 共通のデータフォーマット関数（useCallbackで最適化）
+  const formatRaffleData = useCallback((players: string[], playerCount?: number) => {
     let formattedEntranceFee = "0";
     let formattedJackpotAmount = "0";
 
@@ -258,10 +258,10 @@ export function useRaffleData() {
       players,
       owner: (ownerData as string) || null,
     };
-  };
+  }, [entranceFeeData, jackpotAmountData, raffleStateData, recentWinnerData, ownerData]);
 
-  // フォールバック用のデータ更新関数
-  const fallbackUpdateRaffleData = async () => {
+  // フォールバック用のデータ更新関数（useCallbackで最適化）
+  const fallbackUpdateRaffleData = useCallback(async () => {
     if (!contractAddress) return;
 
     try {
@@ -270,15 +270,15 @@ export function useRaffleData() {
 
       // 共通フォーマット関数を使用
       setRaffleData(formatRaffleData(players));
-      console.log("フォールバック更新完了");
+      // フォールバック更新完了ログを削除（エラー時のみログ出力）
     } catch (error) {
       console.warn("フォールバックも失敗、既存データを維持:", error);
       // エラーを投げずに既存データを維持
     }
-  };
+  }, [contractAddress, getPlayers, formatRaffleData]);
 
-  // データを更新
-  const updateRaffleData = async (forceUpdate = false) => {
+  // データを更新（useCallbackで最適化）
+  const updateRaffleData = useCallback(async (forceUpdate = false) => {
     try {
       // 強制更新フラグが有効な場合はローディング状態を一時的に有効にする
       if (forceUpdate) {
@@ -335,17 +335,14 @@ export function useRaffleData() {
             lastPlayerCount = Number(currentPlayerCount);
             lastUpdateTime = Date.now();
 
-            // ログ出力の制御
+            // プレイヤー数ログを削除（UIで表示されるため不要）
             const logNow = Date.now();
             if (
               forceUpdate ||
               (logNow - lastLogTime > LOG_INTERVAL &&
                 Number(currentPlayerCount) !== lastLoggedPlayerCount)
             ) {
-              console.log(
-                "コントラクトからの最新プレイヤー数:",
-                Number(currentPlayerCount)
-              );
+              // プレイヤー数ログを削除 - レート制限変数は更新
               lastLogTime = logNow;
               lastLoggedPlayerCount = Number(currentPlayerCount);
             }
@@ -380,7 +377,7 @@ export function useRaffleData() {
         setUiLoading(false);
       }, 500); // 少し遅らせて表示を正しく切り替える
     }
-  };
+  }, [contractAddress, publicClient, fallbackUpdateRaffleData, formatRaffleData, getPlayers]);
 
   // 残高キャッシュ機能
   let balanceCache: {
@@ -388,7 +385,11 @@ export function useRaffleData() {
     usdcBalance?: string;
     lastUpdated: number;
   } = { lastUpdated: 0 };
-  const CACHE_TTL = 120000; // 2分に延長（レート制限対策）
+  const CACHE_TTL = 300000; // 5分に延長（APIコール減少のため）
+  
+  // レート制限機能
+  let lastBalanceRequestTime = 0;
+  const BALANCE_REQUEST_INTERVAL = 60000; // 1分間隔制限
 
   // コントラクトのETH残高を取得する関数 - 強制更新オプション対応
   const getContractEthBalance = async (options = { forceUpdate: false }) => {
@@ -397,6 +398,11 @@ export function useRaffleData() {
     // 強制更新フラグがある場合はキャッシュをスキップ
     const forceRefresh = options.forceUpdate || 
       (typeof window !== 'undefined' && Boolean((window as any).FORCE_CONTRACT_BALANCE_REFRESH));
+
+    // レート制限チェック（強制更新でない場合）
+    if (!forceRefresh && now - lastBalanceRequestTime < BALANCE_REQUEST_INTERVAL) {
+      return balanceCache.ethBalance || "0";
+    }
 
     // 強制更新でない場合、キャッシュが有効なら返す
     if (!forceRefresh && balanceCache.ethBalance && now - balanceCache.lastUpdated < CACHE_TTL) {
@@ -412,9 +418,10 @@ export function useRaffleData() {
       });
 
       const result = formatUnits(balance, 18);
-      console.log(`チェーンID ${currentChainId} のETH残高取得成功: ${result}`);
+      // ETH残高ログを削除 - UIで表示されるため不要
       balanceCache.ethBalance = result;
       balanceCache.lastUpdated = now;
+      lastBalanceRequestTime = now; // レート制限更新
       return result;
     } catch (error) {
       console.error(`チェーンID ${currentChainId} のETH残高取得エラー:`, error);
@@ -430,13 +437,14 @@ export function useRaffleData() {
     const forceRefresh = options.forceUpdate || 
       (typeof window !== 'undefined' && Boolean((window as any).FORCE_CONTRACT_BALANCE_REFRESH));
 
-    // デバッグログ
-    if (forceRefresh) {
-      console.log(`USDC残高の強制更新を実行します (チェーンID: ${currentChainId})`);
-      // 強制更新フラグをリセット
-      if (typeof window !== 'undefined') {
-        (window as any).FORCE_CONTRACT_BALANCE_REFRESH = false;
-      }
+    // 強制更新フラグをリセット（デバッグログを削除）
+    if (forceRefresh && typeof window !== 'undefined') {
+      (window as any).FORCE_CONTRACT_BALANCE_REFRESH = false;
+    }
+
+    // レート制限チェック（強制更新でない場合）
+    if (!forceRefresh && now - lastBalanceRequestTime < BALANCE_REQUEST_INTERVAL) {
+      return balanceCache.usdcBalance || "0";
     }
 
     // 強制更新でない場合、キャッシュが有効なら返す
@@ -472,9 +480,10 @@ export function useRaffleData() {
       });
 
       const result = typeof balance === "bigint" ? balance.toString() : "0";
-      console.log(`チェーンID ${currentChainId} のUSDC残高取得成功: ${result}`);
+      // USDC残高ログを削除 - UIで表示されるため不要
       balanceCache.usdcBalance = result;
       balanceCache.lastUpdated = now;
+      lastBalanceRequestTime = now; // レート制限更新
       return result;
     } catch (error) {
       console.error(`チェーンID ${currentChainId} のUSDC残高取得エラー:`, error);
@@ -518,10 +527,10 @@ export function useRaffleData() {
     }
   };
 
-  // データの自動更新 - 依存配列を最適化
+  // データの自動更新 - 依存配列を最適化（updateRaffleDataを追加）
   useEffect(() => {
     updateRaffleData();
-  }, [contractAddress, raffleStateData, address, isConnected]);
+  }, [contractAddress, raffleStateData, address, isConnected, updateRaffleData]);
 
   // 当初データ読み込み後、ローディングを停止
   useEffect(() => {

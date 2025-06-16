@@ -116,8 +116,7 @@ export function useRaffleContract() {
       const result = await cancelEntryHandler();
 
       if (result && result.success) {
-        // 成功時は強制的にデータを再取得
-        console.log("ラッフル参加取り消し成功、データを更新します");
+        // 成功時は強制的にデータを再取得（ログ削除：UI状態で確認可能）
 
         // 少し遅延させてデータ反映を待つ
         setTimeout(async () => {

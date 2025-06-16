@@ -79,6 +79,8 @@ export default function RaffleDapp() {
     getContractEthBalance,
     getContractUsdcBalance,
     updateRaffleData,
+    getMinPlayersReachedTime,
+    getMinimumPlayers,
   } = useRaffleContract();
 
   // コントラクト残高データ
@@ -87,12 +89,44 @@ export default function RaffleDapp() {
     usdcBalance: "0",
   });
 
-  // コントラクト残高を取得する関数 - forceUpdateフラグ対応
+  // カウントダウン用の状態変数
+  const [minPlayersReachedTime, setMinPlayersReachedTime] = useState(0);
+  const [minimumPlayers, setMinimumPlayers] = useState(3);
+
+  // カウントダウンデータを更新する関数
+  const updateCountdownData = useCallback(async () => {
+    if (!getMinPlayersReachedTime || !getMinimumPlayers) return;
+
+    try {
+      const [reachedTime, minPlayers] = await Promise.all([
+        getMinPlayersReachedTime(),
+        getMinimumPlayers(),
+      ]);
+      
+      setMinPlayersReachedTime(reachedTime);
+      setMinimumPlayers(minPlayers);
+    } catch (error) {
+      console.error("カウントダウンデータ取得エラー:", error);
+    }
+  }, [getMinPlayersReachedTime, getMinimumPlayers]);
+
+  // レート制限用の状態を追加
+  const lastBalanceUpdateRef = useRef(0);
+  const BALANCE_UPDATE_INTERVAL = 30000; // 30秒制限（API制限対策）
+
+  // コントラクト残高を取得する関数 - forceUpdateフラグ対応（レート制限付き）
   const updateContractBalances = useCallback(async (forceUpdate = false) => {
     // デバッグログのレベルを下げる
     const isDebugMode = false;
     
     if (!getContractEthBalance || !getContractUsdcBalance) {
+      return;
+    }
+
+    // レート制限チェック（強制更新でない場合）
+    const now = Date.now();
+    if (!forceUpdate && (now - lastBalanceUpdateRef.current) < BALANCE_UPDATE_INTERVAL) {
+      if (isDebugMode) console.log('残高更新をスキップ - レート制限中');
       return;
     }
 
@@ -106,19 +140,23 @@ export default function RaffleDapp() {
       const ethBalance = await getContractEthBalance(options);
       const usdcBalance = await getContractUsdcBalance(options);
 
-      // 前回値と比較して変更があればログ出力
-      if (ethBalance !== contractBalances.ethBalance || usdcBalance !== contractBalances.usdcBalance) {
-        if (isDebugMode) {
-          console.log('残高更新:', {
-            前: { ETH: contractBalances.ethBalance, USDC: contractBalances.usdcBalance },
-            後: { ETH: ethBalance, USDC: usdcBalance }
-          });
+      // 関数型更新を使用して無限ループを防止
+      setContractBalances(prevBalances => {
+        // 前回値と比較して変更があればログ出力
+        if (ethBalance !== prevBalances.ethBalance || usdcBalance !== prevBalances.usdcBalance) {
+          if (isDebugMode) {
+            console.log('残高更新:', {
+              前: { ETH: prevBalances.ethBalance, USDC: prevBalances.usdcBalance },
+              後: { ETH: ethBalance, USDC: usdcBalance }
+            });
+          }
+          lastBalanceUpdateRef.current = now; // 更新時刻を記録
+          return {
+            ethBalance: ethBalance,
+            usdcBalance: usdcBalance,
+          };
         }
-      }
-      
-      setContractBalances({
-        ethBalance: ethBalance,
-        usdcBalance: usdcBalance,
+        return prevBalances; // 変更なしの場合は既存値を返す
       });
     } catch (error) {
       // エラーログを抑制し、代わりにデフォルト値を設定
@@ -127,17 +165,109 @@ export default function RaffleDapp() {
         ethBalance: "0.015", // デフォルト値
         usdcBalance: "0", // デフォルト値
       });
+      lastBalanceUpdateRef.current = now; // エラー時も更新時刻を記録
     }
-  }, [getContractEthBalance, getContractUsdcBalance, chainId, contractBalances]);
+  }, [getContractEthBalance, getContractUsdcBalance, chainId]);
 
   // 初回読み込み時のみコントラクト残高を更新（遅延実行）
   useEffect(() => {
     // 初回読み込みを少し遅らせてレート制限を回避
     const timer = setTimeout(() => {
       updateContractBalances();
-    }, 2000);
+      updateCountdownData();
+    }, 5000); // 5秒に延長してAPI負荷を軽減
     return () => clearTimeout(timer);
-  }, []);
+  }, [updateContractBalances, updateCountdownData]);
+
+  // プレイヤー数が変化したときにカウントダウンデータを更新
+  useEffect(() => {
+    if (raffleData.numberOfPlayers >= 0) {
+      updateCountdownData();
+    }
+  }, [raffleData.numberOfPlayers, updateCountdownData]);
+
+  // ラッフル参加イベントの監視
+  const watchRaffleEvents = useCallback(() => {
+    if (!contractAddress || !publicClient) {
+      return () => {};
+    }
+
+    try {
+      const unwatch = publicClient.watchContractEvent({
+        address: contractAddress as `0x${string}`,
+        abi: [
+          {
+            anonymous: false,
+            inputs: [
+              { indexed: true, name: "player", type: "address" },
+              { indexed: false, name: "entranceFee", type: "uint256" }
+            ],
+            name: "RaffleEnter",
+            type: "event"
+          },
+          {
+            anonymous: false,
+            inputs: [
+              { indexed: true, name: "player", type: "address" },
+              { indexed: false, name: "refundAmount", type: "uint256" }
+            ],
+            name: "RaffleExit",
+            type: "event"
+          }
+        ],
+        eventName: "RaffleEnter",
+        onLogs: (logs) => {
+          console.log("ラッフル参加イベントを検出:", logs);
+          // カウントダウンデータを更新（最小プレイヤー数に達した可能性）
+          setTimeout(() => {
+            updateCountdownData();
+          }, 2000);
+        }
+      });
+
+      return unwatch;
+    } catch (error) {
+      console.error("ラッフルイベント監視の設定エラー:", error);
+      return () => {};
+    }
+  }, [contractAddress, publicClient, updateCountdownData]);
+
+  // ラッフル退出イベントの監視
+  const watchRaffleExitEvents = useCallback(() => {
+    if (!contractAddress || !publicClient) {
+      return () => {};
+    }
+
+    try {
+      const unwatch = publicClient.watchContractEvent({
+        address: contractAddress as `0x${string}`,
+        abi: [
+          {
+            anonymous: false,
+            inputs: [
+              { indexed: true, name: "player", type: "address" },
+              { indexed: false, name: "refundAmount", type: "uint256" }
+            ],
+            name: "RaffleExit",
+            type: "event"
+          }
+        ],
+        eventName: "RaffleExit",
+        onLogs: (logs) => {
+          console.log("ラッフル退出イベントを検出:", logs);
+          // カウントダウンデータを更新（最小プレイヤー数を下回った可能性）
+          setTimeout(() => {
+            updateCountdownData();
+          }, 2000);
+        }
+      });
+
+      return unwatch;
+    } catch (error) {
+      console.error("ラッフル退出イベント監視の設定エラー:", error);
+      return () => {};
+    }
+  }, [contractAddress, publicClient, updateCountdownData]);
 
   // トークン転送イベントの監視
   const watchTokenEvents = useCallback(() => {
@@ -187,8 +317,10 @@ export default function RaffleDapp() {
           
           if (relevantLogs.length > 0) {
             if (isDebugMode) console.log("コントラクトに関連するトークン転送を検出しました:", relevantLogs);
-            // 残高の強制更新を実行
-            updateContractBalances(true);
+            // 残高の強制更新を実行（ただし、レート制限を適用）
+            setTimeout(() => {
+              updateContractBalances(false); // 強制更新ではなく通常更新に変更
+            }, 5000); // 5秒遅延してAPI負荷を軽減
           }
         }
       });
@@ -237,6 +369,20 @@ export default function RaffleDapp() {
     // 上記条件に該当しない場合は何もしない
     return () => {};
   }, [chainId, watchTokenEvents]);
+
+  // ラッフルイベントリスナーの初期化
+  useEffect(() => {
+    if (!contractAddress || !publicClient) return;
+
+    // ラッフル参加・退出イベントの監視を開始
+    const raffleEnterCleanup = watchRaffleEvents();
+    const raffleExitCleanup = watchRaffleExitEvents();
+
+    return () => {
+      raffleEnterCleanup();
+      raffleExitCleanup();
+    };
+  }, [contractAddress, publicClient, watchRaffleEvents, watchRaffleExitEvents]);
 
   // 共通のラッフル開始処理
   const executeRaffle = async (upkeepFunction: () => Promise<any>, mode: string) => {
@@ -359,28 +505,8 @@ export default function RaffleDapp() {
     }
   }, [chainId, updateContractBalances, supportedChains]);
 
-  // 🎯 WINNER_SELECTED状態の自動監視と処理
-  useEffect(() => {
-    if (raffleData.raffleState === 2) { // WINNER_SELECTED状態を検出
-      console.log("🔍 WINNER_SELECTED状態を検出 - 3秒後に自動処理を開始");
-      
-      // 少し遅延させて状態が安定してから実行
-      const timer = setTimeout(() => {
-        autoProcessWinner();
-      }, 3000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [raffleData.raffleState]); // raffleStateが変更されたときのみ実行
-
-  // ラッフル参加成功時のコールバック
-  const handleRaffleEntrySuccess = () => {
-    // ラッフル参加後、自動的にデータが更新されるため何もしない
-    console.log("ラッフル参加成功");
-  };
-
-  // 🎯 自動processWinner実行関数
-  const autoProcessWinner = async () => {
+  // 🎯 自動processWinner実行関数（最適化版）
+  const autoProcessWinner = useCallback(async () => {
     if (!contractAddress || (!isConnected && !isReadyToSendTx)) return;
     if (raffleData.raffleState !== 2) return; // WINNER_SELECTED状態でない場合は何もしない
     
@@ -418,7 +544,7 @@ export default function RaffleDapp() {
 
         const receipt = await publicClient.waitForTransactionReceipt({
           hash: txHash,
-          timeout: 60000
+          timeout: 45000 // タイムアウトを短縮
         });
 
         if (receipt.status === "reverted") {
@@ -428,11 +554,11 @@ export default function RaffleDapp() {
         console.log("✅ EOA: 自動勝者処理完了");
       }
       
-      // 成功後にデータを更新
+      // 成功後にデータを更新（タイムアウトを長めに設定）
       setTimeout(() => {
         console.log('🔄 自動勝者処理後のデータ更新...');
         updateRaffleData(true);
-      }, 3000);
+      }, 5000);
       
       // 成功通知
       toast({
@@ -444,13 +570,55 @@ export default function RaffleDapp() {
     } catch (error: any) {
       console.error("❌ 自動勝者処理エラー:", error);
       
+      // より詳細なエラーハンドリング
+      const isTimeout = error.message?.includes('timeout') || error.message?.includes('Time');
+      const isRevert = error.message?.includes('revert');
+      
+      let errorDescription = "管理パネルから手動で勝者処理を実行してください";
+      if (isTimeout) {
+        errorDescription = "処理に時間がかかっています。ブロックエクスプローラーで確認してください";
+      } else if (isRevert) {
+        errorDescription = "トランザクションが失敗しました。条件を確認してください";
+      }
+      
       // エラー通知（ユーザーフレンドリー）
       toast({
         title: "⚠️ 自動処理エラー",
-        description: "管理パネルから手動で勝者処理を実行してください",
+        description: errorDescription,
         variant: "destructive",
       });
     }
+  }, [contractAddress, isConnected, isReadyToSendTx, raffleData.raffleState, smartAccountAddress, sendUserOperation, address, publicClient, writeContractAsync, updateRaffleData, toast]);
+
+  // 🎯 WINNER_SELECTED状態の自動監視と処理（最適化版）
+  const autoProcessWinnerRef = useRef(false);
+  
+  useEffect(() => {
+    if (raffleData.raffleState === 2 && !autoProcessWinnerRef.current) { // WINNER_SELECTED状態を検出
+      console.log("🔍 WINNER_SELECTED状態を検出 - 2秒後に自動処理を開始");
+      autoProcessWinnerRef.current = true;
+      
+      // 少し遅延させて状態が安定してから実行（タイムアウトを短縮）
+      const timer = setTimeout(() => {
+        autoProcessWinner();
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+    
+    // 状態がリセットされた場合はフラグもリセット
+    if (raffleData.raffleState !== 2) {
+      autoProcessWinnerRef.current = false;
+    }
+  }, [raffleData.raffleState, autoProcessWinner]); // raffleStateが変更されたときのみ実行
+
+  // ラッフル参加成功時のコールバック
+  const handleRaffleEntrySuccess = () => {
+    console.log("ラッフル参加成功");
+    // カウントダウンデータも更新（最小プレイヤー数に達した可能性）
+    setTimeout(() => {
+      updateCountdownData();
+    }, 2000);
   };
 
   return (
@@ -490,7 +658,13 @@ export default function RaffleDapp() {
               contributionRate={10}
             />
 
-            <RaffleCountdown initialMinutes={0} initialSeconds={42} />
+            <RaffleCountdown 
+              minPlayersReachedTime={minPlayersReachedTime}
+              raffleState={raffleData.raffleState}
+              playerCount={raffleData.numberOfPlayers}
+              minimumPlayers={minimumPlayers}
+              minTimeAfterMinPlayers={60} // 1 minute in seconds
+            />
 
             <PlayersList
               players={raffleData.players || []}

@@ -76,7 +76,7 @@ export function useRaffleStateManagement() {
     setTxHash(null);
 
     try {
-      console.log(`状態変更開始: ${getStateName(newState)} (${newState})`);
+      // 状態変更ログを削除（UIで状態は表示される）
       
       // writeContractAsyncを使用して非同期処理を正しく待つ
       const hash = await writeContractAsync({
@@ -86,7 +86,7 @@ export function useRaffleStateManagement() {
         args: [newState],
       });
 
-      console.log("トランザクションハッシュ:", hash);
+      // トランザクションハッシュログを削除（トランザクションはUIで表示）
       setTxHash(hash);
       
       return { success: true, txHash: hash };
