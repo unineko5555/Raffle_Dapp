@@ -392,11 +392,12 @@ export function useRaffleData() {
   const BALANCE_REQUEST_INTERVAL = 60000; // 1分間隔制限
 
   // コントラクトのETH残高を取得する関数 - 強制更新オプション対応
-  const getContractEthBalance = async (options = { forceUpdate: false }) => {
+  const getContractEthBalance = async (options?: { forceUpdate?: boolean }) => {
+    const { forceUpdate = false } = options || {};
     const now = Date.now();
 
     // 強制更新フラグがある場合はキャッシュをスキップ
-    const forceRefresh = options.forceUpdate || 
+    const forceRefresh = forceUpdate || 
       (typeof window !== 'undefined' && Boolean((window as any).FORCE_CONTRACT_BALANCE_REFRESH));
 
     // レート制限チェック（強制更新でない場合）
@@ -430,11 +431,12 @@ export function useRaffleData() {
   };
 
   // コントラクトのUSDC残高を取得する関数 - 強制更新オプション対応
-  const getContractUsdcBalance = async (options = { forceUpdate: false }) => {
+  const getContractUsdcBalance = async (options?: { forceUpdate?: boolean }) => {
+    const { forceUpdate = false } = options || {};
     const now = Date.now();
 
     // 強制更新フラグがある場合やチェーン切り替え後はキャッシュをスキップ
-    const forceRefresh = options.forceUpdate || 
+    const forceRefresh = forceUpdate || 
       (typeof window !== 'undefined' && Boolean((window as any).FORCE_CONTRACT_BALANCE_REFRESH));
 
     // 強制更新フラグをリセット（デバッグログを削除）
