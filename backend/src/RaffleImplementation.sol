@@ -177,10 +177,10 @@ contract RaffleImplementation is
 
     /**
      * @notice Mockプレイヤーを手動で追加する関数
-     * @dev 管理パネルから呼び出される
+     * @dev 管理パネルから呼び出される - 誰でも実行可能
      */
     function addMockPlayer() external {
-        require(msg.sender == s_owner, "Only owner can add mock player");
+        // オーナーチェックを削除 - 誰でも実行可能
         require(s_raffleState == RaffleState.OPEN, "Raffle is not open");
         
         // ユニークなモックアドレスを生成
@@ -210,10 +210,10 @@ contract RaffleImplementation is
 
     /**
      * @notice すべてのプレイヤーをリセットする関数
-     * @dev 管理パネルから呼び出される、オーナーのみ実行可能
+     * @dev 管理パネルから呼び出される - 誰でも実行可能
      */
     function resetPlayers() external {
-        require(msg.sender == s_owner, "Only owner can reset players");
+        // オーナーチェックを削除 - 誰でも実行可能
         require(s_raffleState == RaffleState.OPEN, "Raffle is not open");
         
         uint256 playerCount = s_players.length;
