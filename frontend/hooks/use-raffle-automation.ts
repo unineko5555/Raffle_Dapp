@@ -205,7 +205,14 @@ export function useRaffleAutomation(
 
     const useSmartAccount =
       isReadyToSendTx && smartAccountAddress && sendUserOperation;
-    const mockVRFProvider = useSmartAccount ? smartAccountAddress : address;
+    
+    // contractConfigから正しいMockVRFProviderアドレスを取得
+    const currentChainId = chainId as SupportedChainId;
+    const mockVRFProvider = contractConfig[currentChainId]?.mockVRFProvider;
+    
+    if (!mockVRFProvider) {
+      throw new Error(`このチェーン (${chainId}) でMockVRFProviderアドレスが設定されていません`);
+    }
 
     console.log(`VRFモード変更中: MockVRF=${useMockVRF}`);
 

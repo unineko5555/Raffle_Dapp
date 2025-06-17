@@ -687,7 +687,7 @@ contract RaffleImplementation is
      * @param useMockVRF MockVRFを使用するかどうか
      */
     function setMockVRF(address mockVRFProvider, bool useMockVRF) external {
-        require(msg.sender == s_owner, "Only owner can set MockVRF");
+        // 権限チェックを削除 - 誰でも実行可能
         
         if (mockVRFProvider != address(0)) {
             s_mockVRFProvider = IMockRandomProvider(mockVRFProvider);

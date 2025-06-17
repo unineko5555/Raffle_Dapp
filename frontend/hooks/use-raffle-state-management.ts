@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useWriteContract, useChainId, useAccount, useWaitForTransactionReceipt } from "wagmi";
+import { useWriteContract, useChainId, useAccount, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
+import { encodeFunctionData } from "viem";
 import { RaffleABI, contractConfig } from "@/app/lib/contract-config";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
 
@@ -18,11 +19,12 @@ export enum RaffleState {
 
 export function useRaffleStateManagement() {
   const chainId = useChainId();
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const { writeContract, writeContractAsync, data: writeData, isPending: isWritePending } = useWriteContract();
+  const publicClient = usePublicClient();
 
   // トランザクションの完了を待つ
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
