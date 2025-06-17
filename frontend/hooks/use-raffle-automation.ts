@@ -451,8 +451,9 @@ export function useRaffleAutomation(
           account: address,
         };
 
-        // Arbitrum Sepoliaの場合のガス設定最適化
+        // L2ネットワークのガス設定最適化
         if (chainId === 421614) {
+          // Arbitrum Sepolia
           console.log("Arbitrum Sepolia: ガス設定を最適化");
 
           try {
@@ -472,6 +473,28 @@ export function useRaffleAutomation(
           } catch (gasError) {
             console.warn("ガス估算エラー - デフォルト値を使用:", gasError);
             txParams.gas = BigInt(2000000); // フォールバック値
+          }
+        } else if (chainId === 84532) {
+          // Base Sepolia
+          console.log("Base Sepolia: ガス設定を最適化");
+
+          try {
+            const gasEstimate = await publicClient.estimateContractGas({
+              address: contractAddress as `0x${string}`,
+              abi: RaffleABI,
+              functionName: "performUpkeep",
+              args: ["0x"],
+              account: address,
+            });
+
+            console.log("ガス估算結果:", gasEstimate.toString());
+
+            // ガスリミットに30%のバッファを追加（Base特有のL1データ可用性費用変動に対応）
+            txParams.gas =
+              gasEstimate + (gasEstimate * BigInt(30)) / BigInt(100);
+          } catch (gasError) {
+            console.warn("ガス估算エラー - デフォルト値を使用:", gasError);
+            txParams.gas = BigInt(2500000); // Base Sepolia VRF max gas limit
           }
         }
 
