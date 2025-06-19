@@ -331,11 +331,52 @@ contract RaffleImplementation is
     }
 
     /**
+     * @notice デバッグ用のcheckUpkeep詳細情報を取得する関数
+     */
+    function checkUpkeepDebug() external view returns (
+        bool isOpen,
+        bool hasPlayers, 
+        bool hasTimePassed,
+        uint256 timeSinceMinPlayers,
+        uint256 requiredTime,
+        uint256 playerCount
+    ) {
+        isOpen = s_raffleState == RaffleState.OPEN;
+        hasPlayers = s_players.length >= s_minimumPlayers;
+        playerCount = s_players.length;
+        requiredTime = s_minTimeAfterMinPlayers;
+        
+        if (hasPlayers && s_minPlayersReachedTime > 0) {
+            timeSinceMinPlayers = block.timestamp - s_minPlayersReachedTime;
+            hasTimePassed = timeSinceMinPlayers > requiredTime;
+        } else {
+            timeSinceMinPlayers = 0;
+            hasTimePassed = false;
+        }
+    }
+
+    /**
      * @notice 抽選の実行を行う関数（修正版）
      * @dev Automationによって自動的に呼び出される
      */
     function performUpkeep(bytes calldata /* performData */) external override(AutomationCompatibleInterface, IRaffle) {
+        console.log("performUpkeep called");
+        
         (bool upkeepNeeded, ) = checkUpkeep("");
+        console.log("checkUpkeep result:", upkeepNeeded);
+        
+        if (!upkeepNeeded) {
+            console.log("Upkeep not needed - reverting");
+            console.log("Raffle state:", uint256(s_raffleState));
+            console.log("Players count:", s_players.length);
+            console.log("Minimum players:", s_minimumPlayers);
+            console.log("Min players reached time:", s_minPlayersReachedTime);
+            console.log("Current time:", block.timestamp);
+            console.log("Required time:", s_minTimeAfterMinPlayers);
+            revert("Upkeep not needed");
+        }
+        
+        console.log("Proceeding with upkeep");
         require(upkeepNeeded, "Upkeep not needed");
 
         // ラッフル状態を更新
@@ -748,27 +789,6 @@ contract RaffleImplementation is
         require(msg.sender == s_owner, "Only owner can upgrade");
     }
 
-    /**
-     * @notice デバッグ用のアップキープ状態確認関数
-     * @dev 現在のアップキープ条件の状態を詳細に返す
-     */
-    function checkUpkeepDebug() external view returns (
-        bool isOpen,
-        bool hasPlayers,
-        bool hasTimePassed,
-        uint256 timeSinceMinPlayers,
-        uint256 requiredTime,
-        uint256 playerCount
-    ) {
-        isOpen = s_raffleState == RaffleState.OPEN;
-        hasPlayers = s_players.length >= s_minimumPlayers;
-        timeSinceMinPlayers = s_minPlayersReachedTime > 0 ? block.timestamp - s_minPlayersReachedTime : 0;
-        requiredTime = s_minTimeAfterMinPlayers;
-        hasTimePassed = hasPlayers && timeSinceMinPlayers > requiredTime;
-        playerCount = s_players.length;
-        
-        return (isOpen, hasPlayers, hasTimePassed, timeSinceMinPlayers, requiredTime, playerCount);
-    }
 
     /* View / Pure functions */
 
