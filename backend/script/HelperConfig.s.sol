@@ -105,7 +105,7 @@ contract HelperConfig is Script {
             vrfCoordinatorV2: 0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE, // Base Sepolia VRF 2.5
             subscriptionId: 98421984322694640852048415297776008130427748567840988392624831496652524724985, // 実際のサブスクリプションIDに更新する必要あり
             keyHash: 0x9e1344a1247c8a1785d0a4681a27152bffdb43666ae5bf7d14d24a5efd44bf71,
-            callbackGasLimit: 500000,
+            callbackGasLimit: 2000000, // Base SepoliaのL2特有の要件に対応(オプティミスティックロールアップでガス計算が複雑になり高い値が必要)
             entranceFee: 10 * 1e6, // 10 USDC (6 decimals)
             usdcAddress: 0x036CbD53842c5426634e7929541eC2318f3dCF7e, // Base Sepolia USDC
             mockVRFProvider: address(mockVRFProvider), // MockVRFProviderのアドレス

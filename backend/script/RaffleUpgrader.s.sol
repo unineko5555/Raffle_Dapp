@@ -4,6 +4,7 @@ pragma solidity ^0.8.18;
 import {Script} from "forge-std/Script.sol";
 import {RaffleImplementation} from "../src/RaffleImplementation.sol";
 import {RaffleProxy} from "../src/RaffleProxy.sol";
+import {HelperConfig} from "./HelperConfig.s.sol";
 import {console} from "forge-std/console.sol";
 
 /**
@@ -24,7 +25,7 @@ contract RaffleUpgrader is Script {
         if (block.chainid == 11155111) { // Sepolia
             vrfCoordinatorV2 = 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B;
         } else if (block.chainid == 84532) { // Base Sepolia
-            vrfCoordinatorV2 = 0x5CE8D5A2BC84beb22a398CCA51996F7930313D61;
+            vrfCoordinatorV2 = 0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE;
         } else if (block.chainid == 421614) { // Arbitrum Sepolia
             vrfCoordinatorV2 = 0x5CE8D5A2BC84beb22a398CCA51996F7930313D61;
         } else {
@@ -72,7 +73,7 @@ contract RaffleUpgrader is Script {
         if (block.chainid == 11155111) { // Sepolia
             vrfCoordinatorV2 = 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B;
         } else if (block.chainid == 84532) { // Base Sepolia
-            vrfCoordinatorV2 = 0x5CE8D5A2BC84beb22a398CCA51996F7930313D61;
+            vrfCoordinatorV2 = 0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE;
         } else if (block.chainid == 421614) { // Arbitrum Sepolia
             vrfCoordinatorV2 = 0x5CE8D5A2BC84beb22a398CCA51996F7930313D61;
         } else {
