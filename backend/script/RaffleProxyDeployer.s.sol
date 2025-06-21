@@ -47,6 +47,7 @@ contract DeployRaffle is Script {
         // 初期化データの準備
         bytes memory initData = abi.encodeWithSelector(
             RaffleImplementation.initialize.selector,
+            msg.sender, // initialOwner: デプロイ者をオーナーに設定
             vrfCoordinatorV2,
             subscriptionId,
             keyHash,

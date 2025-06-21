@@ -3,7 +3,7 @@ export const contractConfig = {
   // Ethereum Sepolia
   11155111: {
     name: "Ethereum Sepolia",
-    raffleProxy: "0xc89d87ed1da4aa157173103e6f8615d00fcce934", // Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "0xf84b248e56fcdf8fba11901cfdc14509786f3121", // Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", // SepoliaのUSDC (またはモックトークン) アドレス
     mockVRFProvider: "0x32ef48c18cd50b7771d8eae34a83241058bfe354", // MockVRFProviderアドレス
     blockExplorer: "https://sepolia.etherscan.io",
@@ -12,7 +12,7 @@ export const contractConfig = {
   // Base Sepolia
   84532: {
     name: "Base Sepolia",
-    raffleProxy: "0x5e33c797c36164c06267f0402592662ee231caa0", // Base Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "0x885c5510ecc10a89ed27d95c5074ed2d943cd134", // Base Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base SepoliaのUSDC (またはモックトークン) アドレス
     mockVRFProvider: "0xdf98c3e9a2ea1250e0894d27a9cc0205df049d00", // MockVRFProviderアドレス
     blockExplorer: "https://sepolia.basescan.org",
@@ -21,7 +21,7 @@ export const contractConfig = {
   // Arbitrum Sepolia
   421614: {
     name: "Arbitrum Sepolia",
-    raffleProxy: "0x3fc8a0ad8ed97ace6641d9f3fda60569f0d3f3a9", // Arbitrum Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "0xaa645f62c2bb92b69cfe7612edb0bdffb2bf6106", // Arbitrum Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d", // Arbitrum SepoliaのUSDC (またはモックトークン) アドレス
     mockVRFProvider: "0x8b7f67245d6ef233094073ed1f9a6f40be503553", // MockVRFProviderアドレス
     blockExplorer: "https://sepolia-explorer.arbitrum.io",
@@ -429,6 +429,11 @@ export const RaffleABI = [
     "name": "initialize",
     "inputs": [
       {
+        "name": "initialOwner",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
         "name": "vrfCoordinatorV2",
         "type": "address",
         "internalType": "address"
@@ -477,6 +482,19 @@ export const RaffleABI = [
         "name": "nativePayment",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "initializeOwnershipPostUpgrade",
+    "inputs": [
+      {
+        "name": "initialOwner",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -541,6 +559,29 @@ export const RaffleABI = [
         "name": "randomWords",
         "type": "uint256[]",
         "internalType": "uint256[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "reinitializeVRF",
+    "inputs": [
+      {
+        "name": "subscriptionId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "keyHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "callbackGasLimit",
+        "type": "uint32",
+        "internalType": "uint32"
       }
     ],
     "outputs": [],

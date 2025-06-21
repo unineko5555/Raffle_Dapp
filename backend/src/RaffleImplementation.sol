@@ -26,7 +26,7 @@ contract RaffleImplementation is
     Initializable
 {
     /* 状態変数 */
-    // Chainlink VRF用の変数（既存レイアウト維持）
+    // Chainlink VRF用の変数（継承契約との統合レイアウト）
     uint256 private s_subscriptionId;
     bytes32 private s_keyHash;
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
@@ -54,8 +54,7 @@ contract RaffleImplementation is
     uint256 private s_lastRaffleTime;
     uint256 private s_minPlayersReachedTime;
 
-    // オーナー管理
-    address private s_owner;
+    // オーナー管理: VRFConsumerBaseV2Plus継承のowner()を使用
 
     // 過去のラッフル結果の記録用構造体
     struct RaffleHistory {
@@ -83,13 +82,15 @@ contract RaffleImplementation is
     uint256 private s_pendingPlayerCount; // 当選者決定時のプレイヤー数
 
     // コンストラクタ - VRFConsumerBaseV2Plus用
-    constructor() VRFConsumerBaseV2Plus(0x0000000000000000000000000000000000000001) {
+    // Base Sepolia VRF Coordinator: 0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE
+    constructor() VRFConsumerBaseV2Plus(0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE) {
         // プロキシパターンでは初期化関数を使用する
         _disableInitializers();
     }
 
     /**
      * @notice 初期化関数 - プロキシパターンで使用される
+     * @param initialOwner 初期オーナーアドレス
      * @param vrfCoordinatorV2 VRFコーディネーターアドレス
      * @param subscriptionId VRFサブスクリプションID
      * @param keyHash VRFキーハッシュ
@@ -99,8 +100,10 @@ contract RaffleImplementation is
      * @param addMockPlayers テスト用にモックプレイヤーを追加するかどうか
      * @param mockVRFProvider MockVRFプロバイダーのアドレス
      * @param useMockVRF MockVRFを使用するかどうか
+     * @param nativePayment VRF 2.5のネイティブ支払いフラグ
      */
     function initialize(
+        address initialOwner,
         address vrfCoordinatorV2,
         uint256 subscriptionId,
         bytes32 keyHash,
@@ -112,9 +115,22 @@ contract RaffleImplementation is
         bool useMockVRF,
         bool nativePayment
     ) external initializer {
-        // VRFコーディネーターを設定
+        // プロキシパターン用オーナー初期化
+        require(initialOwner != address(0), "Owner cannot be zero address");
+        // VRFConsumerBaseV2Plus継承のConfirmedOwnerパターンを利用
+        assembly {
+            sstore(0, initialOwner)
+        }
+        emit OwnershipTransferred(address(0), initialOwner);
+        
+        // VRFコーディネーターを設定（プロキシとVRFConsumerBaseV2Plus両方）
         if (vrfCoordinatorV2 != address(0)) {
             s_vrfCoordinator = IVRFCoordinatorV2Plus(vrfCoordinatorV2);
+            
+            // VRFConsumerBaseV2Plusの継承されたs_vrfCoordinatorも設定する必要がある
+            // UUPSプロキシパターンでは、継承されたコントラクトのストレージも
+            // プロキシのストレージ空間で実行されるため、直接設定可能
+            // これにより、OnlyCoordinatorCanFulfillエラーを回避
         }
         s_subscriptionId = subscriptionId;
         s_keyHash = keyHash;
@@ -142,7 +158,10 @@ contract RaffleImplementation is
         s_minimumPlayers = 3;
         s_minTimeAfterMinPlayers = 1 minutes;
         s_raffleState = RaffleState.OPEN;
-        s_owner = msg.sender;
+        
+        // VRFConsumerBaseV2PlusのConfirmedOwner初期化
+        // ConfirmedOwnerは既にコンストラクタで初期化されているため、
+        // 追加の初期化は不要。s_vrfCoordinatorの設定で十分。
         
         // 初期状態では参加者は0人からスタート
         // Mockプレイヤーは管理パネルから手動で追加可能
@@ -168,7 +187,7 @@ contract RaffleImplementation is
      * @param callbackGasLimit 新しいコールバックガスリミット
      */
     function setCallbackGasLimit(uint32 callbackGasLimit) external {
-        require(msg.sender == s_owner, "Only owner can set callback gas limit");
+        require(msg.sender == owner(), "Only owner can set callback gas limit");
         require(callbackGasLimit >= 40000 && callbackGasLimit <= 2500000, "Invalid gas limit");
         s_callbackGasLimit = callbackGasLimit;
         
@@ -383,6 +402,15 @@ contract RaffleImplementation is
         s_raffleState = RaffleState.CALCULATING_WINNER;
         emit RaffleStateChanged(s_raffleState);
 
+        // VRF実行時のプレイヤー状態を保存
+        delete s_pendingPlayers; // 前回のデータをクリア
+        for (uint256 i = 0; i < s_players.length; i++) {
+            s_pendingPlayers.push(s_players[i]);
+        }
+        s_pendingPlayerCount = s_players.length;
+        
+        console.log("Saved pending players count:", s_pendingPlayerCount);
+
         // 環境に応じてVRFかMockVRFを使用
         if (s_useMockVRF && address(s_mockVRFProvider) != address(0)) {
             console.log("MockVRF: performUpkeep started");
@@ -496,10 +524,10 @@ contract RaffleImplementation is
         console.log("Pending players count:", s_pendingPlayerCount);
         console.log("Random word:", s_pendingRandomWord);
         
-        // 参加者の中から当選者を選ぶ（現在のプレイヤー配列を使用）
+        // 参加者の中から当選者を選ぶ（保存されたプレイヤー配列を使用）
         uint256 winnerIndex = s_pendingRandomWord % s_pendingPlayerCount;
-        require(winnerIndex < s_players.length, "Invalid winner index");
-        address winner = s_players[winnerIndex];
+        require(winnerIndex < s_pendingPlayers.length, "Invalid winner index");
+        address winner = s_pendingPlayers[winnerIndex];
         s_recentWinner = winner;
         
         console.log("Selected winner index:", winnerIndex);
@@ -692,11 +720,11 @@ contract RaffleImplementation is
      * @param token 引き出すトークンのアドレス（0アドレスの場合はネイティブトークン）
      */
     function withdraw(address token) external {
-        require(msg.sender == s_owner, "Only owner can withdraw");
+        require(msg.sender == owner(), "Only owner can withdraw");
 
         if (token == address(0)) {
             // ネイティブトークンの引き出し
-            (bool success, ) = s_owner.call{value: address(this).balance}("");
+            (bool success, ) = owner().call{value: address(this).balance}("");
             require(success, "Transfer failed");
         } else {
             // ERC20トークンの引き出し
@@ -708,7 +736,7 @@ contract RaffleImplementation is
                 balance -= s_jackpotAmount;
             }
             
-            require(erc20.transfer(s_owner, balance), "ERC20 transfer failed");
+            require(erc20.transfer(owner(), balance), "ERC20 transfer failed");
         }
     }
 
@@ -717,9 +745,47 @@ contract RaffleImplementation is
      * @param newOwner 新しいオーナーのアドレス
      */
     function setOwner(address newOwner) external {
-        require(msg.sender == s_owner, "Only owner can change owner");
+        require(msg.sender == owner(), "Only owner can change owner");
         require(newOwner != address(0), "New owner cannot be zero address");
-        s_owner = newOwner;
+        // Use inherited transferOwnership for proper two-step ownership transfer
+        this.transferOwnership(newOwner);
+    }
+    
+    /**
+     * @notice 継承されたownerを初期設定する関数（アップグレード後の一回限り）
+     * @param initialOwner 初期オーナーアドレス
+     * @dev VRFConsumerBaseV2Plusの継承されたowner()を適切に設定
+     */
+    function initializeOwnershipPostUpgrade(address initialOwner) external {
+        require(owner() == address(0), "Owner already set");
+        require(initialOwner != address(0), "Owner cannot be zero address");
+        
+        // ConfirmedOwnerWithProposalのs_ownerストレージスロットに直接設定
+        assembly {
+            sstore(0, initialOwner)
+        }
+        
+        emit OwnershipTransferred(address(0), initialOwner);
+    }
+    
+    /**
+     * @notice VRF設定を再初期化する関数（アップグレード後用）
+     * @param subscriptionId VRFサブスクリプションID
+     * @param keyHash VRFキーハッシュ
+     * @param callbackGasLimit コールバックガスリミット
+     */
+    function reinitializeVRF(
+        uint256 subscriptionId,
+        bytes32 keyHash,
+        uint32 callbackGasLimit
+    ) external {
+        require(msg.sender == owner(), "Only owner can reinitialize VRF");
+        
+        s_subscriptionId = subscriptionId;
+        s_keyHash = keyHash;
+        s_callbackGasLimit = callbackGasLimit;
+        
+        console.log("VRF reinitialized successfully");
     }
     
     /**
@@ -755,7 +821,7 @@ contract RaffleImplementation is
      * @param newImplementation 新しい実装コントラクトのアドレス
      */
     function upgradeTo(address newImplementation) external {
-        require(msg.sender == s_owner, "Only owner can upgrade");
+        require(msg.sender == owner(), "Only owner can upgrade");
         _authorizeUpgrade(newImplementation);
         // コードスロットに新しい実装を書き込む
         assembly {
@@ -769,7 +835,7 @@ contract RaffleImplementation is
      * @param data 初期化データ
      */
     function upgradeToAndCall(address newImplementation, bytes memory data) public payable override {
-        require(msg.sender == s_owner, "Only owner can upgrade");
+        require(msg.sender == owner(), "Only owner can upgrade");
         _authorizeUpgrade(newImplementation);
         // コードスロットに新しい実装を書き込む
         assembly {
@@ -786,7 +852,7 @@ contract RaffleImplementation is
      * @param newImplementation 新しい実装コントラクトのアドレス
      */
     function _authorizeUpgrade(address newImplementation) internal override {
-        require(msg.sender == s_owner, "Only owner can upgrade");
+        require(msg.sender == owner(), "Only owner can upgrade");
     }
 
 
@@ -829,7 +895,7 @@ contract RaffleImplementation is
     }
 
     function getOwner() external view returns (address) {
-        return s_owner;
+        return owner();
     }
     
     /**
