@@ -1,0 +1,37 @@
+name: raffleIndexer
+project_type: no-code
+networks:
+  - name: ethereum_sepolia
+    chain_id: 11155111
+    rpc: ${SEPOLIA_RPC_URL}
+  - name: base_sepolia
+    chain_id: 84532
+    rpc: ${BASE_SEPOLIA_RPC_URL}
+  - name: arbitrum_sepolia
+    chain_id: 421614
+    rpc: ${ARBITRUM_SEPOLIA_RPC_URL}
+storage:
+  postgres:
+    enabled: true
+  csv:
+    enabled: false
+    path: ./data
+native_transfers:
+  enabled: false
+contracts:
+  - name: RaffleImplementation
+    details:
+      - network: ethereum_sepolia
+        address: 0xf84b248e56fcdf8fba11901cfdc14509786f3121
+        start_block: "8610000"
+      - network: base_sepolia
+        address: 0x885c5510ecc10a89ed27d95c5074ed2d943cd134
+        start_block: "20000000"
+      - network: arbitrum_sepolia
+        address: 0xaa645f62c2bb92b69cfe7612edb0bdffb2bf6106
+        start_block: "166500000"
+    abi: ./abis/RaffleImplementation.json
+    include_events:
+      - WinnerPicked
+      - RaffleEnter
+      - RaffleExit

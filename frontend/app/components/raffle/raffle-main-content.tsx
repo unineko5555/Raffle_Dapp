@@ -125,6 +125,7 @@ export function RaffleMainContent({
         pastRaffles={pastRaffles || []}
         currentAddress={currentAddress}
         isLoading={isHistoryLoading}
+        useRindexer={false}
       />
     </div>
   );
