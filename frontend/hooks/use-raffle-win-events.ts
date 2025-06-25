@@ -73,8 +73,8 @@ export function useRaffleWinEvents() {
     try {
       // 現在のブロック番号を取得
       const currentBlock = await publicClient.getBlockNumber();
-      // 過去100ブロックのイベントを取得
-      const fromBlock = currentBlock > 100n ? currentBlock - 100n : 0n;
+      // 過去50ブロックのイベントを取得（API制限対策）
+      const fromBlock = currentBlock > 50n ? currentBlock - 50n : 0n;
       
       // WinnerPickedイベントのABIフラグメント
       const winnerPickedEvent = {
