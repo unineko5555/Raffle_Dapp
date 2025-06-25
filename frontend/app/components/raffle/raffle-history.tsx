@@ -75,7 +75,11 @@ export function RaffleHistory({
         <div className="flex items-center gap-2 mb-4">
           <Trophy className="w-5 h-5 text-amber-500" />
           <h3 className="text-xl font-semibold">過去のラッフル当選履歴</h3>
-          {useRindexer && <Database className="w-4 h-4 text-blue-500" title="Rindexer Database" />}
+          {useRindexer && (
+            <div title="Rindexer Database">
+              <Database className="w-4 h-4 text-blue-500" />
+            </div>
+          )}
         </div>
         <div className="text-center py-8 text-slate-500">
           <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
@@ -91,7 +95,9 @@ export function RaffleHistory({
         <div className="flex items-center gap-2 mb-4">
           <Trophy className="w-5 h-5 text-amber-500" />
           <h3 className="text-xl font-semibold">過去のラッフル当選履歴</h3>
-          <Database className="w-4 h-4 text-red-500" title="Database Error" />
+          <div title="Database Error">
+            <Database className="w-4 h-4 text-red-500" />
+          </div>
         </div>
         <div className="text-center py-8">
           <p className="text-red-500 mb-2">データの読み込みに失敗しました</p>
@@ -113,7 +119,11 @@ export function RaffleHistory({
         <div className="flex items-center gap-2 mb-4">
           <Trophy className="w-5 h-5 text-amber-500" />
           <h3 className="text-xl font-semibold">過去のラッフル当選履歴</h3>
-          {useRindexer && <Database className="w-4 h-4 text-blue-500" title="Rindexer Database" />}
+          {useRindexer && (
+            <div title="Rindexer Database">
+              <Database className="w-4 h-4 text-blue-500" />
+            </div>
+          )}
         </div>
         <div className="text-center py-8 text-slate-500">
           まだ当選履歴がありません
@@ -130,7 +140,11 @@ export function RaffleHistory({
         <h3 className="text-xl font-semibold flex items-center gap-2">
           <Trophy className="w-5 h-5 text-amber-500" />
           過去のラッフル当選履歴
-          {useRindexer && <Database className="w-4 h-4 text-blue-500" title="Rindexer Database" />}
+          {useRindexer && (
+            <div title="Rindexer Database">
+              <Database className="w-4 h-4 text-blue-500" />
+            </div>
+          )}
         </h3>
         
         {useRindexer && stats && (
