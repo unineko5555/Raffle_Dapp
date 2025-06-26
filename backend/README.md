@@ -1,154 +1,239 @@
-# Raffle DApp Backend
+# ⚡ Backend - Raffle DApp
 
-Cross-chain raffle DApp backend built with Foundry and Chainlink CCIP.
+Foundry + Chainlink VRFで構築されたクロスチェーン対応ラッフルシステム
 
-## Quick Start
+## 🚀 クイックスタート
 
-### Prerequisites
+### 前提条件
 
-- [Foundry](https://book.getfoundry.sh/getting-started/installation) installed
-- Node.js 18+ (for frontend integration)
+- [Foundry](https://book.getfoundry.sh/getting-started/installation)
+- Node.js 18以上（フロントエンド連携用）
 
-### Installation
+### インストール
 
 ```bash
-# Clone the repository
+# リポジトリのクローン
 git clone <your-repo-url>
 cd Raffle_Dapp/backend
 
-# Install all dependencies
+# 全依存関係のインストール
 make install
 
-# Build contracts
+# コントラクトのビルド
 make build
 
-# Run tests
+# テストの実行
 make test
 ```
 
-## Dependencies
+## 📦 依存関係
 
-This project uses the following dependencies (automatically installed with `make install`):
+このプロジェクトでは以下の依存関係を使用（`make install`で自動インストール）：
 
-- **Forge Standard Library** (`forge-std@v1.8.2`): Testing utilities
-- **OpenZeppelin Contracts** (`@openzeppelin/contracts@v5.0.2`): Secure contract standards
-- **Chainlink CCIP** (`@chainlink/contracts-ccip@v1.6.0`): Cross-chain interoperability
+- **Forge Standard Library** (`forge-std@v1.8.2`): テストユーティリティ
+- **OpenZeppelin Contracts** (`@openzeppelin/contracts@v5.0.2`): セキュアなコントラクト標準
+- **Chainlink Brownie Contracts**: VRF統合
 
-### Manual Dependency Installation
+### 手動依存関係インストール
 
-If you prefer to install dependencies manually:
+依存関係を手動でインストールする場合：
 
 ```bash
-# Install each dependency
+# 各依存関係のインストール
 forge install foundry-rs/forge-std@v1.8.2 --no-commit
 forge install OpenZeppelin/openzeppelin-contracts@v5.0.2 --no-commit
-forge install smartcontractkit/chainlink-ccip@contracts-ccip-v1.6.0 --no-commit
+forge install smartcontractkit/chainlink-brownie-contracts --no-commit
 ```
 
-## Project Structure
+## 📁 プロジェクト構造
 
 ```
 backend/
-├── src/                          # Smart contracts
-│   ├── RaffleImplementation.sol  # Main raffle contract
-│   ├── RaffleBridgeImplementation.sol  # CCIP bridge contract
-│   ├── RaffleProxy.sol           # UUPS proxy
-│   └── interfaces/               # Contract interfaces
-├── test/                         # Test files
-├── script/                       # Deployment scripts
-├── foundry.toml                  # Foundry configuration
-├── Makefile                      # Build automation
-└── README.md                     # This file
+├── src/                          # スマートコントラクト
+│   ├── RaffleImplementation.sol  # メインラッフルコントラクト
+│   ├── RaffleProxy.sol           # UUPS プロキシ
+│   ├── interfaces/               # コントラクトインターフェース
+│   ├── libraries/                # ライブラリ
+│   └── mocks/                    # テスト用モック
+├── test/                         # テストファイル
+├── script/                       # デプロイメントスクリプト
+├── foundry.toml                  # Foundry設定
+├── Makefile                      # ビルド自動化
+└── README.md                     # このファイル
 ```
 
-## Configuration
+## ⚙️ 設定
 
 ### foundry.toml
 
-The project configuration includes:
+プロジェクト設定には以下が含まれます：
 
-- **Remappings**: Automatic path resolution for dependencies
-- **Optimization**: Enabled with 200 runs
-- **Dependencies**: Declared for automatic installation
+- **リマッピング**: 依存関係の自動パス解決
+- **最適化**: 200回の最適化実行を有効化
+- **依存関係**: 自動インストール用の宣言
 
-### Environment Variables
+### 環境変数
 
-Create a `.env` file in the backend directory:
+backendディレクトリに`.env`ファイルを作成：
 
 ```bash
-# Required for deployments
+# デプロイメントに必要
 PRIVATE_KEY=your_private_key_here
 SEPOLIA_RPC_URL=your_sepolia_rpc_url
 BASE_SEPOLIA_RPC_URL=your_base_sepolia_rpc_url
 ARBITRUM_SEPOLIA_RPC_URL=your_arbitrum_sepolia_rpc_url
 
-# API Keys for verification
+# 検証用APIキー
 ETHERSCAN_API_KEY=your_etherscan_api_key
 BASE_API_KEY=your_base_api_key
 ARBISCAN_API_KEY=your_arbiscan_api_key
 ```
 
-## Available Commands
+## 🛠️ 利用可能なコマンド
 
-### Development
+### 開発
 
 ```bash
-make install          # Install all dependencies
-make build            # Compile contracts
-make test             # Run all tests
-make test-unit        # Run unit tests only
-make format           # Format code
-make clean            # Clean build artifacts
+make install          # 全依存関係のインストール
+make build            # コントラクトのコンパイル
+make test             # 全テストの実行
+make test-unit        # ユニットテストのみ実行
+make format           # コードフォーマット
+make clean            # ビルド成果物のクリーンアップ
 ```
 
-### Deployment
+### デプロイメント
 
 ```bash
-# Deploy to all testnets
+# 全テストネットにデプロイ
 make deploy-raffle-proxy
-make deploy-bridge-proxy
 
-# Deploy to specific networks
+# 特定ネットワークにデプロイ
 make deploy-raffle-proxy-sepolia
-make deploy-bridge-proxy-base
+make deploy-raffle-proxy-base
+make deploy-raffle-proxy-arbitrum
 ```
 
-### Upgrades
+### アップグレード
 
 ```bash
-# Upgrade implementations
+# 実装コントラクトのアップグレード
 make upgrade-raffle
-make upgrade-bridge-proxy
 ```
 
-## Troubleshooting
+## 🔧 トラブルシューティング
 
-### Common Issues
+### よくある問題
 
-1. **Build Errors**: Run `make clean && make install && make build`
-2. **Dependency Issues**: Check that all dependencies are correctly installed
-3. **Remapping Errors**: Verify `foundry.toml` remappings are correct
+1. **ビルドエラー**: `make clean && make install && make build`を実行
+2. **依存関係の問題**: 全ての依存関係が正しくインストールされているか確認
+3. **リマッピングエラー**: `foundry.toml`のリマッピングが正しいか確認
 
-### Dependency Verification
+### 依存関係の確認
 
-To verify dependencies are correctly installed:
+依存関係が正しくインストールされているか確認：
 
 ```bash
-# Check if libraries exist
+# ライブラリの存在確認
 ls lib/
-# Should show: forge-std, openzeppelin-contracts, chainlink-ccip
+# 表示されるべき: forge-std, openzeppelin-contracts, chainlink-brownie-contracts
 
-# Test compilation
+# コンパイルテスト
 make build
 ```
 
-## Architecture
+## 🏗️ アーキテクチャ
 
-This project implements a cross-chain raffle system using:
+このプロジェクトは以下を使用したクロスチェーンラッフルシステムを実装：
 
-- **UUPS Proxy Pattern**: Upgradeable contracts
-- **Chainlink CCIP**: Cross-chain communication
-- **Pool-based Bridge**: Efficient token transfers
-- **Multi-chain Deployment**: Support for Ethereum, Base, and Arbitrum
+- **UUPS プロキシパターン**: アップグレード可能なコントラクト
+- **Chainlink VRF v2.5**: 証明可能に公平なランダム性
+- **Account Abstraction**: ガスレストランザクション
+- **マルチチェーンデプロイ**: Ethereum、Base、Arbitrum対応
 
-For more details, see the contract documentation in `/src`.
+## 📋 コントラクト仕様
+
+### コアコントラクト
+
+#### RaffleImplementation.sol
+アップグレード可能プロキシパターンを使用したメインラッフルロジック：
+
+```solidity
+// 主要関数
+function enterRaffle() external           // ラッフル参加 (10 USDC)
+function cancelEntry() external           // 参加キャンセル
+function processWinner() external         // 勝者選択実行
+function getUserStats(address) view       // ユーザー統計取得
+function getRaffleHistory() view          // 過去のラッフル結果取得
+
+// VRF統合
+function requestRandomWords() internal    // ランダム性要求
+function fulfillRandomWords() internal    // VRFレスポンス処理
+
+// 状態: OPEN -> CALCULATING_WINNER -> OPEN
+enum RaffleState { OPEN, CALCULATING_WINNER }
+```
+
+#### 主要イベント
+```solidity
+event RaffleEnter(address indexed player, uint256 entranceFee);
+event RaffleExit(address indexed player, uint256 refundAmount);
+event WinnerPicked(address indexed winner, uint256 prize, bool isJackpot);
+```
+
+### ネットワークデプロイ
+
+| ネットワーク | コントラクトアドレス | 開始ブロック |
+|-------------|-------------------|-------------|
+| Ethereum Sepolia | `0xf84b248e56fcdf8fba11901cfdc14509786f3121` | 8,610,000 |
+| Base Sepolia | `0x885c5510ecc10a89ed27d95c5074ed2d943cd134` | 20,000,000 |
+| Arbitrum Sepolia | `0xaa645f62c2bb92b69cfe7612edb0bdffb2bf6106` | 166,500,000 |
+
+### ゲームメカニクス
+
+```
+参加費用: 10 USDC
+最小プレイヤー数: 3人
+自動実行: 最小人数到達後60秒
+ジャックポット確率: 35%（ジャックポット額≥10 USDCの場合）
+賞金分配:
+  - 通常: 全参加費（ジャックポット積立10%を除く）
+  - ジャックポット: 参加費 + 蓄積されたジャックポット額
+```
+
+### セキュリティ機能
+
+- **リエントランシー保護**: OpenZeppelin ReentrancyGuard使用
+- **アクセス制御**: Ownable2Step使用による安全な所有権移転
+- **アップグレード可能性**: UUPS プロキシパターン
+- **VRF統合**: Chainlink VRF v2.5による証明可能なランダム性
+
+### テスト
+
+```bash
+# 全テスト実行
+forge test
+
+# 詳細出力でテスト実行
+forge test -vvv
+
+# 特定テストファイルの実行
+forge test --match-path test/unit/RaffleTest.t.sol
+
+# ガス使用量レポート
+forge test --gas-report
+```
+
+### デプロイメント例
+
+```bash
+# Ethereum Sepoliaにデプロイ
+forge script script/RaffleProxyDeployer.s.sol:DeployRaffle \
+  --rpc-url $SEPOLIA_RPC_URL \
+  --private-key $PRIVATE_KEY \
+  --broadcast \
+  --verify \
+  --etherscan-api-key $ETHERSCAN_API_KEY
+```
+
+詳細については、`/src`のコントラクトドキュメントを参照してください。

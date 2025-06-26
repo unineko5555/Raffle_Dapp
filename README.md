@@ -1,78 +1,218 @@
-# Raffle Dapp
+# 🎲 Raffle DApp - Cross-Chain Lottery System
 
-Raffle Dappは、ブロックチェーン技術を活用した分散型抽選アプリケーションです。ユーザーはUSDCトークンを使用して抽選に参加でき、透明性の高い抽選プロセスと自動的な賞金分配を実現しています。
+<div align="center">
 
-## 概要
+![Raffle DApp](./frontend/public/placeholder-logo.svg)
 
-このDappは、完全にオンチェーンで動作する抽選システムを提供します。主な特徴は以下の通りです：
+**透明性と公平性を保証するブロックチェーンベースの抽選システム**
 
-- 完全に分散化された抽選プロセス
-- スマートコントラクトによる透明な賞金分配
-- 複数のブロックチェーンネットワークのサポート（Ethereum、Polygon、Arbitrum、Optimism）
-- ガス代無料の参加オプション
-- 定期的な抽選と自動的なジャックポット蓄積システム
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed-Vercel-000000?style=for-the-badge&logo=vercel)](your-vercel-url)
+[![Ethereum](https://img.shields.io/badge/Ethereum-Sepolia-627EEA?style=for-the-badge&logo=ethereum)](https://sepolia.etherscan.io)
+[![Base](https://img.shields.io/badge/Base-Sepolia-0052FF?style=for-the-badge&logo=coinbase)](https://base-sepolia.blockscout.com)
+[![Arbitrum](https://img.shields.io/badge/Arbitrum-Sepolia-28A0F0?style=for-the-badge&logo=arbitrum)](https://sepolia.arbiscan.io)
 
-## 技術スタック
+</div>
 
-### フロントエンド
+## 📱 ライブデモ
 
-- **フレームワーク**: Next.js 15
-- **UI/UXライブラリ**: 
-  - Tailwind CSS
-  - Radix UI コンポーネント
-  - Lucide React（アイコン）
-- **ステート管理**: React Hooks + Context API
-- **Webアプリケーション**: SPA（Single Page Application）
-- **Web3連携**: 
-  - wagmi
-  - viem
-  - ethers.js
+- **フロントエンド**: [https://your-app.vercel.app](https://your-app.vercel.app)
+- **対応チェーン**: Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia
+- **テスト用USDC**: 各テストネットで無料取得可能
 
-### バックエンド
+## ✨ 主要機能
 
-- **スマートコントラクト開発**: Solidity
-- **開発環境**: Foundry（Anvil、Forge）
-- **ブロックチェーンインフラ**: 
-  - Alchemy API
-  - WalletConnect
-- **テスト**: Forge Test Suite
+### 🔥 コア機能
+- **完全分散型抽選**: スマートコントラクトによる透明な抽選プロセス
+- **VRF証明可能ランダム性**: Chainlink VRFによる改ざん不可能な乱数生成
+- **クロスチェーン対応**: 複数ブロックチェーン間での統一された体験
+- **ガス代無料参加**: Account Abstractionによるユーザビリティ向上
 
-### インフラストラクチャ
+### 💰 経済システム
+- **ジャックポットシステム**: 蓄積型大賞システム
+- **自動賞金分配**: スマートコントラクトによる即座の支払い
+- **USDC決済**: 安定した価値での参加とペイアウト
+- **手数料透明性**: 全ての手数料がオンチェーンで確認可能
 
-- **コンテナ化**: Docker / Docker Compose
-- **CI/CD**: GitHub Actions
-- **デプロイ**: Vercel（フロントエンド）、各ブロックチェーンネットワーク（スマートコントラクト）
+### 🚀 技術的特徴
+- **UUPS Proxy Pattern**: アップグレード可能なコントラクト設計
+- **リアルタイム同期**: イベントベースの即時状態更新
+- **モバイル最適化**: レスポンシブデザインとタッチ操作対応
+- **ソーシャルログイン**: Google, Xアカウントでの簡単参加
 
-## アーキテクチャ
+## 🏗️ システムアーキテクチャ
 
-このプロジェクトはモノレポ構造を採用しており、以下のコンポーネントで構成されています：
-
-1. **フロントエンド**: ユーザーインターフェースとWeb3接続ロジック
-2. **バックエンド**: Solidityスマートコントラクトとブロックチェーン統合
-3. **共通設定**: Docker Compose設定、環境変数、デプロイスクリプト
-
-## ローカル開発
-
-プロジェクトのローカル開発環境はDockerを使用して統一されており、フロントエンドとバックエンドの両方を同時に起動することができます。
-
-```bash
-# 開発環境の起動
-docker-compose up
-
-# フロントエンドのみの起動
-docker-compose up frontend
-
-# バックエンドのみの起動
-docker-compose up backend
+```mermaid
+graph TB
+    subgraph "Frontend Layer"
+        UI[Next.js UI]
+        WC[Wallet Connect]
+        AA[Account Abstraction]
+    end
+    
+    subgraph "Blockchain Layer"
+        ETH[Ethereum Sepolia]
+        BASE[Base Sepolia] 
+        ARB[Arbitrum Sepolia]
+    end
+    
+    subgraph "Smart Contracts"
+        RC[Raffle Contract]
+        VRF[Chainlink VRF]
+        PROXY[UUPS Proxy]
+    end
+    
+    subgraph "Data Layer"
+        IDX[Event Indexer]
+        API[API Routes]
+        DB[(PostgreSQL)]
+    end
+    
+    UI --> WC
+    UI --> AA
+    WC --> ETH
+    WC --> BASE
+    WC --> ARB
+    ETH --> RC
+    BASE --> RC
+    ARB --> RC
+    RC --> VRF
+    RC --> PROXY
+    RC --> IDX
+    IDX --> DB
+    DB --> API
+    API --> UI
 ```
 
-## ロードマップ
+## 🚀 クイックスタート
 
-- マルチチェーンサポートの拡張
-- DAO（分散型自治組織）による抽選パラメータの投票機能
-- NFTベースの参加券システム
-- モバイルウォレット最適化
+### 前提条件
+
+- Node.js 18.x以上
+- [Foundry](https://book.getfoundry.sh/getting-started/installation)
+- MetaMaskまたは対応ウォレット
+
+### ローカル開発環境
+
+```bash
+# リポジトリのクローン
+git clone https://github.com/your-username/raffle-dapp.git
+cd raffle-dapp
+
+# 全依存関係のインストール
+npm install
+
+# フロントエンド開発サーバー起動
+cd frontend
+npm run dev
+# http://localhost:3000 でアクセス
+
+# バックエンド（別ターミナル）
+cd backend
+make install && make build
+forge test
+```
+
+### 環境変数設定
+
+```bash
+# frontend/.env.local
+NEXT_PUBLIC_ALCHEMY_API_KEY=your_alchemy_api_key
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id
+
+# backend/.env
+PRIVATE_KEY=your_private_key
+SEPOLIA_RPC_URL=your_sepolia_rpc_url
+BASE_SEPOLIA_RPC_URL=your_base_sepolia_rpc_url
+ARBITRUM_SEPOLIA_RPC_URL=your_arbitrum_sepolia_rpc_url
+```
+
+## 📁 プロジェクト構成
+
+```
+Raffle_Dapp/
+├── 📂 backend/              # Foundry + Solidity スマートコントラクト
+│   ├── src/                 # コントラクトソースコード
+│   ├── test/                # テストファイル
+│   ├── script/              # デプロイメントスクリプト
+│   └── README.md            # バックエンド詳細ドキュメント
+├── 📂 frontend/             # Next.js + TypeScript フロントエンド
+│   ├── app/                 # App Router構成
+│   ├── components/          # Reactコンポーネント
+│   ├── hooks/               # カスタムフック
+│   └── README.md            # フロントエンド詳細ドキュメント
+├── 📂 raffleIndexer/        # Rindexer イベントインデックス
+│   ├── rindexer.yaml        # インデックス設定
+│   ├── docker-compose.yml   # PostgreSQL設定
+│   └── README.md            # インデックス詳細ドキュメント
+└── 📂 scripts/              # 共通スクリプト
+```
+
+詳細な技術仕様と開発手順については、各ディレクトリのREADME.mdを参照してください。
+
+## 🛠️ 技術スタック
+
+### フロントエンド
+- **Framework**: Next.js 15, TypeScript
+- **Styling**: Tailwind CSS, shadcn/ui
+- **Web3**: wagmi, viem, Account Kit
+- **Deployment**: Vercel
+
+### バックエンド
+- **Smart Contracts**: Solidity, Foundry
+- **VRF**: Chainlink VRF v2.5
+- **Proxy**: OpenZeppelin UUPS
+- **Testing**: Forge
+
+### インフラ
+- **RPC**: Alchemy
+- **Indexing**: Rindexer + PostgreSQL
+- **CI/CD**: GitHub Actions
+
+## 🎯 ロードマップ
+
+### Phase 1 ✅ 完了
+- [x] 基本的なラッフルシステム
+- [x] VRF統合
+- [x] クロスチェーン対応
+- [x] Account Abstraction
+
+### Phase 2 🚧 進行中
+- [ ] mainnet展開
+- [ ] NFTベース参加券
+- [ ] DAO投票システム
+
+### Phase 3 📋 計画中
+- [ ] L2最適化
+- [ ] モバイルアプリ
+- [ ] 追加チェーン対応
+
+## 🤝 コントリビューション
+
+1. このリポジトリをFork
+2. Feature branchを作成 (`git checkout -b feature/amazing-feature`)
+3. 変更をCommit (`git commit -m 'Add amazing feature'`)
+4. Branchにpush (`git push origin feature/amazing-feature`)
+5. Pull Requestを作成
+
+## 📄 ライセンス
+
+MIT License - 詳細は[LICENSE](LICENSE)ファイルを参照
+
+## 🎓 学習リソース
+
+このプロジェクトは[Cyfrin Updraft](https://updraft.cyfrin.io/)のWeb3開発コースの一環として開発されました。
+
+### 関連チュートリアル
+- [Foundry Fundamentals](https://github.com/Cyfrin/foundry-full-course-cu)
+- [Advanced Foundry](https://github.com/Cyfrin/advanced-foundry-course)
+- [Smart Contract Security](https://github.com/Cyfrin/security-and-auditing-full-course-s23)
 
 ---
 
-このプロジェクトは[Cyfrin Updraft](https://updraft.cyfrin.io/)のWeb3開発コースの一環として開発されました。
+<div align="center">
+
+**🎲 公平で透明な抽選システムを、ブロックチェーンの力で。**
+
+[Live Demo](https://your-app.vercel.app) • [Documentation](./docs) • [Report Bug](https://github.com/your-username/raffle-dapp/issues)
+
+</div>

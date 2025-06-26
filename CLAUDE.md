@@ -1,6 +1,10 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Raffle DApp - Claude Development Guide
 
-**Last Updated**: 2025-06-18
+**Last Updated**: 2025-06-26
 
 ## Project Overview
 
@@ -75,6 +79,9 @@ Raffle_Dapp/
 ├── scripts/                    # Deployment & maintenance scripts
 │   ├── update-contracts.js    # Auto-update contract config
 │   └── update-bridge-config.js # Bridge configuration
+├── raffleIndexer/             # Event indexing with rindexer
+│   ├── rindexer.yaml         # Indexer configuration
+│   └── data/                 # CSV data outputs
 ├── docker-compose.yml         # Development environment
 ├── package.json              # Root package configuration
 └── CLAUDE.md                 # This file
