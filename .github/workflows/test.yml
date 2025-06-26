@@ -1,0 +1,9 @@
+name: Test
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cd backend && make test
+      - run: cd frontend && npm run lint
