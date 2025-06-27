@@ -1,4 +1,5 @@
-# ディスク容量不足の問題に対処するため、フロントエンドのみを起動する簡易構成に変更
+# Raffle DApp - Docker Compose Configuration
+# Updated: 2025-06-26
 
 services:
   frontend:
@@ -15,22 +16,42 @@ services:
       - NODE_ENV=development
       - NEXT_PUBLIC_ALCHEMY_API_KEY=${ALCHEMY_API_KEY:-demo_key}
       - NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=${WALLETCONNECT_PROJECT_ID:-demo_id}
-    # ホットリロードを有効にするための設定
     command: npm run dev -- -H 0.0.0.0
+    depends_on:
+      - backend
+    networks:
+      - raffle-network
 
-  # バックエンドは一時的に無効化
-  # ディスク容量不足の問題が解消したら復元してください
   backend:
-   build:
-     context: ./backend
-   ports:
-     - "8545:8545"  # Anvilの標準ポート
-   volumes:
-     - ./backend:/app
-   environment:
-     - ANVIL_IP_ADDR=0.0.0.0
-   command: >
-     bash -c "anvil --host 0.0.0.0 --chain-id 31337 & 
-              sleep 2 && 
-              forge script script/DeployRaffle.s.sol --broadcast --rpc-url http://localhost:8545 || echo 'スクリプト実行に失敗しましたが、開発は続行できます' && 
-              tail -f /dev/null"
+    build:
+      context: ./backend
+    ports:
+      - "8545:8545"  # Anvil local chain
+    volumes:
+      - ./backend:/app
+    environment:
+      - ANVIL_IP_ADDR=0.0.0.0
+    command: >
+      bash -c "anvil --host 0.0.0.0 --chain-id 31337 --accounts 10 --balance 1000 & 
+               sleep 3 && 
+               forge script script/RaffleProxyDeployer.s.sol --broadcast --rpc-url http://localhost:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 || echo 'Local deployment failed, but development can continue' && 
+               tail -f /dev/null"
+    networks:
+      - raffle-network
+
+  # Indexer service (optional)
+  indexer:
+    build:
+      context: ./raffleIndexer
+    volumes:
+      - ./raffleIndexer:/app
+    environment:
+      - NODE_ENV=development
+    profiles:
+      - indexer
+    networks:
+      - raffle-network
+
+networks:
+  raffle-network:
+    driver: bridge
