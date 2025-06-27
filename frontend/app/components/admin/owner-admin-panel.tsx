@@ -70,8 +70,8 @@ interface OwnerAdminPanelProps {
       decimals: number;
     };
   }[];
-  onChangeOwner: (newOwner: any) => void;
-  onUpgradeContract: (newImplementation: any, initData: any) => void;
+  onChangeOwner: (newOwner: string) => void;
+  onUpgradeContract: (newImplementation: string, initData: string) => void;
   onStateChanged?: () => void; // 追加: 状態変更後のコールバック
   isLoading: boolean;
 }
@@ -196,183 +196,126 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
     }
   };
 
-  // Mockプレイヤー追加処理
-  const addMockPlayer = async () => {
+  // 共通のトランザクション実行関数
+  const executeContractFunction = async (
+    functionName: "addMockPlayer" | "resetPlayers",
+    setLoading: (loading: boolean) => void,
+    setError: (error: string | null) => void,
+    successMessage: string,
+    errorMessage: string,
+    updateDelay: number = 2000,
+    additionalUpdate?: boolean
+  ) => {
     if (!contractAddress || (!isConnected && !isReadyToSendTx)) {
-      setMockPlayerError("ウォレットが接続されていません");
+      setError("ウォレットが接続されていません");
       return;
     }
 
-    setIsMockPlayerLoading(true);
-    setMockPlayerError(null);
+    setLoading(true);
+    setError(null);
 
     const useSmartAccount =
       isReadyToSendTx && smartAccountAddress && sendUserOperation;
 
     try {
-      console.log("Mockプレイヤー追加を開始...");
+      console.log(`${successMessage}を開始...`);
 
       if (useSmartAccount && sendUserOperation) {
         // スマートアカウント経由での実行
-        const addMockPlayerCallData = encodeFunctionData({
+        const callData = encodeFunctionData({
           abi: RaffleABI,
-          functionName: "addMockPlayer",
+          functionName,
           args: [],
         });
 
         const result = await sendUserOperation(
           contractAddress as `0x${string}`,
-          addMockPlayerCallData,
+          callData,
           BigInt(0)
         );
 
         if (result?.txHash && publicClient) {
-          console.log("スマートアカウントでMockプレイヤー追加:", result.txHash);
+          console.log(`スマートアカウントで${successMessage}:`, result.txHash);
 
-          // トランザクション確認を待つ
           const receipt = await publicClient.waitForTransactionReceipt({
             hash: result.txHash as `0x${string}`,
             timeout: 60000,
           });
 
           if (receipt.status === "reverted") {
-            throw new Error("Mockプレイヤー追加がリバートしました");
+            throw new Error(`${successMessage}がリバートしました`);
           }
 
-          console.log("スマートアカウント: Mockプレイヤー追加完了");
+          console.log(`スマートアカウント: ${successMessage}完了`);
         }
       } else if (isConnected && address && publicClient && writeContractAsync) {
         // EOA経由での実行
         const txHash = await writeContractAsync({
           address: contractAddress as `0x${string}`,
           abi: RaffleABI,
-          functionName: "addMockPlayer",
+          functionName,
           args: [],
           account: address,
         });
 
         if (!txHash) {
-          throw new Error(
-            "Mockプレイヤー追加トランザクションの送信に失敗しました"
-          );
+          throw new Error(`${errorMessage}トランザクションの送信に失敗しました`);
         }
 
-        // トランザクション確認を待つ
         const receipt = await publicClient.waitForTransactionReceipt({
           hash: txHash,
           timeout: 60000,
         });
 
         if (receipt.status === "reverted") {
-          throw new Error("Mockプレイヤー追加トランザクションが失敗しました");
+          throw new Error(`${errorMessage}トランザクションが失敗しました`);
         }
 
-        console.log("EOA: Mockプレイヤー追加完了");
+        console.log(`EOA: ${successMessage}完了`);
       }
 
       // 成功後にデータを更新
       setTimeout(() => {
+        console.log(`${successMessage}: データ更新を実行中...`);
         onStateChanged?.();
-      }, 2000);
+
+        if (additionalUpdate) {
+          setTimeout(() => {
+            console.log(`${successMessage}: 追加データ更新を実行中...`);
+            onStateChanged?.();
+          }, 3000);
+        }
+      }, updateDelay);
     } catch (error: Error | unknown) {
-      console.error("Mockプレイヤー追加エラー:", error);
-      setMockPlayerError(error instanceof Error ? error.message : "Mockプレイヤー追加に失敗しました");
+      console.error(`${errorMessage}エラー:`, error);
+      setError(error instanceof Error ? error.message : `${errorMessage}に失敗しました`);
     } finally {
-      setIsMockPlayerLoading(false);
+      setLoading(false);
     }
+  };
+
+  // Mockプレイヤー追加処理
+  const addMockPlayer = async () => {
+    await executeContractFunction(
+      "addMockPlayer",
+      setIsMockPlayerLoading,
+      setMockPlayerError,
+      "Mockプレイヤー追加",
+      "Mockプレイヤー追加"
+    );
   };
 
   // プレイヤーリセット処理
   const resetPlayers = async () => {
-    if (!contractAddress || (!isConnected && !isReadyToSendTx)) {
-      setResetError("ウォレットが接続されていません");
-      return;
-    }
-
-    setIsResetLoading(true);
-    setResetError(null);
-
-    const useSmartAccount =
-      isReadyToSendTx && smartAccountAddress && sendUserOperation;
-
-    try {
-      console.log("プレイヤーリセットを開始...");
-
-      if (useSmartAccount && sendUserOperation) {
-        // スマートアカウント経由での実行
-        const resetPlayersCallData = encodeFunctionData({
-          abi: RaffleABI,
-          functionName: "resetPlayers",
-          args: [],
-        });
-
-        const result = await sendUserOperation(
-          contractAddress as `0x${string}`,
-          resetPlayersCallData,
-          BigInt(0)
-        );
-
-        if (result?.txHash && publicClient) {
-          console.log("スマートアカウントでプレイヤーリセット:", result.txHash);
-
-          // トランザクション確認を待つ
-          const receipt = await publicClient.waitForTransactionReceipt({
-            hash: result.txHash as `0x${string}`,
-            timeout: 60000,
-          });
-
-          if (receipt.status === "reverted") {
-            throw new Error("プレイヤーリセットがリバートしました");
-          }
-
-          console.log("スマートアカウント: プレイヤーリセット完了");
-        }
-      } else if (isConnected && address && publicClient && writeContractAsync) {
-        // EOA経由での実行
-        const txHash = await writeContractAsync({
-          address: contractAddress as `0x${string}`,
-          abi: RaffleABI,
-          functionName: "resetPlayers",
-          args: [],
-          account: address,
-        });
-
-        if (!txHash) {
-          throw new Error(
-            "プレイヤーリセットトランザクションの送信に失敗しました"
-          );
-        }
-
-        // トランザクション確認を待つ
-        const receipt = await publicClient.waitForTransactionReceipt({
-          hash: txHash,
-          timeout: 60000,
-        });
-
-        if (receipt.status === "reverted") {
-          throw new Error("プレイヤーリセットトランザクションが失敗しました");
-        }
-
-        console.log("EOA: プレイヤーリセット完了");
-      }
-
-      // 成功後にデータを更新（より長い待機時間とログ追加）
-      setTimeout(() => {
-        console.log("プレイヤーリセット: データ更新を実行中...");
-        onStateChanged?.();
-
-        // さらに追加の更新を実行
-        setTimeout(() => {
-          console.log("プレイヤーリセット: 追加データ更新を実行中...");
-          onStateChanged?.();
-        }, 3000);
-      }, 5000);
-    } catch (error: Error | unknown) {
-      console.error("プレイヤーリセットエラー:", error);
-      setResetError(error instanceof Error ? error.message : "プレイヤーリセットに失敗しました");
-    } finally {
-      setIsResetLoading(false);
-    }
+    await executeContractFunction(
+      "resetPlayers",
+      setIsResetLoading,
+      setResetError,
+      "プレイヤーリセット",
+      "プレイヤーリセット",
+      5000,
+      true
+    );
   };
 
   // 勝者処理関数

@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { createErrorResponse, createSuccessResponse } from '@/app/lib/database';
 import { Pool } from 'pg';
 
 const pool = new Pool({
@@ -109,42 +110,31 @@ export async function GET(request: NextRequest) {
     // レスポンスデータの整形
     const networkStats: { [key: string]: { [key: string]: number } } = {};
     
-    statsResult.rows.forEach((row: any) => {
+    statsResult.rows.forEach((row: { type: string; count: number; network: string }) => {
       if (!networkStats[row.network]) {
         networkStats[row.network] = {};
       }
       networkStats[row.network][row.type] = parseInt(row.count);
     });
 
-    latestBlocksResult.rows.forEach((row: any) => {
+    latestBlocksResult.rows.forEach((row: { network: string; latest_block: string }) => {
       if (!networkStats[row.network]) {
         networkStats[row.network] = {};
       }
       networkStats[row.network].latestBlock = parseInt(row.latest_block);
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        networkStats,
-        userStats,
-        summary: {
-          totalNetworks: Object.keys(networkStats).length,
-          totalEntries: Object.values(networkStats).reduce((sum: number, network: { [key: string]: number }) => sum + (network.entries || 0), 0),
-          totalWinners: Object.values(networkStats).reduce((sum: number, network: { [key: string]: number }) => sum + (network.winners || 0), 0),
-        }
+    return createSuccessResponse({
+      networkStats,
+      userStats,
+      summary: {
+        totalNetworks: Object.keys(networkStats).length,
+        totalEntries: Object.values(networkStats).reduce((sum: number, network: { [key: string]: number }) => sum + (network.entries || 0), 0),
+        totalWinners: Object.values(networkStats).reduce((sum: number, network: { [key: string]: number }) => sum + (network.winners || 0), 0),
       }
     });
 
   } catch (error) {
-    console.error('API Error:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch raffle stats',
-        details: error instanceof Error ? error.message : String(error)
-      },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to fetch raffle stats');
   }
 }

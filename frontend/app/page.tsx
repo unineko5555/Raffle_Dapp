@@ -107,7 +107,7 @@ export default function RaffleDapp() {
   }, [updateContractBalances]);
 
   // 共通のラッフル開始処理
-  const executeRaffle = async (upkeepFunction: () => Promise<any>, mode: string) => {
+  const executeRaffle = async (upkeepFunction: () => Promise<unknown>, mode: string) => {
     if (raffleData.numberOfPlayers < 3) {
       alert(
         "ラッフルを開始するには少なくとも3人の参加者が必要です。\n現在の参加者数: " +

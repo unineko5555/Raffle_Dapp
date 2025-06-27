@@ -11,14 +11,12 @@ import {
 } from "wagmi";
 
 import { formatUnits } from "viem";
-import { RaffleABI, ERC20ABI, contractConfig } from "@/app/lib/contract-config";
+import { RaffleABI, ERC20ABI } from "@/app/lib/contract-config";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
-
-// contractConfigのキーの型を定義
-type SupportedChainId = keyof typeof contractConfig;
+import { useContractConfig } from "./shared/use-contract-config";
+import { useSmartAccountTransaction } from "./shared/use-smart-account-transaction";
 
 export function useRaffleParticipation() {
-  const chainId = useChainId();
   const { address, isConnected } = useAccount();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -26,7 +26,14 @@ interface RaffleMainContentProps {
   minimumPlayers: number;
   
   // History data
-  pastRaffles: any[];
+  pastRaffles: Array<{
+    winner: string;
+    prize: string;
+    jackpotWon: boolean;
+    txHash: string;
+    blockNumber: number;
+    network: string;
+  }>;
   currentAddress?: string;
   isHistoryLoading: boolean;
   

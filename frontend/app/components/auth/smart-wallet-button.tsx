@@ -4,7 +4,7 @@
 const DEBUG_MODE = false;
 
 // デバッグログ関数
-const debugLog = (message: string, ...args: any[]) => {
+const debugLog = (message: string, ...args: unknown[]) => {
   if (DEBUG_MODE) {
     console.log(message, ...args);
   }
@@ -166,7 +166,7 @@ export function SmartWalletButton() {
     return () => {
       mounted = false;
     };
-  }, [isConnected, address, web3auth?.status, provider !== null, user !== null, smartAccountAddress, isReadyToSendTx]);
+  }, [isConnected, address, web3auth?.status, smartAccountAddress, isReadyToSendTx]); // eslint-disable-line react-hooks/exhaustive-deps
   
   // Web3Authエラーメッセージをトーストで通知
   const prevErrorRef = useRef<string | null>(null);

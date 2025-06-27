@@ -1,16 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-  host: 'localhost',
-  port: 5440,
-  user: 'postgres',
-  password: 'rindexer',
-  database: 'postgres',
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+import { NextRequest } from 'next/server';
+import { buildConditionalQuery, executeQuery, createErrorResponse, createSuccessResponse } from '@/app/lib/database';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +9,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    let query = `
+    const baseQuery = `
       SELECT 
         player,
         entrance_fee,
@@ -32,29 +21,21 @@ export async function GET(request: NextRequest) {
       FROM raffle_indexer_raffle_implementation.raffle_enter
     `;
 
-    const queryParams: unknown[] = [];
-    const conditions: string[] = [];
+    // 共通クエリビルダーを使用
+    const conditions = [
+      { field: 'network', value: network },
+      { field: 'player', value: userAddress, operator: 'LOWER' }
+    ].filter(c => c.value !== null);
 
-    if (network) {
-      conditions.push(`network = $${queryParams.length + 1}`);
-      queryParams.push(network);
-    }
+    const { query, params } = buildConditionalQuery(
+      baseQuery,
+      conditions,
+      'block_number DESC',
+      limit,
+      offset
+    );
 
-    if (userAddress) {
-      conditions.push(`LOWER(player) = LOWER($${queryParams.length + 1})`);
-      queryParams.push(userAddress);
-    }
-
-    if (conditions.length > 0) {
-      query += ` WHERE ${conditions.join(' AND ')}`;
-    }
-
-    query += ` ORDER BY block_number DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
-    queryParams.push(limit, offset);
-
-    const client = await pool.connect();
-    const result = await client.query(query, queryParams);
-    client.release();
+    const result = await executeQuery(query, params);
 
     const entriesData = result.rows.map(row => ({
       player: row.player,
@@ -66,21 +47,9 @@ export async function GET(request: NextRequest) {
       logIndex: row.log_index,
     }));
 
-    return NextResponse.json({
-      success: true,
-      data: entriesData,
-      total: result.rowCount,
-    });
+    return createSuccessResponse(entriesData, result.rowCount || 0);
 
   } catch (error) {
-    console.error('API Error:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch raffle entries',
-        details: error instanceof Error ? error.message : String(error)
-      },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to fetch raffle entries');
   }
 }

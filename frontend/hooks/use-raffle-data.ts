@@ -9,13 +9,10 @@ import {
 } from "wagmi";
 
 import { formatUnits } from "viem";
-import { RaffleABI, contractConfig } from "@/app/lib/contract-config";
-
-// contractConfigのキーの型を定義
-type SupportedChainId = keyof typeof contractConfig;
+import { RaffleABI } from "@/app/lib/contract-config";
+import { useContractConfig } from "./shared/use-contract-config";
 
 export function useRaffleData() {
-  const chainId = useChainId();
   const { address, isConnected } = useAccount();
   const [error, setError] = useState<string | null>(null);
   const [raffleData, setRaffleData] = useState<{
@@ -39,16 +36,8 @@ export function useRaffleData() {
   // UI表示用の読み込み状態管理
   const [uiLoading, setUiLoading] = useState(true);
 
-  // チェーンIDから正しいコントラクトアドレスを取得
-  // サポートされているチェーンIDのみを受け入れ、不正な場合はnullを返す
-  const supportedChainIds = [11155111, 84532, 421614] as const;
-  const isValidChainId = chainId && supportedChainIds.includes(chainId as any);
-  const currentChainId = isValidChainId ? chainId : null;
-  const contractAddress = currentChainId ? 
-    contractConfig[currentChainId as SupportedChainId]?.raffleProxy || null : null;
-  
-  // プロバイダーチェック
-  const publicClient = usePublicClient({ chainId: currentChainId || undefined });
+  // 共通コントラクト設定を使用
+  const { contractAddress, publicClient, isValidChainId } = useContractConfig();
 
   // コントラクト読み取り
   const { data: entranceFeeData } = useReadContract(
