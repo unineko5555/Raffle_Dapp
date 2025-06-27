@@ -36,7 +36,18 @@ export async function GET(request: NextRequest) {
       offset
     );
 
-    const result = await executeQuery(query, params);
+    interface WinnerHistoryRow {
+      winner: string;
+      prize: string;
+      is_jackpot: boolean;
+      tx_hash: string;
+      block_number: number;
+      network: string;
+      tx_index: number;
+      log_index: number;
+    }
+
+    const result = await executeQuery<WinnerHistoryRow>(query, params);
 
     const historyData = result.rows.map(row => ({
       winner: row.winner,

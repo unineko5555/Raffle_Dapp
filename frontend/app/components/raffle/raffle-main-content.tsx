@@ -27,12 +27,10 @@ interface RaffleMainContentProps {
   
   // History data
   pastRaffles: Array<{
+    time: string;
     winner: string;
     prize: string;
-    jackpotWon: boolean;
-    txHash: string;
-    blockNumber: number;
-    network: string;
+    jackpot: string;
   }>;
   currentAddress?: string;
   isHistoryLoading: boolean;

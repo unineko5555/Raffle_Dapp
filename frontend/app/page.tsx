@@ -238,7 +238,12 @@ export default function RaffleDapp() {
             contractAddress={contractAddress || ""}
             minPlayersReachedTime={minPlayersReachedTime}
             minimumPlayers={minimumPlayers}
-            pastRaffles={pastRaffles || []}
+            pastRaffles={(pastRaffles || []).map((raffle: any) => ({
+              time: new Date(raffle.timestamp * 1000).toLocaleString(),
+              winner: raffle.winner,
+              prize: (Number(raffle.prize) / 1000000).toFixed(2),
+              jackpot: raffle.jackpotWon ? "Yes" : "No"
+            }))}
             currentAddress={smartAccountAddress || address}
             isHistoryLoading={isHistoryLoading}
             isConnected={isConnected}

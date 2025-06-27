@@ -35,7 +35,17 @@ export async function GET(request: NextRequest) {
       offset
     );
 
-    const result = await executeQuery(query, params);
+    interface RaffleEntryRow {
+      player: string;
+      entrance_fee: string;
+      tx_hash: string;
+      block_number: number;
+      network: string;
+      tx_index: number;
+      log_index: number;
+    }
+
+    const result = await executeQuery<RaffleEntryRow>(query, params);
 
     const entriesData = result.rows.map(row => ({
       player: row.player,

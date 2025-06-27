@@ -37,7 +37,7 @@ export function useRaffleData() {
   const [uiLoading, setUiLoading] = useState(true);
 
   // 共通コントラクト設定を使用
-  const { contractAddress, publicClient, isValidChainId } = useContractConfig();
+  const { contractAddress, publicClient, isValidChainId, chainId: currentChainId, networkConfig } = useContractConfig();
 
   // コントラクト読み取り
   const { data: entranceFeeData } = useReadContract(
@@ -447,8 +447,7 @@ export function useRaffleData() {
       return balanceCache.usdcBalance;
     }
 
-    const erc20Address =
-      contractConfig[currentChainId as SupportedChainId]?.erc20Address || null;
+    const erc20Address = networkConfig?.erc20Address || null;
 
     if (!contractAddress || !erc20Address || !publicClient) return "0";
 
@@ -548,7 +547,7 @@ export function useRaffleData() {
     isLoading: uiLoading,
     error,
     contractAddress,
-    erc20Address: contractConfig[currentChainId as SupportedChainId]?.erc20Address || null,
+    erc20Address: networkConfig?.erc20Address || null,
     updateRaffleData,
     getPlayers,
     getContractEthBalance,

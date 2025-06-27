@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
     // レスポンスデータの整形
     const networkStats: { [key: string]: { [key: string]: number } } = {};
     
-    statsResult.rows.forEach((row: { type: string; count: number; network: string }) => {
+    statsResult.rows.forEach((row: { type: string; count: string; network: string }) => {
       if (!networkStats[row.network]) {
         networkStats[row.network] = {};
       }

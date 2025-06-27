@@ -44,18 +44,9 @@ export function useRaffleParticipation() {
     requiredAmount: "0",
   });
 
-  // チェーンIDから正しいコントラクトアドレスを取得
-  // サポートされているチェーンIDのみを受け入れ、不正な場合はnullを返す
-  const supportedChainIds = [11155111, 84532, 421614] as const;
-  const isValidChainId = chainId && supportedChainIds.includes(chainId as any);
-  const currentChainId = isValidChainId ? chainId : null;
-  const contractAddress = currentChainId ? 
-    contractConfig[currentChainId as SupportedChainId]?.raffleProxy || null : null;
-  const erc20Address = currentChainId ?
-    contractConfig[currentChainId as SupportedChainId]?.erc20Address || null : null;
-  
-  // プロバイダーチェック
-  const publicClient = usePublicClient({ chainId: currentChainId || undefined });
+  // 共通コントラクト設定を使用
+  const { contractAddress, publicClient, isValidChainId, chainId: currentChainId, networkConfig } = useContractConfig();
+  const erc20Address = networkConfig?.erc20Address || null;
 
   // コントラクト書き込み関数
   const {
