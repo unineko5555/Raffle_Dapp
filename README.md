@@ -15,29 +15,32 @@
 
 ## 📱 ライブデモ
 
-- **フロントエンド**: [https://your-app.vercel.app](https://your-app.vercel.app)
+- **フロントエンド**: [https://raffledapp-six.vercel.app/](https://raffledapp-six.vercel.app/)
 - **対応チェーン**: Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia
-- **テスト用USDC**: 各テストネットで無料取得可能
+- **テスト用 USDC**: 各テストネットで無料取得可能
 
 ## ✨ 主要機能
 
 ### 🔥 コア機能
+
 - **完全分散型抽選**: スマートコントラクトによる透明な抽選プロセス
-- **VRF証明可能ランダム性**: Chainlink VRFによる改ざん不可能な乱数生成
+- **VRF 証明可能ランダム性**: Chainlink VRF による改ざん不可能な乱数生成
 - **クロスチェーン対応**: 複数ブロックチェーン間での統一された体験
-- **ガス代無料参加**: Account Abstractionによるユーザビリティ向上
+- **ガス代無料参加**: Account Abstraction によるユーザビリティ向上
 
 ### 💰 経済システム
+
 - **ジャックポットシステム**: 蓄積型大賞システム
 - **自動賞金分配**: スマートコントラクトによる即座の支払い
-- **USDC決済**: 安定した価値での参加とペイアウト
+- **USDC 決済**: 安定した価値での参加とペイアウト
 - **手数料透明性**: 全ての手数料がオンチェーンで確認可能
 
 ### 🚀 技術的特徴
+
 - **UUPS Proxy Pattern**: アップグレード可能なコントラクト設計
 - **リアルタイム同期**: イベントベースの即時状態更新
 - **モバイル最適化**: レスポンシブデザインとタッチ操作対応
-- **ソーシャルログイン**: Google, Xアカウントでの簡単参加
+- **ソーシャルログイン**: Google, X アカウントでの簡単参加
 
 ## 🏗️ システムアーキテクチャ
 
@@ -48,25 +51,25 @@ graph TB
         WC[Wallet Connect]
         AA[Account Abstraction]
     end
-    
+
     subgraph "Blockchain Layer"
         ETH[Ethereum Sepolia]
-        BASE[Base Sepolia] 
+        BASE[Base Sepolia]
         ARB[Arbitrum Sepolia]
     end
-    
+
     subgraph "Smart Contracts"
         RC[Raffle Contract]
         VRF[Chainlink VRF]
         PROXY[UUPS Proxy]
     end
-    
+
     subgraph "Data Layer"
         IDX[Event Indexer]
         API[API Routes]
         DB[(PostgreSQL)]
     end
-    
+
     UI --> WC
     UI --> AA
     WC --> ETH
@@ -87,18 +90,20 @@ graph TB
 
 ### 前提条件
 
-#### 🐳 Docker使用の場合（推奨）
+#### 🐳 Docker 使用の場合（推奨）
+
 - Docker & Docker Compose
 - Git
 
 #### 📦 ローカル開発の場合
-- Node.js 22.x以上
+
+- Node.js 22.x 以上
 - [Foundry](https://book.getfoundry.sh/getting-started/installation)
-- MetaMaskまたは対応ウォレット
+- MetaMask または対応ウォレット
 
 ### ローカル開発環境
 
-#### 🐳 Docker使用（推奨）
+#### 🐳 Docker 使用（推奨）
 
 ```bash
 # リポジトリのクローン
@@ -131,6 +136,7 @@ docker-compose down
 ```
 
 アクセス:
+
 - **フロントエンド**: http://localhost:3000
 - **Anvil（ローカルチェーン）**: http://localhost:8545
 
@@ -190,23 +196,26 @@ Raffle_Dapp/
 └── 📂 scripts/              # 共通スクリプト
 ```
 
-詳細な技術仕様と開発手順については、各ディレクトリのREADME.mdを参照してください。
+詳細な技術仕様と開発手順については、各ディレクトリの README.md を参照してください。
 
 ## 🛠️ 技術スタック
 
 ### フロントエンド
+
 - **Framework**: Next.js 15, TypeScript
 - **Styling**: Tailwind CSS, shadcn/ui
 - **Web3**: wagmi, viem, Account Kit
 - **Deployment**: Vercel
 
 ### バックエンド
+
 - **Smart Contracts**: Solidity, Foundry
 - **VRF**: Chainlink VRF v2.5
 - **Proxy**: OpenZeppelin UUPS
 - **Testing**: Forge
 
 ### インフラ
+
 - **RPC**: Alchemy
 - **Indexing**: Rindexer + PostgreSQL
 - **CI/CD**: GitHub Actions
@@ -214,28 +223,31 @@ Raffle_Dapp/
 ## 🎯 ロードマップ
 
 ### Phase 1 ✅ 完了
+
 - [x] 基本的なラッフルシステム
-- [x] VRF統合
+- [x] VRF 統合
 - [x] クロスチェーン対応
 - [x] Account Abstraction
 
 ### Phase 2 🚧 進行中
-- [ ] mainnet展開
-- [ ] NFTベース参加券
-- [ ] DAO投票システム
+
+- [ ] mainnet 展開
+- [ ] NFT ベース参加券
+- [ ] DAO 投票システム
 
 ### Phase 3 📋 計画中
-- [ ] L2最適化
+
+- [ ] L2 最適化
 - [ ] モバイルアプリ
 - [ ] 追加チェーン対応
 
 ## 🤝 コントリビューション
 
-1. このリポジトリをFork
-2. Feature branchを作成 (`git checkout -b feature/amazing-feature`)
-3. 変更をCommit (`git commit -m 'Add amazing feature'`)
-4. Branchにpush (`git push origin feature/amazing-feature`)
-5. Pull Requestを作成
+1. このリポジトリを Fork
+2. Feature branch を作成 (`git checkout -b feature/amazing-feature`)
+3. 変更を Commit (`git commit -m 'Add amazing feature'`)
+4. Branch に push (`git push origin feature/amazing-feature`)
+5. Pull Request を作成
 
 ## 📄 ライセンス
 
@@ -243,9 +255,10 @@ MIT License - 詳細は[LICENSE](LICENSE)ファイルを参照
 
 ## 🎓 学習リソース
 
-このプロジェクトは[Cyfrin Updraft](https://updraft.cyfrin.io/)のWeb3開発コースの一環として開発されました。
+このプロジェクトは[Cyfrin Updraft](https://updraft.cyfrin.io/)の Web3 開発コースの一環として開発されました。
 
 ### 関連チュートリアル
+
 - [Foundry Fundamentals](https://github.com/Cyfrin/foundry-full-course-cu)
 - [Advanced Foundry](https://github.com/Cyfrin/advanced-foundry-course)
 - [Smart Contract Security](https://github.com/Cyfrin/security-and-auditing-full-course-s23)

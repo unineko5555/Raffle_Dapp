@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # Raffle DApp - Claude Development Guide
 
-**Last Updated**: 2025-06-26
+**Last Updated**: 2025-06-27
 
 ## Project Overview
 
@@ -69,9 +69,15 @@ Raffle_Dapp/
 │   │   ├── lib/              # Configuration & utilities
 │   │   │   ├── contract-config.ts    # Contract addresses & ABIs
 │   │   │   ├── web3-config.ts        # Web3 provider config
+│   │   │   ├── database.ts           # Shared API database utilities
 │   │   │   └── alchemy/              # Account Kit setup
+│   │   ├── api/              # API routes for data indexing
+│   │   │   └── raffle/       # Raffle-specific endpoints
 │   │   └── providers/        # React context providers
 │   ├── hooks/                # Custom React hooks
+│   │   ├── shared/           # Shared utility hooks
+│   │   │   ├── use-contract-config.ts    # Contract address resolution
+│   │   │   └── use-smart-account-transaction.ts # Unified transaction handling
 │   │   ├── use-raffle-automation.ts  # VRF automation (gas optimization)
 │   │   ├── use-raffle-data.ts       # Contract data fetching
 │   │   └── use-smart-account.ts     # Smart wallet integration
@@ -296,8 +302,12 @@ Uses **UUPS (Universal Upgradeable Proxy Standard)** pattern:
 
 ## Key Frontend Hooks
 
+### Shared Utility Hooks (hooks/shared/)
+- `use-contract-config.ts` - **Core**: Chain ID validation and contract address resolution for all supported networks
+- `use-smart-account-transaction.ts` - **Core**: Unified transaction handling for both EOA and Account Abstraction with L2 gas optimization
+
 ### Core Raffle Functionality
-- `use-raffle-data.ts` - Contract state reading (players, status, jackpot)
+- `use-raffle-data.ts` - Contract state reading (players, status, jackpot) - **Uses shared hooks**
 - `use-raffle-participation.ts` - Enter/exit raffle operations
 - `use-raffle-automation.ts` - **Critical**: VRF automation with L2 gas optimization
 - `use-auto-winner-processor.ts` - Automatic winner processing on state change
@@ -310,6 +320,12 @@ Uses **UUPS (Universal Upgradeable Proxy Standard)** pattern:
 ### Cross-chain Features
 - `use-token-bridge.ts` - CCIP cross-chain token transfers
 - `use-contract-balance.ts` - Multi-chain contract balance monitoring
+
+### API Integration
+- `app/lib/database.ts` - **Shared**: Database connection pool and query utilities for API routes
+- `app/api/raffle/entries/route.ts` - Raffle entry history endpoint
+- `app/api/raffle/history/route.ts` - Winner history endpoint  
+- `app/api/raffle/stats/route.ts` - Statistics aggregation endpoint
 
 ## Testing
 
@@ -416,17 +432,21 @@ docker-compose logs backend
 - `backend/broadcast/` - Deployment logs with contract addresses
 
 ### Critical Frontend Components
-- `hooks/use-raffle-automation.ts` - **Contains gas optimization fixes**
-- `components/admin/owner-admin-panel.tsx` - Contract management interface
+- `hooks/shared/use-contract-config.ts` - **Core**: Unified contract address resolution
+- `hooks/shared/use-smart-account-transaction.ts` - **Core**: Transaction handling with gas optimization
+- `hooks/use-raffle-automation.ts` - **Contains L2 gas optimization fixes**
+- `components/admin/owner-admin-panel.tsx` - Contract management interface (refactored with shared utilities)
 - `app/lib/web3-config.ts` - Wagmi/Web3 provider configuration
+- `app/lib/database.ts` - **Shared**: API database utilities and query builders
 
 ## Development Notes
 
 ### Code Conventions
 - **Solidity**: Follow OpenZeppelin patterns, extensive NatSpec comments
-- **TypeScript**: Strict typing, descriptive function/variable names
-- **React**: Custom hooks for contract interactions, component composition
+- **TypeScript**: Strict typing, descriptive function/variable names, avoid `any` types
+- **React**: Custom hooks for contract interactions, component composition, shared utility hooks in `hooks/shared/`
 - **Styling**: Tailwind utility classes, Radix UI for complex components
+- **Code Organization**: Use shared utilities to avoid duplication, centralized configuration management
 
 ### Security Considerations
 - All contracts use OpenZeppelin's security patterns
@@ -450,6 +470,13 @@ docker-compose logs backend
 **Run Tests**: `cd backend && make test`
 **View Logs**: `docker-compose logs [frontend|backend]`
 
-**Critical Issue Solved**: Base Sepolia gas optimization in `use-raffle-automation.ts:133-145`
+**Recent Improvements (2025-06-27)**:
+- **Code Refactoring**: Eliminated 1200+ lines of duplicate code through shared utilities
+- **Shared Hooks**: Created `hooks/shared/` with unified contract config and transaction handling
+- **API Optimization**: Consolidated database utilities in `app/lib/database.ts`
+- **Type Safety**: Improved TypeScript types and reduced `any` usage
+- **Gas Optimization**: Enhanced L2 network gas handling in transaction utilities
 
-This guide should provide comprehensive context for future development work on the Raffle DApp. The project successfully implements a sophisticated multi-chain raffle system with proper L2 optimizations and modern Web3 UX patterns.
+**Critical Issue Solved**: Base Sepolia gas optimization in `use-raffle-automation.ts` and shared transaction utilities
+
+This guide should provide comprehensive context for future development work on the Raffle DApp. The project successfully implements a sophisticated multi-chain raffle system with proper L2 optimizations, modern Web3 UX patterns, and well-organized shared utilities for maintainable code.
