@@ -87,11 +87,54 @@ graph TB
 
 ### 前提条件
 
-- Node.js 18.x以上
+#### 🐳 Docker使用の場合（推奨）
+- Docker & Docker Compose
+- Git
+
+#### 📦 ローカル開発の場合
+- Node.js 22.x以上
 - [Foundry](https://book.getfoundry.sh/getting-started/installation)
 - MetaMaskまたは対応ウォレット
 
 ### ローカル開発環境
+
+#### 🐳 Docker使用（推奨）
+
+```bash
+# リポジトリのクローン
+git clone https://github.com/your-username/raffle-dapp.git
+cd raffle-dapp
+
+# 全サービス起動（フロントエンド + バックエンド）
+docker-compose up
+
+# バックグラウンド起動
+docker-compose up -d
+
+# インデクサー含む起動
+docker-compose --profile indexer up
+
+# 特定のサービスのみ起動
+docker-compose up frontend
+docker-compose up backend
+
+# ログ確認
+docker-compose logs frontend
+docker-compose logs backend
+
+# コンテナに入る
+docker-compose exec frontend sh
+docker-compose exec backend bash
+
+# サービス停止
+docker-compose down
+```
+
+アクセス:
+- **フロントエンド**: http://localhost:3000
+- **Anvil（ローカルチェーン）**: http://localhost:8545
+
+#### 📦 ローカルインストール
 
 ```bash
 # リポジトリのクローン
