@@ -1,6 +1,6 @@
 "use client";
 
-import { type Chain, sepolia, arbitrumSepolia, baseSepolia } from "viem/chains";
+import { sepolia, arbitrumSepolia, baseSepolia } from "viem/chains";
 import { createPublicClient, custom, type SignableMessage } from "viem";
 import { type SmartAccountSigner } from "@alchemy/aa-core";
 import { createLightAccountAlchemyClient } from "@alchemy/aa-alchemy";

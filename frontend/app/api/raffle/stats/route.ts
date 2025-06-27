@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const client = await pool.connect();
 
     // 基本統計情報
-    let statsQuery = `
+    const statsQuery = `
       SELECT 
         'entries' as type,
         COUNT(*) as count,
@@ -107,16 +107,16 @@ export async function GET(request: NextRequest) {
     client.release();
 
     // レスポンスデータの整形
-    const networkStats: { [key: string]: any } = {};
+    const networkStats: { [key: string]: { [key: string]: number } } = {};
     
-    statsResult.rows.forEach(row => {
+    statsResult.rows.forEach((row: any) => {
       if (!networkStats[row.network]) {
         networkStats[row.network] = {};
       }
       networkStats[row.network][row.type] = parseInt(row.count);
     });
 
-    latestBlocksResult.rows.forEach(row => {
+    latestBlocksResult.rows.forEach((row: any) => {
       if (!networkStats[row.network]) {
         networkStats[row.network] = {};
       }
@@ -130,8 +130,8 @@ export async function GET(request: NextRequest) {
         userStats,
         summary: {
           totalNetworks: Object.keys(networkStats).length,
-          totalEntries: Object.values(networkStats).reduce((sum: number, network: any) => sum + (network.entries || 0), 0),
-          totalWinners: Object.values(networkStats).reduce((sum: number, network: any) => sum + (network.winners || 0), 0),
+          totalEntries: Object.values(networkStats).reduce((sum: number, network: { [key: string]: number }) => sum + (network.entries || 0), 0),
+          totalWinners: Object.values(networkStats).reduce((sum: number, network: { [key: string]: number }) => sum + (network.winners || 0), 0),
         }
       }
     });

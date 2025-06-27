@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useTokenBridge } from "@/hooks/use-token-bridge";
 import { useChainId } from "wagmi";
-import { formatEther } from "viem";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,12 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
@@ -83,7 +76,7 @@ export function LiquidityManager() {
   };
   
   // チェーンセレクタ用のチェーンリスト
-  const availableChains = destinationChains.filter(chain => chain.chainId !== chainId);
+  const _availableChains = destinationChains.filter(chain => chain.chainId !== chainId);
   
   return (
     <div className="w-full max-w-md mx-auto mt-8 p-4 bg-white dark:bg-slate-800 rounded-xl shadow-md">

@@ -32,8 +32,9 @@ export function RaffleHistory({
   const { address } = useAccount();
   const [showMore, setShowMore] = useState(false);
   
-  // Rindexerデータを使用（useRindexerがtrueの場合のみ）
-  const rindexerData = useRindexer ? useRindexerHistory() : {
+  // Rindexerデータを使用（常にHookを呼び出し、フラグで結果を制御）
+  const rindexerDataRaw = useRindexerHistory();
+  const rindexerData = useRindexer ? rindexerDataRaw : {
     winnerHistory: [],
     loading: false,
     error: null,

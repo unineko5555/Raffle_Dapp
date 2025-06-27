@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertTriangle, Sparkles, X, ChevronRight, ArrowUpRight } from "lucide-react";
+import { CheckCircle, AlertTriangle, Sparkles, ChevronRight, ArrowUpRight } from "lucide-react";
 
 // アップグレード情報の型定義
 interface UpgradeInfo {
@@ -21,7 +21,7 @@ interface UpgradeInfo {
 
 const UpgradeNotification = ({
   isOpen = false,
-  onOpenChange = (open: boolean) => {},
+  onOpenChange = (_open: boolean) => {},
   upgrades = [] as UpgradeInfo[], // アップグレード情報の配列
   currentVersion = "1.0.0",
   previousVersion = null as string | null, // 過去のバージョン（初回ログイン時はnull）

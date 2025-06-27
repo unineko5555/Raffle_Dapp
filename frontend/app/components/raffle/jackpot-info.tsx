@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles, TrendingUp, DollarSign, Info, HelpCircle } from "lucide-react";
+import { Sparkles, TrendingUp, Info, HelpCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface JackpotInfoProps {
@@ -11,13 +11,13 @@ interface JackpotInfoProps {
 }
 
 const JackpotInfo = ({ 
-  jackpotAmount = 0,
-  entranceFee = 10,
+  jackpotAmount: _jackpotAmount = 0,
+  entranceFee: _entranceFee = 10,
   jackpotProbability = 35, // 百分率表記（例: 35は35%）
   contributionRate = 10 // 百分率表記（例: 10は10%）
 }: JackpotInfoProps) => {
   // USDCの6桁小数点を考慮してフォーマット
-  const formatUSDC = (amount: number | bigint) => {
+  const _formatUSDC = (amount: number | bigint) => {
     // bigintの場合はnumberへ変換
     const amountNum = typeof amount === 'bigint' ? Number(amount) : amount;
     return (amountNum / 1e6).toLocaleString('ja-JP', {

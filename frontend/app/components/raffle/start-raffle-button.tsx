@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Zap, Dices } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { ToastIcon } from "@/components/ui/toast-icon";
 
 interface StartRaffleButtonProps {
   isConnected: boolean;

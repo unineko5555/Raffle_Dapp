@@ -6,11 +6,11 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Coins, CheckCircle2 } from "lucide-react";
 import { ToastIcon } from "@/components/ui/toast-icon";
 import { useRaffleContract } from "@/hooks/use-raffle-contract";
-import { RaffleABI, contractConfig, ERC20ABI } from "@/app/lib/contract-config";
+import { RaffleABI, contractConfig } from "@/app/lib/contract-config";
 import { useAccount } from "wagmi";
 import { useWeb3Auth } from "@/hooks/use-web3auth";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
-import { encodeAbiParameters, parseAbiParameters, encodeFunctionData } from "viem";
+import { encodeFunctionData } from "viem";
 
 export interface EnterRaffleButtonProps {
   raffleAddress: string;
@@ -27,7 +27,7 @@ export function EnterRaffleButton({
 }: EnterRaffleButtonProps) {
   const { toast } = useToast();
   const { address, isConnected } = useAccount();
-  const { provider: web3AuthProvider, getAddress: getWeb3AuthAddress } = useWeb3Auth();
+  const { provider: _web3AuthProvider, getAddress: _getWeb3AuthAddress } = useWeb3Auth();
   const { 
     smartAccountClient, 
     smartAccountAddress,
@@ -37,7 +37,7 @@ export function EnterRaffleButton({
   } = useSmartAccountContext();
   
   const [isLoading, setIsLoading] = useState(false);
-  const [isEntering, setIsEntering] = useState(false);
+  const [_isEntering, setIsEntering] = useState(false);
   const [balanceInfo, setBalanceInfo] = useState<{
     hasEnoughBalance: boolean;
     balance: string;
@@ -49,9 +49,7 @@ export function EnterRaffleButton({
     handleEnterRaffle, 
     isLoading: isContractLoading, 
     isPlayerEntered,
-    handleCancelEntry,
     checkTokenBalanceWithInfo,
-    raffleData,
     checkPlayerEntered
   } = useRaffleContract();
   

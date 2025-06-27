@@ -7,9 +7,9 @@ import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
 import { useTokenBridge } from "@/hooks/use-token-bridge";
 
 export default function BridgePage() {
-  const { isConnected, address } = useAccount();
+  const { isConnected, address: _address } = useAccount();
   const { isReadyToSendTx } = useSmartAccountContext();
-  const { activeAddress } = useTokenBridge();
+  const { activeAddress: _activeAddress } = useTokenBridge();
 
   // ウォレット接続状態を確認
   const isWalletConnected = isConnected || isReadyToSendTx;

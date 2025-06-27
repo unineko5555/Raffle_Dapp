@@ -14,11 +14,8 @@ import { Label } from "@/components/ui/label";
 import {
   Shield,
   CreditCard,
-  Link,
   User,
-  Wallet,
   ArrowUpRight,
-  ArrowDownToLine,
   Loader2,
   Copy,
   CheckCircle,
@@ -80,18 +77,18 @@ interface OwnerAdminPanelProps {
 }
 
 const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
-  isOwner,
+  isOwner: _isOwner,
   contractAddress,
   balance,
   usdcBalance,
-  jackpotAmount,
+  jackpotAmount: _jackpotAmount,
   ownerAddress,
   currentRaffleState = 0,
-  supportedChains,
+  supportedChains: _supportedChains,
   onChangeOwner,
   onUpgradeContract,
   onStateChanged,
-  isLoading,
+  isLoading
 }: OwnerAdminPanelProps) => {
   const [copied, setCopied] = useState(false);
   const [newOwnerAddress, setNewOwnerAddress] = useState("");
@@ -188,7 +185,7 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
         "→",
         getStateName(parseInt(selectedState) as RaffleState)
       );
-      const result = await setRaffleState(
+      const _result = await setRaffleState(
         parseInt(selectedState) as RaffleState
       );
 
@@ -277,9 +274,9 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
       setTimeout(() => {
         onStateChanged?.();
       }, 2000);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Mockプレイヤー追加エラー:", error);
-      setMockPlayerError(error.message || "Mockプレイヤー追加に失敗しました");
+      setMockPlayerError(error instanceof Error ? error.message : "Mockプレイヤー追加に失敗しました");
     } finally {
       setIsMockPlayerLoading(false);
     }
@@ -370,9 +367,9 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
           onStateChanged?.();
         }, 3000);
       }, 5000);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("プレイヤーリセットエラー:", error);
-      setResetError(error.message || "プレイヤーリセットに失敗しました");
+      setResetError(error instanceof Error ? error.message : "プレイヤーリセットに失敗しました");
     } finally {
       setIsResetLoading(false);
     }
@@ -447,9 +444,9 @@ const OwnerAdminPanel: React.FC<OwnerAdminPanelProps> = ({
           onStateChanged?.();
         }, 3000);
       }, 5000);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("勝者処理エラー:", error);
-      setProcessWinnerError(error.message || "勝者処理に失敗しました");
+      setProcessWinnerError(error instanceof Error ? error.message : "勝者処理に失敗しました");
     } finally {
       setIsProcessWinnerLoading(false);
     }

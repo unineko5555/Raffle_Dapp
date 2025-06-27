@@ -5,7 +5,7 @@ import { WinnerModal } from './winner-modal';
 import { useRaffleWinEvents } from '@/hooks/use-raffle-win-events';
 
 export function RaffleResult() {
-  const raffleContract = useRaffleContract();
+  const _raffleContract = useRaffleContract();
   const { winner, prize, isJackpot, showModal, closeModal } = useRaffleWinEvents();
   
   return (

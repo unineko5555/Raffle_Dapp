@@ -5,7 +5,7 @@ import { useWalletBalances } from "@/hooks/use-wallet-balances";
 import { useAccount } from "wagmi";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
 import { Badge } from "@/components/ui/badge";
-import { Coins, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export const WalletBalanceDisplay = memo(function WalletBalanceDisplay() {

@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       FROM raffle_indexer_raffle_implementation.winner_picked
     `;
 
-    const queryParams: any[] = [];
+    const queryParams: unknown[] = [];
     const conditions: string[] = [];
 
     if (network) {

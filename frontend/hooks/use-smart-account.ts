@@ -139,7 +139,7 @@ export function useSmartAccount() {
 
       // デバッグ: スマートアカウント情報をグローバル変数に保存（開発用）
       if (typeof window !== "undefined") {
-        // @ts-ignore
+        // @ts-expect-error
         window.smartAccountClient = accountClient;
       }
 

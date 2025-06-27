@@ -7,7 +7,7 @@ import { formatEther } from "viem";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowRight, AlertTriangle, ExternalLink, Search } from "lucide-react";
+import { Loader2, ArrowRight, ExternalLink, Search } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -15,14 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { contractConfig } from "@/app/lib/contract-config";
 
 // チェーンの定義を追加
@@ -38,13 +30,13 @@ export function TokenBridge() {
     activeAddress,
     isLoading,
     isApproving,
-    estimatedFee,
-    poolBalance,
-    destinationChains,
+    estimatedFee: _estimatedFee,
+    poolBalance: _poolBalance,
+    destinationChains: _destinationChains,
     transactions,
     usdcBalance,
     needsApproval,
-    approveUSDC,
+    approveUSDC: _approveUSDC,
     bridgeUSDC,
     approveAndBridge, // 新しい関数を追加
     estimateBridgeFee,
@@ -114,7 +106,7 @@ export function TokenBridge() {
   };
 
   // ブリッジハンドラー（既に承認済みの場合）
-  const handleBridge = async () => {
+  const _handleBridge = async () => {
     if (destinationChainId) {
       await bridgeUSDC(destinationChainId, amount);
       // 送信後にフォームをリセット

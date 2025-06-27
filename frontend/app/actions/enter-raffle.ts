@@ -1,8 +1,7 @@
 "use server"
 
 import { contractConfig, RaffleABI } from "../lib/contract-config";
-import { createPublicClient, http, createWalletClient, parseAbi } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { createPublicClient, http } from "viem";
 import { sepolia, baseSepolia, arbitrumSepolia } from "viem/chains";
 
 
@@ -21,7 +20,7 @@ const getChain = (chainId: number) => {
 };
 
 // サーバーサイドでラッフルに参加する関数
-export async function enterRaffle(chainId: number, userAddress: string) {
+export async function enterRaffle() {
   try {
     // このActionはClientComponentから呼び出されるので、実際のトランザクションはクライアント側で処理すべき
     // ここではモックレスポンスを返す

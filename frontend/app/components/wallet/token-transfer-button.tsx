@@ -34,7 +34,7 @@ export function TokenTransferButton() {
   const [isLoading, setIsLoading] = useState(false);
   const [recipientAddress, setRecipientAddress] = useState("");
   const [amount, setAmount] = useState("");
-  const [balance, setBalance] = useState("0"); // USDCの残高（デモ用に0で初期化）
+  const [balance, _setBalance] = useState("0"); // USDCの残高（デモ用に0で初期化）
 
   // スマートウォレットからUSDCを送金する関数
   const transferUSDC = async () => {

@@ -8,7 +8,6 @@ import {
 import { Web3AuthNoModal } from "@web3auth/no-modal";
 import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
 import { AuthAdapter } from "@web3auth/auth-adapter";
-import { getDefaultExternalAdapters } from "@web3auth/default-evm-adapter";
 import { WalletConnectV2Adapter } from "@web3auth/wallet-connect-v2-adapter";
 
 // ローカル開発用のクライアントIDを設定
@@ -115,7 +114,7 @@ export async function initializeWeb3Auth(chainId: number) {
   });
 
   // Web3Authオプションの作成 - 全てのパラメータ名を試す
-  const web3AuthOptions = {
+  const _web3AuthOptions = {
     clientId: WEB3AUTH_CLIENT_ID!,
     web3AuthNetwork,
     chainConfig,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Zap } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { ToastIcon } from "@/components/ui/toast-icon";
@@ -52,8 +52,8 @@ export default function RaffleDapp() {
   const { winner, prize, isJackpot, showModal, closeModal } =
     useRaffleWinEvents();
 
-  const [activeChain, setActiveChain] = useState(supportedChains[0]);
-  const [isTransactionSuccess, setIsTransactionSuccess] = useState(false);
+  const [_activeChain, setActiveChain] = useState(supportedChains[0]);
+  const [_isTransactionSuccess, setIsTransactionSuccess] = useState(false);
 
   // useRaffleContractフックから実際のコントラクトデータを取得
   const {

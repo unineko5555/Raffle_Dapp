@@ -26,7 +26,7 @@ export function ConnectWalletButton() {
   const { connect } = useConnect()
   const { disconnect } = useDisconnect()
   const { toast } = useToast()
-  const [activeTab, setActiveTab] = useState("wallet")
+  const [_activeTab, setActiveTab] = useState("wallet")
   const [open, setOpen] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [displayAddress, setDisplayAddress] = useState("");
@@ -102,7 +102,7 @@ export function ConnectWalletButton() {
             
             // グローバル変数に状態を保存（デバッグ用）
             if (typeof window !== 'undefined') {
-              // @ts-ignore
+              // @ts-expect-error - Adding smartAccountInfo to window for debugging purposes
               window.smartAccountInfo = {
                 address: socialAddress,
                 userInfo: user,
@@ -346,7 +346,7 @@ export function ConnectWalletButton() {
       } else {
         throw new Error("アドレスの取得に失敗しました");
       }
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("ソーシャルログインエラー:", error);
       // エラーオブジェクトの詳細をコンソールに出力
       console.error("Error object:", error);

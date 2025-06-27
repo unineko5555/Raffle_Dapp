@@ -11,7 +11,7 @@ const debugLog = (message: string, ...args: any[]) => {
 };
 
 import { useState, useEffect, useRef } from "react";
-import { Wallet, ChevronDown, Loader2, Mail, ShieldAlert, Shield, Copy, Check } from "lucide-react";
+import { ChevronDown, Loader2, Mail, Shield, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -40,7 +40,7 @@ export function SmartWalletButton() {
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("wallet");
+  const [_activeTab, setActiveTab] = useState("wallet");
   const [open, setOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [displayAddress, setDisplayAddress] = useState("");
@@ -68,7 +68,7 @@ export function SmartWalletButton() {
   const {
     smartAccountClient,
     smartAccountAddress,
-    isLoading: isSmartAccountLoading,
+    isLoading: _isSmartAccountLoading,
     isReadyToSendTx,
     error: smartAccountError,
     initializeSmartAccount
@@ -252,9 +252,9 @@ export function SmartWalletButton() {
     
     // スマートアカウントの状態をクリア（グローバル変数）
     if (typeof window !== 'undefined') {
-      // @ts-ignore
+      // @ts-expect-error - Clearing debug properties on window object
       window.smartAccountClient = null;
-      // @ts-ignore
+      // @ts-expect-error - Clearing debug properties on window object
       window.smartAccountInfo = null;
     }
   };
@@ -322,7 +322,7 @@ export function SmartWalletButton() {
       
       // グローバルにプロバイダーを保存
       if (typeof window !== 'undefined') {
-        // @ts-ignore
+        // @ts-expect-error - Storing debug provider on window object
         window.web3AuthLoginProvider = loginResultProvider;
       }
       
@@ -349,7 +349,7 @@ export function SmartWalletButton() {
         }
         
         if (smartAccount) {
-          // @ts-ignore getAddressの引数に関する型定義の不一致を無視
+          // @ts-expect-error getAddressの引数に関する型定義の不一致を無視
           const smartAddress = await smartAccount.getAddress();
           console.log("スマートアカウント初期化成功:", smartAddress);
           
@@ -389,7 +389,7 @@ export function SmartWalletButton() {
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("ソーシャルログインエラー:", error);
       console.error("Error object:", error);
       
