@@ -1,122 +1,122 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+このファイルは、このリポジトリでコードを扱う際のClaude Code (claude.ai/code) への指針を提供します。
 
-# Raffle DApp - Claude Development Guide
+# Raffle DApp - Claude開発ガイド
 
-**Last Updated**: 2025-06-27
+**最終更新**: 2025-06-27
 
-## Project Overview
+## プロジェクト概要
 
-This is a **multi-chain Raffle DApp** built with **Chainlink VRF**, **Automation**, and **CCIP** for cross-chain functionality. The application allows users to participate in USDC-based raffles across multiple L2 testnets with transparent, verifiable random winner selection.
+これは**Chainlink VRF**、**Automation**、**CCIP**を使用したクロスチェーン機能を持つ**マルチチェーンRaffle DApp**です。複数のL2テストネット上でUSDCベースのラッフルに参加でき、透明で検証可能なランダム勝者選択を提供します。
 
-### Key Features
-- **Decentralized Raffle System**: Fully on-chain with Chainlink VRF for provable randomness
-- **Multi-chain Support**: Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia
-- **Automated Operations**: Chainlink Automation for periodic draws
-- **Cross-chain Bridge**: CCIP integration for cross-chain token transfers
-- **Upgradeable Contracts**: UUPS proxy pattern for safe upgrades
-- **Smart Wallet Integration**: Account Kit and Web3Auth support
-- **Gas Optimization**: L2-specific gas handling (critical for Base Sepolia)
+### 主要機能
+- **分散型ラッフルシステム**: 証明可能なランダム性のためのChainlink VRFを使用した完全オンチェーン
+- **マルチチェーンサポート**: Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia
+- **自動運用**: 定期的な抽選のためのChainlink Automation
+- **クロスチェーンブリッジ**: クロスチェーントークン転送のためのCCIP統合
+- **アップグレード可能コントラクト**: 安全なアップグレードのためのUUPSプロキシパターン
+- **スマートウォレット統合**: Account KitとWeb3Authのサポート
+- **ガス最適化**: L2固有のガス処理（Base Sepoliaで重要）
 
-## Architecture
+## アーキテクチャ
 
-### Tech Stack
-**Backend (Smart Contracts)**
-- **Framework**: Foundry (Forge, Anvil, Cast)
-- **Language**: Solidity ^0.8.19
-- **Libraries**: OpenZeppelin v5.0.2, Chainlink CCIP v1.6.0
-- **Testing**: Forge test suite with unit/integration tests
-- **Deployment**: Makefile-based multi-chain deployment
+### 技術スタック
+**バックエンド（スマートコントラクト）**
+- **フレームワーク**: Foundry (Forge, Anvil, Cast)
+- **言語**: Solidity ^0.8.19
+- **ライブラリ**: OpenZeppelin v5.0.2, Chainlink CCIP v1.6.0
+- **テスト**: ユニット/統合テストを含むForgeテストスイート
+- **デプロイ**: Makefileベースのマルチチェーンデプロイ
 
-**Frontend (Web Application)**
-- **Framework**: Next.js 15 (React 18)
-- **Styling**: Tailwind CSS v4.1.5, Radix UI components
+**フロントエンド（Webアプリケーション）**
+- **フレームワーク**: Next.js 15 (React 18)
+- **スタイリング**: Tailwind CSS v4.1.5, Radix UIコンポーネント
 - **Web3**: wagmi v2.14.16, viem v2.8.6, ethers.js v5.7.2
-- **State Management**: React Hooks + Context API
-- **Authentication**: Account Kit (Alchemy), Web3Auth, WalletConnect
+- **状態管理**: React Hooks + Context API
+- **認証**: Account Kit (Alchemy), Web3Auth, WalletConnect
 
-**Infrastructure**
-- **Containerization**: Docker + Docker Compose
-- **Frontend Deployment**: Vercel
-- **Contract Verification**: Etherscan, Basescan, Arbiscan
-- **RPC Providers**: Alchemy API
+**インフラストラクチャ**
+- **コンテナ化**: Docker + Docker Compose
+- **フロントエンドデプロイ**: Vercel
+- **コントラクト検証**: Etherscan, Basescan, Arbiscan
+- **RPCプロバイダー**: Alchemy API
 
-### Project Structure
+### プロジェクト構造
 ```
 Raffle_Dapp/
-├── backend/                    # Foundry smart contracts
-│   ├── src/                   # Contract source code
-│   │   ├── RaffleImplementation.sol      # Main raffle logic
-│   │   ├── RaffleProxy.sol              # UUPS proxy
-│   │   ├── RaffleBridgeImplementation.sol # CCIP bridge
-│   │   └── interfaces/                   # Contract interfaces
-│   ├── script/                # Deployment scripts
-│   │   ├── RaffleProxyDeployer.s.sol    # Main deployment script
-│   │   ├── RaffleUpgrader.s.sol         # Upgrade script
-│   │   └── HelperConfig.s.sol           # Network configurations
-│   ├── test/                  # Test suite
-│   ├── broadcast/             # Deployment logs & addresses
-│   ├── Makefile              # Build, test, deploy commands
-│   └── foundry.toml          # Foundry configuration
-├── frontend/                   # Next.js application
-│   ├── app/                   # App router structure
-│   │   ├── components/        # React components
-│   │   │   ├── raffle/        # Raffle-specific components
-│   │   │   ├── admin/         # Admin panel
-│   │   │   ├── bridge/        # Cross-chain bridge UI
-│   │   │   └── auth/          # Wallet connection
-│   │   ├── lib/              # Configuration & utilities
-│   │   │   ├── contract-config.ts    # Contract addresses & ABIs
-│   │   │   ├── web3-config.ts        # Web3 provider config
-│   │   │   ├── database.ts           # Shared API database utilities
-│   │   │   └── alchemy/              # Account Kit setup
-│   │   ├── api/              # API routes for data indexing
-│   │   │   └── raffle/       # Raffle-specific endpoints
-│   │   └── providers/        # React context providers
-│   ├── hooks/                # Custom React hooks
-│   │   ├── shared/           # Shared utility hooks
-│   │   │   ├── use-contract-config.ts    # Contract address resolution
-│   │   │   └── use-smart-account-transaction.ts # Unified transaction handling
-│   │   ├── use-raffle-automation.ts  # VRF automation (gas optimization)
-│   │   ├── use-raffle-data.ts       # Contract data fetching
-│   │   └── use-smart-account.ts     # Smart wallet integration
-│   └── package.json          # Dependencies & scripts
-├── scripts/                    # Deployment & maintenance scripts
-│   ├── update-contracts.js    # Auto-update contract config
-│   └── update-bridge-config.js # Bridge configuration
-├── raffleIndexer/             # Event indexing with rindexer
-│   ├── rindexer.yaml         # Indexer configuration
-│   └── data/                 # CSV data outputs
-├── docker-compose.yml         # Development environment
-├── package.json              # Root package configuration
-└── CLAUDE.md                 # This file
+├── backend/                    # Foundryスマートコントラクト
+│   ├── src/                   # コントラクトソースコード
+│   │   ├── RaffleImplementation.sol      # メインラッフルロジック
+│   │   ├── RaffleProxy.sol              # UUPSプロキシ
+│   │   ├── RaffleBridgeImplementation.sol # CCIPブリッジ
+│   │   └── interfaces/                   # コントラクトインターフェース
+│   ├── script/                # デプロイスクリプト
+│   │   ├── RaffleProxyDeployer.s.sol    # メインデプロイスクリプト
+│   │   ├── RaffleUpgrader.s.sol         # アップグレードスクリプト
+│   │   └── HelperConfig.s.sol           # ネットワーク設定
+│   ├── test/                  # テストスイート
+│   ├── broadcast/             # デプロイログとアドレス
+│   ├── Makefile              # ビルド、テスト、デプロイコマンド
+│   └── foundry.toml          # Foundry設定
+├── frontend/                   # Next.jsアプリケーション
+│   ├── app/                   # Appルーター構造
+│   │   ├── components/        # Reactコンポーネント
+│   │   │   ├── raffle/        # ラッフル固有コンポーネント
+│   │   │   ├── admin/         # 管理パネル
+│   │   │   ├── bridge/        # クロスチェーンブリッジUI
+│   │   │   └── auth/          # ウォレット接続
+│   │   ├── lib/              # 設定とユーティリティ
+│   │   │   ├── contract-config.ts    # コントラクトアドレスとABI
+│   │   │   ├── web3-config.ts        # Web3プロバイダー設定
+│   │   │   ├── database.ts           # 共有APIデータベースユーティリティ
+│   │   │   └── alchemy/              # Account Kit設定
+│   │   ├── api/              # データインデックス用APIルート
+│   │   │   └── raffle/       # ラッフル固有エンドポイント
+│   │   └── providers/        # Reactコンテキストプロバイダー
+│   ├── hooks/                # カスタムReactフック
+│   │   ├── shared/           # 共有ユーティリティフック
+│   │   │   ├── use-contract-config.ts    # コントラクトアドレス解決
+│   │   │   └── use-smart-account-transaction.ts # 統一トランザクション処理
+│   │   ├── use-raffle-automation.ts  # VRF自動化（ガス最適化）
+│   │   ├── use-raffle-data.ts       # コントラクトデータ取得
+│   │   └── use-smart-account.ts     # スマートウォレット統合
+│   └── package.json          # 依存関係とスクリプト
+├── scripts/                    # デプロイとメンテナンススクリプト
+│   ├── update-contracts.js    # コントラクト設定自動更新
+│   └── update-bridge-config.js # ブリッジ設定
+├── raffleIndexer/             # rindexerによるイベントインデックス
+│   ├── rindexer.yaml         # インデックス設定
+│   └── data/                 # CSVデータ出力
+├── docker-compose.yml         # 開発環境
+├── package.json              # ルートパッケージ設定
+└── CLAUDE.md                 # このファイル
 ```
 
-## Development Setup
+## 開発セットアップ
 
-### Prerequisites
-- **Docker & Docker Compose** (recommended for local development)
-- **Node.js** v18+ (if running without Docker)
-- **Foundry** (if running backend locally)
+### 前提条件
+- **Docker & Docker Compose** (ローカル開発推奨)
+- **Node.js** v18+ (Dockerなしで実行する場合)
+- **Foundry** (バックエンドをローカルで実行する場合)
 
-### Quick Start with Docker
+### Dockerでのクイックスタート
 ```bash
-# Clone and navigate to project
+# プロジェクトをクローンしてディレクトリに移動
 cd /path/to/Raffle_Dapp
 
-# Start development environment
+# 開発環境を開始
 docker-compose up
 
-# Access services
-# Frontend: http://localhost:3000
-# Backend (Anvil): http://localhost:8545
+# サービスにアクセス
+# フロントエンド: http://localhost:3000
+# バックエンド (Anvil): http://localhost:8545
 ```
 
-### Environment Variables
-Create `.env` files as needed:
+### 環境変数
+必要に応じて`.env`ファイルを作成:
 ```bash
-# Backend (.env in backend/ directory)
+# バックエンド (backend/ディレクトリの.env)
 PRIVATE_KEY=your_private_key
 SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-key
 BASE_SEPOLIA_RPC_URL=https://base-sepolia.g.alchemy.com/v2/your-key
@@ -125,102 +125,102 @@ ETHERSCAN_API_KEY=your_etherscan_key
 BASE_API_KEY=your_basescan_key
 ARBISCAN_API_KEY=your_arbiscan_key
 
-# Frontend (.env.local in frontend/ directory)
+# フロントエンド (frontend/ディレクトリの.env.local)
 NEXT_PUBLIC_ALCHEMY_API_KEY=your_alchemy_key
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_id
 ```
 
-## Common Development Commands
+## よく使用する開発コマンド
 
-### Backend (Foundry)
+### バックエンド (Foundry)
 ```bash
-# Enter backend container
+# バックエンドコンテナに入る
 docker-compose exec backend sh
 
-# Or use Makefile commands from project root
+# またはプロジェクトルートからMakefileコマンドを使用
 cd backend/
 
-# Install dependencies
+# 依存関係をインストール
 make install
 
-# Build contracts
+# コントラクトをビルド
 make build
 
-# Run all tests
+# 全テストを実行
 make test
 
-# Run unit tests only
+# ユニットテストのみ実行
 make test-unit
 
-# Run with verbose output
+# 詳細出力で実行
 forge test -vvv
 
-# Deploy to all testnets
+# 全テストネットにデプロイ
 make deploy-raffle-proxy
 
-# Deploy to specific network
+# 特定のネットワークにデプロイ
 make deploy-raffle-proxy-sepolia
 make deploy-raffle-proxy-base
 make deploy-raffle-proxy-arb
 
-# Upgrade contracts on all networks
+# 全ネットワークでコントラクトをアップグレード
 make upgrade-raffle
 
-# Update frontend config after deployment
+# デプロイ後にフロントエンド設定を更新
 make update-frontend
 
-# Format code
+# コードをフォーマット
 make format
 
-# Local development with Anvil
-make anvil                    # Start local chain
-make deploy-anvil            # Deploy to local chain
+# Anvilでのローカル開発
+make anvil                    # ローカルチェーンを開始
+make deploy-anvil            # ローカルチェーンにデプロイ
 ```
 
-### Frontend (Next.js)
+### フロントエンド (Next.js)
 ```bash
-# Enter frontend container
+# フロントエンドコンテナに入る
 docker-compose exec frontend sh
 
-# Or run locally
+# またはローカルで実行
 cd frontend/
 
-# Install dependencies
+# 依存関係をインストール
 npm install
 
-# Start development server
+# 開発サーバーを開始
 npm run dev
 
-# Build for production
+# 本番用にビルド
 npm run build
 
-# Start production server
+# 本番サーバーを開始
 npm start
 
-# Lint code
+# コードをリント
 npm run lint
 
-# Update contract configuration (from project root)
+# コントラクト設定を更新 (プロジェクトルートから)
 npm run update-contracts
 ```
 
-### Deployment Workflow
+### デプロイワークフロー
 ```bash
-# 1. Deploy contracts to all testnets
+# 1. 全テストネットにコントラクトをデプロイ
 cd backend && make deploy-raffle-proxy
 
-# 2. Update frontend configuration
+# 2. フロントエンド設定を更新
 cd .. && npm run update-contracts
 
-# 3. Verify contracts (optional)
+# 3. コントラクトを検証 (オプション)
 cd backend && make verify-sepolia verify-base-sepolia verify-arb-sepolia
 ```
 
-## Contract Configuration
+## コントラクト設定
 
-### Network Details
+### ネットワーク詳細
 ```typescript
-// Contract addresses are auto-managed in frontend/app/lib/contract-config.ts
+// コントラクトアドレスは frontend/app/lib/contract-config.ts で自動管理されます
 export const contractConfig = {
   11155111: {  // Ethereum Sepolia
     name: "Ethereum Sepolia",
@@ -243,21 +243,21 @@ export const contractConfig = {
 };
 ```
 
-### Key Contract Functions
-- `enterRaffle(uint256 amount)` - Enter raffle with USDC
-- `performUpkeep(bytes calldata)` - Chainlink automation trigger
-- `fulfillRandomWords(uint256, uint256[])` - VRF callback
-- `processWinner()` - Finalize winner selection
-- `addMockPlayer(address)` - Admin function for testing
-- `resetPlayers()` - Admin function to reset state
+### 主要なコントラクト関数
+- `enterRaffle(uint256 amount)` - USDCでラッフルに参加
+- `performUpkeep(bytes calldata)` - Chainlink automation トリガー
+- `fulfillRandomWords(uint256, uint256[])` - VRFコールバック
+- `processWinner()` - 勝者選択の確定
+- `addMockPlayer(address)` - テスト用管理関数
+- `resetPlayers()` - 状態リセット用管理関数
 
-## Critical Implementation Details
+## 重要な実装詳細
 
-### Gas Optimization for L2 Networks
+### L2ネットワークのガス最適化
 
-**IMPORTANT**: Base Sepolia requires special gas handling due to dual fee structure (L2 execution + L1 data availability).
+**重要**: Base Sepoliaは二重料金構造（L2実行 + L1データ可用性）により特別なガス処理が必要です。
 
-Located in `frontend/hooks/use-raffle-automation.ts`:
+`frontend/hooks/use-raffle-automation.ts`に実装:
 ```typescript
 // Base Sepolia gas optimization (chainId 84532)
 if (chainId === 84532) {
@@ -279,57 +279,57 @@ if (chainId === 84532) {
 }
 ```
 
-**Why this is critical**: Without proper gas optimization, `performUpkeep` calls revert on Base Sepolia due to insufficient gas for L1 data posting costs.
+**重要な理由**: 適切なガス最適化なしでは、L1データ投稿コストの不足により、Base Sepoliaで`performUpkeep`コールがrevertします。
 
-### Smart Contract Proxy Pattern
+### スマートコントラクトプロキシパターン
 
-Uses **UUPS (Universal Upgradeable Proxy Standard)** pattern:
-- `RaffleProxy.sol` - Proxy contract (never changes address)
-- `RaffleImplementation.sol` - Logic contract (upgradeable)
-- Upgrades via `upgradeTo(address newImplementation)`
+**UUPS (Universal Upgradeable Proxy Standard)**パターンを使用:
+- `RaffleProxy.sol` - プロキシコントラクト（アドレス不変）
+- `RaffleImplementation.sol` - ロジックコントラクト（アップグレード可能）
+- `upgradeTo(address newImplementation)`経由でアップグレード
 
-### Chainlink Integration
+### Chainlink統合
 
 **VRF (Verifiable Random Function)**:
-- Subscription-based VRF 2.5
-- Configured per network in `HelperConfig.s.sol`
-- Random words fulfill winner selection
+- サブスクリプションベースのVRF 2.5
+- `HelperConfig.s.sol`でネットワーク毎に設定
+- ランダムワードで勝者選択を実現
 
 **Automation (Keepers)**:
-- Upkeep conditions check raffle state
-- Automatically triggers `performUpkeep` when conditions met
-- Gas-optimized for each L2 network
+- アップキープ条件でラッフル状態をチェック
+- 条件が満たされると`performUpkeep`を自動トリガー
+- 各L2ネットワーク用にガス最適化済み
 
-## Key Frontend Hooks
+## 主要なフロントエンドフック
 
-### Shared Utility Hooks (hooks/shared/)
-- `use-contract-config.ts` - **Core**: Chain ID validation and contract address resolution for all supported networks
-- `use-smart-account-transaction.ts` - **Core**: Unified transaction handling for both EOA and Account Abstraction with L2 gas optimization
+### 共有ユーティリティフック (hooks/shared/)
+- `use-contract-config.ts` - **コア**: サポートされた全ネットワークのチェーンID検証とコントラクトアドレス解決
+- `use-smart-account-transaction.ts` - **コア**: EOAとAccount AbstractionのL2ガス最適化統一トランザクション処理
 
-### Core Raffle Functionality
-- `use-raffle-data.ts` - Contract state reading (players, status, jackpot) - **Uses shared hooks**
-- `use-raffle-participation.ts` - Enter/exit raffle operations
-- `use-raffle-automation.ts` - **Critical**: VRF automation with L2 gas optimization
-- `use-auto-winner-processor.ts` - Automatic winner processing on state change
+### ラッフル機能フック
+- `use-raffle-data.ts` - コントラクト状態読み取り（プレイヤー、ステータス、ジャックポット）- **共有フック使用**
+- `use-raffle-participation.ts` - ラッフル参加/退出操作
+- `use-raffle-automation.ts` - **重要**: L2ガス最適化付きVRF自動化
+- `use-auto-winner-processor.ts` - 状態変更時の自動勝者処理
 
-### Wallet & Account Management
-- `use-smart-account.ts` - Account Kit integration for smart wallets
-- `use-web3auth.ts` - Web3Auth social login integration
-- `use-wallet-balances.ts` - USDC and ETH balance tracking
+### ウォレットとアカウント管理
+- `use-smart-account.ts` - スマートウォレット用Account Kit統合
+- `use-web3auth.ts` - Web3Authソーシャルログイン統合
+- `use-wallet-balances.ts` - USDCとETH残高追跡
 
-### Cross-chain Features
-- `use-token-bridge.ts` - CCIP cross-chain token transfers
-- `use-contract-balance.ts` - Multi-chain contract balance monitoring
+### クロスチェーン機能
+- `use-token-bridge.ts` - CCIPクロスチェーントークン転送
+- `use-contract-balance.ts` - マルチチェーンコントラクト残高監視
 
-### API Integration
-- `app/lib/database.ts` - **Shared**: Database connection pool and query utilities for API routes
-- `app/api/raffle/entries/route.ts` - Raffle entry history endpoint
-- `app/api/raffle/history/route.ts` - Winner history endpoint  
-- `app/api/raffle/stats/route.ts` - Statistics aggregation endpoint
+### API統合
+- `app/lib/database.ts` - **共有**: APIルート用データベース接続プールとクエリユーティリティ
+- `app/api/raffle/entries/route.ts` - ラッフル参加履歴エンドポイント
+- `app/api/raffle/history/route.ts` - 勝者履歴エンドポイント
+- `app/api/raffle/stats/route.ts` - 統計集約エンドポイント
 
-## Testing
+## テスト
 
-### Backend Tests
+### バックエンドテスト
 ```bash
 # Unit tests
 forge test --match-path "test/unit/**" -vvv
@@ -462,21 +462,75 @@ docker-compose logs backend
 
 ---
 
-## Quick Reference
+## クイックリファレンス
 
-**Start Development**: `docker-compose up`
-**Deploy All Networks**: `cd backend && make deploy-raffle-proxy-with-update`
-**Update Config**: `npm run update-contracts`
-**Run Tests**: `cd backend && make test`
-**View Logs**: `docker-compose logs [frontend|backend]`
+**開発開始**: `docker-compose up`
+**全ネットワークデプロイ**: `cd backend && make deploy-raffle-proxy-with-update`
+**設定更新**: `npm run update-contracts`
+**テスト実行**: `cd backend && make test`
+**ログ確認**: `docker-compose logs [frontend|backend]`
 
-**Recent Improvements (2025-06-27)**:
-- **Code Refactoring**: Eliminated 1200+ lines of duplicate code through shared utilities
-- **Shared Hooks**: Created `hooks/shared/` with unified contract config and transaction handling
-- **API Optimization**: Consolidated database utilities in `app/lib/database.ts`
-- **Type Safety**: Improved TypeScript types and reduced `any` usage
-- **Gas Optimization**: Enhanced L2 network gas handling in transaction utilities
+**最近の改善点 (2025-06-27)**:
+- **コードリファクタリング**: 共有ユーティリティにより1200+行の重複コードを削除
+- **共有フック**: 統一されたコントラクト設定とトランザクション処理で`hooks/shared/`を作成
+- **API最適化**: `app/lib/database.ts`でデータベースユーティリティを統合
+- **型安全性**: TypeScript型を改善し`any`使用を削減
+- **ガス最適化**: トランザクションユーティリティでL2ネットワークガス処理を強化
 
-**Critical Issue Solved**: Base Sepolia gas optimization in `use-raffle-automation.ts` and shared transaction utilities
+**解決済み重要問題**: `use-raffle-automation.ts`と共有トランザクションユーティリティでのBase Sepoliaガス最適化
 
-This guide should provide comprehensive context for future development work on the Raffle DApp. The project successfully implements a sophisticated multi-chain raffle system with proper L2 optimizations, modern Web3 UX patterns, and well-organized shared utilities for maintainable code.
+このガイドは、Raffle DAppの今後の開発作業に包括的なコンテキストを提供します。このプロジェクトは、適切なL2最適化、モダンなWeb3 UXパターン、保守可能なコードのための整理された共有ユーティリティを備えた洗練されたマルチチェーンラッフルシステムを正常に実装しています。
+
+## 開発中のつまづきポイントとワークアラウンド
+
+### 解決済み問題
+- **Base Sepolia ガス不足問題** (2025-06-27)
+  - 問題: `performUpkeep`がガス不足でrevert
+  - 解決策: `use-raffle-automation.ts`で30%ガスバッファ追加
+  - 場所: `frontend/hooks/use-raffle-automation.ts:264-279`
+
+- **コード重複問題** (2025-06-27)
+  - 問題: 1200+行の重複コード
+  - 解決策: 共有utility hooks作成 (`hooks/shared/`)
+  - 影響: TypeScript型安全性向上、保守性改善
+
+- **プロキシコントラクトとイミュータブル変数問題** (2025年開発中)
+  - 問題: イミュータブル変数がプロキシパターンで委譲されない
+  - 現象: フロントエンドとコントラクトで異なるUSDCアドレスを参照
+  - 解決策: イミュータブル変数を通常のストレージ変数に変更、初期化関数で設定
+  - 注意: ガスコスト増加（3ガス → 2100ガス）だが、プロキシ互換性が向上
+
+- **スマートアカウントチェーン切り替え問題** (2025年開発中)
+  - 問題: チェーン切り替え時にRPC URLが更新されず、常にEthereum Sepoliaに送信
+  - 現象: Base Sepoliaで操作してもSepolia RPCエンドポイントに送信される
+  - 解決策: チェーン切り替え時にスマートアカウントクライアントを完全にリセット
+  - 場所: スマートアカウント管理hook
+
+- **Base Sepolia VRFコールバック重複問題** (2025年開発中)
+  - 問題: `OnlyCoordinatorCanFulfill`エラー（0x79bfd401）
+  - 根本原因: VRFConsumerBaseV2Plus継承によるストレージレイアウト競合
+  - 現象: L2特有のガス計算でVRFコールバックが2回実行、owner()がzero address
+  - 解決策: initialize関数でassembly直接設定 `sstore(0, initialOwner)`
+  - 影響: Base SepoliaでのVRF機能正常化
+
+- **Arbitrum Sepolia動的ガス設定問題** (2025年開発中)
+  - 問題: `intrinsic gas too low`エラー
+  - 原因: L1+L2二層料金体系で明示的なガス設定が必要
+  - 解決策: estimateContractGas + 20%バッファ + フォールバック値設定
+  - 注意: Arbitrumでは`gasPrice`または`maxFeePerGas`の明示的設定が必須
+
+### 既知の課題
+- Base SepoliaでのL1データ可用性費用の変動
+- VRFサブスクリプションの自動補充未実装
+- ストレージレイアウト互換性：UUPSアップグレード時は新変数を末尾に配置必須
+- Chainlink Automation設定：target contractはproxy address、ABIはImplementation使用
+
+### 開発時の注意点
+- 新しいhookは`hooks/shared/`の共通utilities使用を検討
+- L2ネットワークでは必ずガス最適化を実装
+- **プロキシパターン使用時はイミュータブル変数を避ける**
+- **スマートアカウントでチェーン切り替え時はクライアント再初期化必須**
+- **UUPSアップグレード前にストレージレイアウト互換性を必ず確認**
+- **VRF継承使用時は初期化でowner()を適切に設定**
+- **Base/Arbitrum Sepoliaでは動的ガス設定とバッファが必要**
+- **Chainlink VRFデプロイ後はmockVRFProviderコントラクトでの承認が必要**
