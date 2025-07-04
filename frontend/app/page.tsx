@@ -87,10 +87,9 @@ export default function RaffleDapp() {
     numberOfPlayers: raffleData.numberOfPlayers,
   });
 
-  // 自動勝者処理フック
+  // 自動勝者処理フック（コントラクト状態直接監視）
   useAutoWinnerProcessor({
     contractAddress: contractAddress || undefined,
-    raffleState: raffleData.raffleState,
     isConnected,
     isReadyToSendTx,
     smartAccountAddress: smartAccountAddress || undefined,

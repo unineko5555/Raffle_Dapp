@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef, useEffect, useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { encodeFunctionData } from "viem";
 import { RaffleABI } from "@/app/lib/contract-config";
@@ -6,7 +6,6 @@ import { useWriteContract, useAccount, usePublicClient } from "wagmi";
 
 interface UseAutoWinnerProcessorOptions {
   contractAddress?: string;
-  raffleState: number;
   isConnected: boolean;
   isReadyToSendTx: boolean;
   smartAccountAddress?: string;
@@ -24,7 +23,6 @@ interface UseAutoWinnerProcessorReturn {
 
 export function useAutoWinnerProcessor({
   contractAddress,
-  raffleState,
   isConnected,
   isReadyToSendTx,
   smartAccountAddress,
@@ -36,12 +34,21 @@ export function useAutoWinnerProcessor({
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
 
+  // コントラクト状態監視とポーリング制御
+  const [isPolling, setIsPolling] = useState(true);
+  const [hasProcessedWinner, setHasProcessedWinner] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   // 🎯 自動processWinner実行関数（最適化版）
   const autoProcessWinner = useCallback(async () => {
     if (!contractAddress || (!isConnected && !isReadyToSendTx)) return;
-    if (raffleState !== 2) return; // WINNER_SELECTED状態でない場合は何もしない
+    if (hasProcessedWinner) return; // 既に処理済みの場合は実行しない
     
-    console.log("🎯 WINNER_SELECTED状態を検出 - 自動で勝者処理を実行");
+    console.log("🎯 コントラクト状態からWINNER_SELECTED検知 - 自動で勝者処理を実行");
+    
+    // 処理中フラグを設定して重複実行を防止
+    setHasProcessedWinner(true);
+    setIsPolling(false); // ポーリングを停止
     
     try {
       const useSmartAccount = isReadyToSendTx && smartAccountAddress && sendUserOperation;
@@ -101,6 +108,10 @@ export function useAutoWinnerProcessor({
     } catch (error: any) {
       console.error("❌ 自動勝者処理エラー:", error);
       
+      // エラー時は処理済みフラグをリセットして再試行可能にする
+      setHasProcessedWinner(false);
+      setIsPolling(true); // ポーリングを再開
+      
       // より詳細なエラーハンドリング
       const isTimeout = error.message?.includes('timeout') || error.message?.includes('Time');
       const isRevert = error.message?.includes('revert');
@@ -123,7 +134,7 @@ export function useAutoWinnerProcessor({
     contractAddress,
     isConnected,
     isReadyToSendTx,
-    raffleState,
+    hasProcessedWinner,
     smartAccountAddress,
     sendUserOperation,
     address,
@@ -133,27 +144,62 @@ export function useAutoWinnerProcessor({
     toast
   ]);
 
-  // 🎯 WINNER_SELECTED状態の自動監視と処理（最適化版）
-  const autoProcessWinnerRef = useRef(false);
-  
+  // 🎯 コントラクト状態の直接ポーリング監視（バックグラウンド実行）
   useEffect(() => {
-    if (raffleState === 2 && !autoProcessWinnerRef.current) { // WINNER_SELECTED状態を検出
-      console.log("🔍 WINNER_SELECTED状態を検出 - 2秒後に自動処理を開始");
-      autoProcessWinnerRef.current = true;
-      
-      // 少し遅延させて状態が安定してから実行（タイムアウトを短縮）
-      const timer = setTimeout(() => {
-        autoProcessWinner();
-      }, 2000);
-      
-      return () => clearTimeout(timer);
-    }
+    if (!contractAddress || !publicClient || !isPolling) return;
     
-    // 状態がリセットされた場合はフラグもリセット
-    if (raffleState !== 2) {
-      autoProcessWinnerRef.current = false;
-    }
-  }, [raffleState, autoProcessWinner]); // raffleStateが変更されたときのみ実行
+    const pollContractState = async () => {
+      try {
+        // フロントエンド状態を無視して、直接コントラクトから読み取り
+        const currentState = await publicClient.readContract({
+          address: contractAddress as `0x${string}`,
+          abi: RaffleABI,
+          functionName: "getRaffleState"
+        });
+        
+        const stateNumber = Number(currentState);
+        console.log("🔍 コントラクト状態ポーリング結果:", stateNumber);
+        
+        // コントラクト状態が2(WINNER_SELECTED)なら即座に実行
+        if (stateNumber === 2 && !hasProcessedWinner) {
+          console.log("🚨 コントラクトでWINNER_SELECTED状態検知 - 自動処理開始");
+          await autoProcessWinner();
+        }
+        
+        // 状態が0(OPEN)にリセットされた場合、処理済みフラグをリセット
+        if (stateNumber === 0 && hasProcessedWinner) {
+          console.log("🔄 ラッフル状態がOPENにリセット - フラグをリセット");
+          setHasProcessedWinner(false);
+          setIsPolling(true);
+        }
+        
+      } catch (error) {
+        console.error("❌ コントラクト状態ポーリングエラー:", error);
+      }
+    };
+    
+    // 初回即座に実行
+    pollContractState();
+    
+    // 3秒間隔でポーリング（タブが非アクティブでも継続）
+    pollingIntervalRef.current = setInterval(pollContractState, 3000);
+    
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [contractAddress, publicClient, isPolling, hasProcessedWinner, autoProcessWinner]);
+  
+  // クリーンアップ
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
 
   return {
     autoProcessWinner,
