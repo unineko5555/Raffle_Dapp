@@ -5,6 +5,7 @@ import { useRaffleContract } from "./use-raffle-contract";
 import { usePublicClient } from "wagmi";
 import { RaffleABI } from "@/app/lib/contract-config";
 import { formatUnits } from "viem";
+import { getHookInterval } from "@/lib/polling-config";
 
 // ラッフル履歴エントリーの型定義
 type RaffleHistoryEntry = {
@@ -35,6 +36,9 @@ export function useRaffleHistory(userAddress: string | undefined | null) {
   // useRaffleContractからコントラクトアドレスのみを利用する
   const { contractAddress } = useRaffleContract();
   const publicClient = usePublicClient();
+
+  // ポーリング間隔の取得（将来の自動更新機能で使用予定）
+  const pollingInterval = getHookInterval('RAFFLE_HISTORY', publicClient?.chain?.id || undefined);
 
   // ユーザー統計情報を取得する関数
   const getUserStatsFromContract = async (
@@ -193,9 +197,9 @@ export function useRaffleHistory(userAddress: string | undefined | null) {
 
         let blockRange = 400n;
         if (chainId === 421614) { // Arbitrum Sepolia
-          blockRange = 450n; // API制限対策: 500ブロック→450ブロックに削減
+          blockRange = 300n; // API制限対策: ポーリング間隔延長に合わせてブロック範囲も縮小
         } else if (chainId === 84532) { // Base Sepolia
-          blockRange = 450n; // API制限対策: 500ブロック→450ブロックに削減
+          blockRange = 300n; // API制限対策: ポーリング間隔延長に合わせてブロック範囲も縮小
         }
 
         // 最新ブロックを取得

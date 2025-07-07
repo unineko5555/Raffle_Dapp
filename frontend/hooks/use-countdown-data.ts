@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
-import { usePublicClient } from "wagmi";
+import { usePublicClient, useChainId } from "wagmi";
+import { getHookInterval } from "@/lib/polling-config";
 
 interface UseCountdownDataOptions {
   getMinPlayersReachedTime?: () => Promise<number>;
@@ -23,6 +24,10 @@ export function useCountdownData({
   numberOfPlayers,
 }: UseCountdownDataOptions): UseCountdownDataReturn {
   const publicClient = usePublicClient();
+  const chainId = useChainId();
+
+  // ポーリング間隔の取得
+  const pollingInterval = getHookInterval('COUNTDOWN_DATA', chainId || undefined);
 
   // カウントダウン用の状態変数
   const [minPlayersReachedTime, setMinPlayersReachedTime] = useState(0);
@@ -80,7 +85,7 @@ export function useCountdownData({
           // カウントダウンデータを更新（最小プレイヤー数に達した可能性）
           setTimeout(() => {
             updateCountdownData();
-          }, 2000);
+          }, Math.min(pollingInterval / 4, 2000)); // ポーリング間隔に基づく遅延
         }
       });
 
@@ -117,7 +122,7 @@ export function useCountdownData({
           // カウントダウンデータを更新（最小プレイヤー数を下回った可能性）
           setTimeout(() => {
             updateCountdownData();
-          }, 2000);
+          }, Math.min(pollingInterval / 4, 2000)); // ポーリング間隔に基づく遅延
         }
       });
 
@@ -133,7 +138,7 @@ export function useCountdownData({
     // 初回読み込みを少し遅らせてレート制限を回避
     const timer = setTimeout(() => {
       updateCountdownData();
-    }, 5000); // 5秒に延長してAPI負荷を軽減
+    }, Math.min(pollingInterval / 2, 5000)); // ポーリング間隔に基づく初期遅延
     return () => clearTimeout(timer);
   }, [updateCountdownData]);
 

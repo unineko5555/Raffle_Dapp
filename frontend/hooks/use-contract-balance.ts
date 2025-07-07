@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useChainId } from "wagmi";
 import { contractConfig } from "@/app/lib/contract-config";
+import { getHookInterval } from "@/lib/polling-config";
 
 interface ContractBalanceData {
   ethBalance: string;
@@ -34,9 +35,12 @@ export function useContractBalance({
     usdcBalance: "0",
   });
 
+  // ポーリング間隔の取得
+  const pollingInterval = getHookInterval('CONTRACT_BALANCE', chainId || undefined);
+
   // レート制限用の状態を追加
   const lastBalanceUpdateRef = useRef(0);
-  const BALANCE_UPDATE_INTERVAL = 30000; // 30秒制限（API制限対策）
+  const BALANCE_UPDATE_INTERVAL = pollingInterval; // 共通設定を使用
   const tokenListenerChainIdRef = useRef<number | null>(null);
 
   // コントラクト残高を取得する関数 - forceUpdateフラグ対応（レート制限付き）
@@ -145,7 +149,7 @@ export function useContractBalance({
             // 残高の強制更新を実行（ただし、レート制限を適用）
             setTimeout(() => {
               updateContractBalances(false); // 強制更新ではなく通常更新に変更
-            }, 5000); // 5秒遅延してAPI負荷を軽減
+            }, Math.min(pollingInterval / 2, 5000)); // ポーリング間隔に基づく遅延
           }
         }
       });

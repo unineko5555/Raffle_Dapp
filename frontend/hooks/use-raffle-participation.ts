@@ -15,6 +15,7 @@ import { RaffleABI, ERC20ABI } from "@/app/lib/contract-config";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
 import { useContractConfig } from "./shared/use-contract-config";
 import { useSmartAccountTransaction } from "./shared/use-smart-account-transaction";
+import { getHookInterval } from "@/lib/polling-config";
 
 export function useRaffleParticipation() {
   const { address, isConnected } = useAccount();
@@ -48,6 +49,9 @@ export function useRaffleParticipation() {
   const { contractAddress, publicClient, isValidChainId, chainId: currentChainId, networkConfig } = useContractConfig();
   const erc20Address = networkConfig?.erc20Address || null;
 
+  // ポーリング間隔の取得
+  const pollingInterval = getHookInterval('RAFFLE_PARTICIPATION', currentChainId || undefined);
+
   // コントラクト書き込み関数
   const {
     writeContract,
@@ -76,7 +80,7 @@ export function useRaffleParticipation() {
 
   // プレイヤー参加状態のキャッシュ用変数
   let lastPlayerCheckTime = 0;
-  const PLAYER_CHECK_INTERVAL = 15000; // 15秒に延長
+  const PLAYER_CHECK_INTERVAL = pollingInterval; // 共通設定を使用
 
   // プレイヤーの参加状態を確認 - スマートアカウントアドレスのサポートを追加
   const checkPlayerEntered = async (checkAddress = "") => {

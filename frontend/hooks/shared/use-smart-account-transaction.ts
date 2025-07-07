@@ -44,7 +44,13 @@ export function useSmartAccountTransaction() {
   const executeTransaction = async (config: TransactionConfig): Promise<TransactionResult> => {
     const { contractAddress, abi, functionName, args = [], value = BigInt(0), gasOptimization } = config;
     
-    if (!contractAddress || (!isConnected && !isReadyToSendTx)) {
+    if (!contractAddress) {
+      return { success: false, error: "コントラクトアドレスが指定されていません" };
+    }
+    
+    // スマートアカウントまたはEOAのいずれかが使用可能かチェック
+    const hasValidConnection = (isReadyToSendTx && smartAccountAddress) || (isConnected && address);
+    if (!hasValidConnection) {
       return { success: false, error: "ウォレットが接続されていません" };
     }
 

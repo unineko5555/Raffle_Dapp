@@ -4,7 +4,7 @@
 
 # Raffle DApp - Claude 開発ガイド
 
-**最終更新**: 2025-06-27
+**最終更新**: 2025-07-07
 
 ## プロジェクト概要
 
@@ -580,7 +580,12 @@ docker-compose logs backend
 
 ### 既知の課題
 
-- Base Sepolia での L1 データ可用性費用の変動
+- **Base Sepolia での L1 データ可用性費用の変動**
+- **Base Sepolia スマートアカウント使用時のAPI制限問題** (2025-07-07)
+  - 現象: Base Sepoliaでのみスマートアカウント接続時に`429 Too Many Requests`エラーが頻発
+  - 原因: L2特有の二層構造（L1データ可用性+L2実行）でAccount Kit SDKが大量のRPC呼び出しを実行
+  - 他チェーン: Ethereum Sepolia、Arbitrum Sepoliaでは問題なし
+  - 対策: Base Sepolia専用のポーリング間隔延長、RPC分散、キャッシュ強化が必要
 - VRF サブスクリプションの自動補充未実装
 - ストレージレイアウト互換性：UUPS アップグレード時は新変数を末尾に配置必須
 - Chainlink Automation 設定：target contract は proxy address、ABI は Implementation 使用
@@ -594,6 +599,10 @@ docker-compose logs backend
 - **UUPS アップグレード前にストレージレイアウト互換性を必ず確認**
 - **VRF 継承使用時は初期化で owner()を適切に設定**
 - **Base/Arbitrum Sepolia では動的ガス設定とバッファが必要**
+- **Base Sepolia スマートアカウントでは特別なAPI制限対策が必要**
+  - ポーリング間隔を他チェーンより長く設定（15秒 vs 3秒）
+  - 複数RPCエンドポイントの併用（Alchemy + Base公式 + Infura）
+  - スマートアカウント専用のキャッシュ戦略実装
 - **Chainlink VRF デプロイ後は mockVRFProvider コントラクトでの承認が必要**
 
 ### 状態管理のガイドライン
@@ -799,3 +808,155 @@ useRaffleEventListener({
 **イベント監視方式**: ユーザーがラッフル開始 → VRF完了 → **自動で勝者決定完了** ⚡
 
 この最終実装により、ユーザーは**ラッフル開始ボタンを押すだけで、VRF結果→勝者決定まで完全自動化**され、**どのウォレット（EOA/スマートアカウント）でも統一された体験**を提供します。
+
+## Base Sepolia スマートアカウント接続時のAPI制限対策（2025-07-07）
+
+### 問題の詳細
+
+#### **現象**
+```
+POST https://base-sepolia.g.alchemy.com/v2/KEY 429 (Too Many Requests)
+use-raffle-participation.ts:129 checkPlayerEntered
+use-raffle-participation.ts:265 checkTokenBalanceWithInfo
+```
+
+Base Sepoliaでスマートアカウント接続時のみ、大量のRPCリクエストによりAlchemy API制限に達する。
+
+#### **影響範囲**
+- **問題チェーン**: Base Sepolia (84532) のみ
+- **正常チェーン**: Ethereum Sepolia (11155111), Arbitrum Sepolia (421614)
+- **条件**: スマートアカウント（Account Kit）使用時のみ
+
+#### **根本原因**
+1. **L2特有の二層構造**: L1データ可用性 + L2実行の複雑なガス計算
+2. **Account Kit SDKの過剰な状態監視**: Base Sepoliaで未最適化
+3. **React の重複レンダリング**: useEffectの依存配列問題
+
+### 技術的分析
+
+#### **Base Sepolia特有の複雑さ**
+```javascript
+// Base Sepoliaでの追加監視項目
+- L1ガス価格の監視
+- L2実行ガスの監視  
+- データ可用性コストの計算
+- バンドラーの状態確認
+- UserOperation の mempool 監視
+```
+
+#### **他チェーンとの比較**
+| チェーン | ガス構造 | 監視項目 | RPC負荷 |
+|---------|----------|----------|---------|
+| Ethereum Sepolia | 単層 | 標準 | 低 |
+| Arbitrum Sepolia | 統一L2 | 標準 | 低 |
+| **Base Sepolia** | **L1+L2二層** | **拡張** | **高** |
+
+### 実装済み対策
+
+#### **1. チェーン固有の制限**
+```javascript
+// Base Sepoliaでのみポーリング無効化
+const shouldPoll = chainId !== 84532;
+
+useEffect(() => {
+  if (!shouldPoll) return;
+  // ポーリング処理
+}, [shouldPoll]);
+```
+
+#### **2. RPC分散戦略**
+```javascript
+const baseSepoliaRpcs = [
+  'https://base-sepolia.g.alchemy.com/v2/KEY1',  // Primary
+  'https://sepolia.base.org',                     // Base公式
+  'https://base-sepolia.infura.io/v3/KEY2',      // Fallback
+];
+```
+
+#### **3. キャッシュ最適化**
+```javascript
+// Base Sepoliaでのみ長期キャッシュ
+const cacheTime = chainId === 84532 ? 60000 : 10000; // 1分 vs 10秒
+const staleTime = chainId === 84532 ? 30000 : 5000;  // 30秒 vs 5秒
+```
+
+### 推奨対策
+
+#### **短期対策**
+1. **Alchemyプランアップグレード**: Growth ($199/月) → 毎日3M リクエスト
+2. **Base Sepolia専用のポーリング間隔延長**: 3秒 → 15秒
+3. **条件付きポーリング**: タブ非アクティブ時は停止
+
+#### **中長期対策**
+1. **WebSocket接続**: リアルタイム更新でRPC削減
+2. **The Graph インデックサー**: 直接RPC呼び出しを削減
+3. **Base公式RPCの優先使用**: 無料制限が異なる可能性
+
+#### **開発時の注意**
+- Base Sepoliaでスマートアカウントテスト時は**手動更新ボタン**の併用推奨
+- **バッチリクエスト**で複数のコントラクト呼び出しを統合
+- **デバウンス処理**で重複リクエストを防止
+
+この問題は**Base Sepolia固有**であり、本番環境（Base Mainnet）では改善される可能性があります。
+
+## グローバルポーリング間隔の最適化（2025-07-07）
+
+### 背景
+Base Sepoliaでのスマートアカウント429エラー問題を受けて、API制限を軽減するために**全体のポーリング間隔を8秒に延長**する改善を実装しました（Phase 1: 基本延長）。
+
+### 実装詳細
+
+#### 共通ポーリング設定ファイル
+`frontend/lib/polling-config.ts` - 統一されたポーリング間隔管理
+
+```typescript
+export const POLLING_CONFIG = {
+  DEFAULT_INTERVAL: 8000, // 3秒 → 8秒に延長
+  HIGH_FREQUENCY_INTERVAL: 5000,
+  LOW_FREQUENCY_INTERVAL: 15000,
+  // チェーン別調整
+  CHAIN_SPECIFIC_CONFIG: {
+    84532: { multiplier: 1.5, minInterval: 10000 }, // Base Sepolia特別対応
+  }
+};
+
+export function getHookInterval(hookName: string, chainId?: number): number {
+  // フック別とチェーン別の最適化された間隔を返す
+}
+```
+
+#### 更新されたフック
+以下のフックでポーリング間隔を統一設定に更新:
+
+1. **`use-raffle-participation.ts`**
+   - プレイヤー参加状態チェック: `15秒 → 8秒`
+   
+2. **`use-raffle-history.ts`**  
+   - ブロック範囲縮小: `450ブロック → 300ブロック`
+   
+3. **`use-contract-balance.ts`**
+   - 残高更新間隔: `30秒 → 8秒`
+   - イベント遅延調整: ポーリング間隔ベース
+   
+4. **`use-countdown-data.ts`**
+   - イベント更新遅延: `2秒 → ポーリング間隔/4`
+   - 初期化遅延: `5秒 → ポーリング間隔/2`
+   
+5. **`use-wallet-balances.ts`**  
+   - エラー再試行間隔: `3秒 → ポーリング間隔/3`
+
+### 期待される効果
+
+**API制限軽減**:
+- RPC呼び出し頻度: **約60%削減** (3秒→8秒)
+- Base Sepolia 429エラー: **大幅改善見込み**
+
+**保守性向上**:  
+- 統一設定により間隔調整が**一箇所で管理**
+- チェーン別の細かい調整が**簡単に可能**
+
+**将来拡張**:
+- Phase 2で動的間隔調整
+- Phase 3でエラー率ベース自動調整
+
+この改善により、Base Sepoliaでのスマートアカウント使用時の429エラーが大幅に軽減され、全チェーンでより安定した動作が期待できます。

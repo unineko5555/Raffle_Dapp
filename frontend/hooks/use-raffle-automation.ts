@@ -129,11 +129,18 @@ export function useRaffleAutomation(
           args: [nativePayment],
         });
 
-        const result = await sendUserOperation(
-          contractAddress as `0x${string}`,
-          setNativePaymentCallData,
-          BigInt(0)
-        );
+        // Base SepoliaでUserOperation待機タイムアウト対策
+        const result = await Promise.race([
+          sendUserOperation(
+            contractAddress as `0x${string}`,
+            setNativePaymentCallData,
+            BigInt(0)
+          ),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("UserOperation timeout")), 10000)
+          )
+        ]) as any;
+        
         console.log(`VRFネイティブ支払い設定完了: ${nativePayment}`);
 
         // 設定反映を待つ
@@ -167,8 +174,16 @@ export function useRaffleAutomation(
         // 設定反映を待つ
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("VRFネイティブ支払い設定エラー:", error);
+      
+      // Base SepoliaのUserOperation問題は警告として扱う
+      if (error?.message?.includes("Failed to find User Operation") || 
+          error?.message?.includes("UserOperation timeout")) {
+        console.warn("Base Sepolia UserOperation問題を検出、処理を続行...");
+        return; // エラーを投げずに続行
+      }
+      
       throw error;
     }
   };

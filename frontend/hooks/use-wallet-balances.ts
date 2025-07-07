@@ -5,11 +5,19 @@ import { useAccount, useBalance, useChainId, useReadContract, useBlockNumber } f
 import { formatUnits } from "viem";
 import { contractConfig, ERC20ABI } from "@/app/lib/contract-config";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
+import { getHookInterval } from "@/lib/polling-config";
 
 export function useWalletBalances() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { smartAccountAddress, isReadyToSendTx, currentChainId } = useSmartAccountContext();
+  
+  // アドレスの判定（EOAかスマートウォレットか）
+  const activeAddress = isReadyToSendTx ? smartAccountAddress : address;
+  const activeChainId = isReadyToSendTx ? currentChainId : chainId;
+
+  // ポーリング間隔の取得
+  const pollingInterval = getHookInterval('WALLET_BALANCE', activeChainId || undefined);
   
   // 状態変数
   const [balances, setBalances] = useState({
@@ -18,10 +26,6 @@ export function useWalletBalances() {
     loading: false,
     error: null as string | null
   });
-  
-  // アドレスの判定（EOAかスマートウォレットか）
-  const activeAddress = isReadyToSendTx ? smartAccountAddress : address;
-  const activeChainId = isReadyToSendTx ? currentChainId : chainId;
   
   // USDC契約アドレスの取得
   const usdcAddress = contractConfig[activeChainId as keyof typeof contractConfig]?.erc20Address || null;
@@ -135,7 +139,7 @@ export function useWalletBalances() {
       
       setTimeout(() => {
         refreshBalances();
-      }, 500);
+      }, Math.min(pollingInterval / 16, 500)); // ポーリング間隔に基づく遅延
     }
   }, [activeChainId, activeAddress]);
   
@@ -144,7 +148,7 @@ export function useWalletBalances() {
     if (balances.error && activeAddress) {
       const timer = setTimeout(() => {
         refreshBalances();
-      }, 3000);
+      }, Math.min(pollingInterval / 3, 3000)); // ポーリング間隔に基づく再試行遅延
       
       return () => clearTimeout(timer);
     }
