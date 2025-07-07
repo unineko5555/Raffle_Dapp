@@ -195,7 +195,7 @@ export function TokenBridge() {
             <Button
               variant="ghost"
               size="sm"
-              className="absolute right-1 top-1 h-6 text-xs text-blue-600 dark:text-blue-400"
+              className="absolute right-1 top-1 h-6 text-xs text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 hover:bg-cyan-50 dark:hover:bg-cyan-950"
               onClick={handleMaxAmount}
               disabled={isLoading || isApproving}
             >
@@ -222,7 +222,7 @@ export function TokenBridge() {
 
         {/* 承認+ブリッジ自動実行ボタン */}
         <Button
-          className="w-full"
+          className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5"
           onClick={handleApproveAndBridge}
           disabled={!canExecute || isLoading || isApproving}
         >
@@ -287,7 +287,7 @@ export function TokenBridge() {
                         href={getExplorerUrl(tx.sourceChain, tx.txHash)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 dark:text-blue-400 flex items-center text-xs"
+                        className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 flex items-center text-xs transition-colors"
                       >
                         詳細 <ExternalLink className="ml-1 h-3 w-3" />
                       </a>
@@ -295,7 +295,7 @@ export function TokenBridge() {
                         href={getCCIPExplorerUrl(tx.txHash)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-green-600 dark:text-green-400 flex items-center text-xs"
+                        className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center text-xs transition-colors"
                         title="CCIP Explorer で確認"
                       >
                         CCIP <Search className="ml-1 h-3 w-3" />

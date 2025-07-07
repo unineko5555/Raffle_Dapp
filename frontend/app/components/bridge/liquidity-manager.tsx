@@ -90,6 +90,7 @@ export function LiquidityManager() {
                 size="icon"
                 onClick={handleRefresh}
                 disabled={isLoading}
+                className="hover:bg-cyan-50 dark:hover:bg-cyan-950 text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300"
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
@@ -143,7 +144,7 @@ export function LiquidityManager() {
               <Button
                 onClick={handleInitialize}
                 disabled={isLoading || parseFloat(amount) <= 0}
-                variant="outline"
+                className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5"
               >
                 {isLoading ? (
                   <>
@@ -157,6 +158,7 @@ export function LiquidityManager() {
               <Button
                 onClick={handleReplenish}
                 disabled={isLoading || parseFloat(amount) <= 0}
+                className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-medium transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5"
               >
                 {isLoading ? (
                   <>

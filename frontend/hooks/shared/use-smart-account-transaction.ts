@@ -50,6 +50,16 @@ export function useSmartAccountTransaction() {
     
     // スマートアカウントまたはEOAのいずれかが使用可能かチェック
     const hasValidConnection = (isReadyToSendTx && smartAccountAddress) || (isConnected && address);
+    
+    // デバッグ情報を出力
+    console.log("🔍 executeTransaction 接続状態チェック:", {
+      isReadyToSendTx,
+      smartAccountAddress: !!smartAccountAddress,
+      isConnected,
+      address: !!address,
+      hasValidConnection
+    });
+    
     if (!hasValidConnection) {
       return { success: false, error: "ウォレットが接続されていません" };
     }

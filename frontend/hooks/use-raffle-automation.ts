@@ -177,10 +177,10 @@ export function useRaffleAutomation(
     } catch (error: any) {
       console.error("VRFネイティブ支払い設定エラー:", error);
       
-      // Base SepoliaのUserOperation問題は警告として扱う
+      // Account Abstraction UserOperation問題は警告として扱う
       if (error?.message?.includes("Failed to find User Operation") || 
           error?.message?.includes("UserOperation timeout")) {
-        console.warn("Base Sepolia UserOperation問題を検出、処理を続行...");
+        console.warn("Account Abstraction UserOperation問題を検出、処理を続行...");
         return; // エラーを投げずに続行
       }
       
@@ -239,11 +239,18 @@ export function useRaffleAutomation(
           args: [mockVRFProvider, useMockVRF],
         });
 
-        const result = await sendUserOperation(
-          contractAddress as `0x${string}`,
-          setMockVRFCallData,
-          BigInt(0)
-        );
+        // Account Abstraction UserOperation待機タイムアウト対策
+        const result = await Promise.race([
+          sendUserOperation(
+            contractAddress as `0x${string}`,
+            setMockVRFCallData,
+            BigInt(0)
+          ),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("UserOperation timeout")), 10000)
+          )
+        ]) as any;
+        
         console.log(`VRFモード変更完了 (MockVRF: ${useMockVRF})`);
 
         // 設定反映を待つ
@@ -275,8 +282,16 @@ export function useRaffleAutomation(
         // 設定反映を待つ
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("VRFモード変更エラー:", error);
+      
+      // Account Abstraction UserOperation問題は警告として扱う
+      if (error?.message?.includes("Failed to find User Operation") || 
+          error?.message?.includes("UserOperation timeout")) {
+        console.warn("Account Abstraction UserOperation問題を検出、処理を続行...");
+        return; // エラーを投げずに続行
+      }
+      
       throw error;
     }
   };

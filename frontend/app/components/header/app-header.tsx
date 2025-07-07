@@ -29,7 +29,10 @@ export function AppHeader() {
           <Tooltip>
             <TooltipTrigger asChild>
               <Link href="/bridge">
-                <Button variant="outline" size="sm" className="flex items-center gap-1">
+                <Button 
+                  size="sm" 
+                  className="flex items-center gap-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-medium transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5"
+                >
                   <ArrowRightLeft className="h-4 w-4" />
                   Bridge
                 </Button>
