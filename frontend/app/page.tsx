@@ -238,10 +238,10 @@ export default function RaffleDapp() {
             minPlayersReachedTime={minPlayersReachedTime}
             minimumPlayers={minimumPlayers}
             pastRaffles={(pastRaffles || []).map((raffle: any) => ({
-              time: new Date(raffle.timestamp * 1000).toLocaleString(),
-              winner: raffle.winner,
-              prize: (Number(raffle.prize) / 1000000).toFixed(2),
-              jackpot: raffle.jackpotWon ? "Yes" : "No"
+              time: raffle.time || "日時不明",
+              winner: raffle.winner || "不明",
+              prize: raffle.prize || "0 USDC",
+              jackpot: raffle.jackpot || "なし"
             }))}
             currentAddress={smartAccountAddress || address}
             isHistoryLoading={isHistoryLoading}
