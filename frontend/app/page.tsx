@@ -12,7 +12,7 @@ import { useWeb3Auth } from "@/hooks/use-web3auth";
 import { useSmartAccountContext } from "./providers/smart-account-provider";
 import { useRaffleHistory } from "@/hooks/use-raffle-history";
 import { useContractBalance } from "@/hooks/use-contract-balance";
-import { useAutoWinnerProcessor } from "@/hooks/use-auto-winner-processor";
+import { useRaffleEventListener } from "@/hooks/use-raffle-event-listener";
 import { useCountdownData } from "@/hooks/use-countdown-data";
 
 // コンポーネントのインポート
@@ -37,7 +37,6 @@ export default function RaffleDapp() {
   const {
     smartAccountAddress,
     isReadyToSendTx,
-    sendUserOperation,
     isLoading: isSmartAccountLoading,
   } = useSmartAccountContext();
 
@@ -87,13 +86,8 @@ export default function RaffleDapp() {
     numberOfPlayers: raffleData.numberOfPlayers,
   });
 
-  // 自動勝者処理フック（コントラクト状態直接監視）
-  useAutoWinnerProcessor({
-    contractAddress: contractAddress || undefined,
-    isConnected,
-    isReadyToSendTx,
-    smartAccountAddress: smartAccountAddress || undefined,
-    sendUserOperation,
+  // 🔥 イベント監視による自動勝者処理（ポーリング方式から置き換え）
+  useRaffleEventListener({
     updateRaffleData,
   });
 
@@ -237,7 +231,7 @@ export default function RaffleDapp() {
             contractAddress={contractAddress || ""}
             minPlayersReachedTime={minPlayersReachedTime}
             minimumPlayers={minimumPlayers}
-            pastRaffles={(pastRaffles || []).map((raffle: any) => ({
+            pastRaffles={(pastRaffles || []).map((raffle) => ({
               time: raffle.time || "日時不明",
               winner: raffle.winner || "不明",
               prize: raffle.prize || "0 USDC",

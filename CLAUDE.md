@@ -513,15 +513,24 @@ docker-compose logs backend
 **テスト実行**: `cd backend && make test`
 **ログ確認**: `docker-compose logs [frontend|backend]`
 
-**最近の改善点 (2025-06-27)**:
+**最近の改善点**:
 
+**2025-06-27**:
 - **コードリファクタリング**: 共有ユーティリティにより 1200+行の重複コードを削除
 - **共有フック**: 統一されたコントラクト設定とトランザクション処理で`hooks/shared/`を作成
 - **API 最適化**: `app/lib/database.ts`でデータベースユーティリティを統合
 - **型安全性**: TypeScript 型を改善し`any`使用を削減
 - **ガス最適化**: トランザクションユーティリティで L2 ネットワークガス処理を強化
 
-**解決済み重要問題**: `use-raffle-automation.ts`と共有トランザクションユーティリティでの Base Sepolia ガス最適化
+**2025-07-07**:
+- **イベント監視実装**: `use-raffle-event-listener.ts`による完全自動VRF勝者処理
+- **ポーリング方式廃止**: `use-auto-winner-processor.ts`削除、リソース効率向上
+- **EOA/AA統一**: 共有トランザクションユーティリティでウォレット種別を問わず自動実行
+- **反応速度向上**: 3秒間隔ポーリング → 1秒以内イベント監視に改善
+
+**解決済み重要問題**: 
+- Base Sepolia ガス最適化（共有トランザクションユーティリティ）
+- VRF自動勝者処理の完全自動化（イベント監視方式）
 
 このガイドは、Raffle DApp の今後の開発作業に包括的なコンテキストを提供します。このプロジェクトは、適切な L2 最適化、モダンな Web3 UX パターン、保守可能なコードのための整理された共有ユーティリティを備えた洗練されたマルチチェーンラッフルシステムを正常に実装しています。
 
@@ -621,9 +630,11 @@ const contractAddress = contractConfig[chainId]?.raffleProxy;
 - **React Query**: サーバーデータの自動キャッシュ（24時間GC、5分stale）
 - **Session Storage**: 一時的なUI状態
 
-## VRF自動勝者処理の重要な修正（2025-07-04）
+## VRF自動勝者処理の重要な修正（2025-07-04→2025-07-07）
 
-### 修正前の問題
+### 第1段階: ポーリング方式への改善（2025-07-04）
+
+#### 修正前の問題
 ```typescript
 // 問題のあった実装
 const { data: raffleStateData } = useReadContract({...}); // wagmiキャッシュ依存
@@ -640,7 +651,7 @@ useEffect(() => {
 - 手動リフレッシュまたはタブ切り替えが必要
 - VRF完了後も自動勝者決定が実行されない
 
-### 修正後の実装
+#### 第1段階の改善実装
 ```typescript
 // 改善された実装（use-auto-winner-processor.ts）
 useEffect(() => {
@@ -673,24 +684,118 @@ useEffect(() => {
 }, [contractAddress, publicClient, isPolling, hasProcessedWinner]);
 ```
 
-### 改善効果
-- **完全バックグラウンド動作**: タブ非アクティブでも3秒間隔でコントラクト状態監視
-- **手動操作不要**: VRF完了から最大6秒で自動勝者決定完了
-- **フロントエンド表示と独立**: 画面の状態表示に関係なく動作
-- **重複実行防止**: `hasProcessedWinner`と`isPolling`フラグで制御
-- **エラー時再試行**: 失敗時は自動的にフラグリセットして再試行可能
+### 第2段階: イベント監視への最終改善（2025-07-07）
 
-### 修正対象ファイル
-- `frontend/hooks/use-auto-winner-processor.ts`: 
-  - コントラクト直接ポーリング実装
-  - `raffleState`パラメータ削除
-  - 状態管理フラグ追加
-- `frontend/app/page.tsx`: 
-  - `useAutoWinnerProcessor`の`raffleState`パラメータ削除
+#### イベント監視方式の実装
 
-### UX改善結果
-**修正前**: ユーザーがラッフル開始 → VRF完了 → **手動でタブ切り替えまたはF5** → 勝者決定
+**新規ファイル**: `frontend/hooks/use-raffle-event-listener.ts`
 
-**修正後**: ユーザーがラッフル開始 → VRF完了 → **自動で勝者決定完了** ⚡
+```typescript
+// 🔥 完全なイベント監視実装
+export function useRaffleEventListener({ updateRaffleData }: UseRaffleEventListenerOptions) {
+  const { executeTransaction } = useSmartAccountTransaction(); // EOA/AA統一処理
 
-この修正により、ユーザーは**ラッフル開始ボタンを押すだけで、VRF結果→勝者決定まで完全自動化**されるようになりました。
+  // 🎯 自動processWinner実行関数
+  const autoProcessWinner = useCallback(async () => {
+    const result = await executeTransaction({
+      contractAddress,
+      abi: RaffleABI,
+      functionName: "processWinner",
+      args: [],
+      value: BigInt(0),
+      gasOptimization: { chainId: publicClient?.chain?.id || 0, gasBufferPercent: 20 },
+    });
+    // 成功処理...
+  }, [contractAddress, executeTransaction, updateRaffleData, toast, publicClient]);
+
+  // 🔥 イベント監視の開始
+  useEffect(() => {
+    // RandomWordsReceived イベント監視
+    const unwatchRandomWords = publicClient.watchContractEvent({
+      address: contractAddress as `0x${string}`,
+      abi: RaffleABI,
+      eventName: "RandomWordsReceived",
+      onLogs: (logs) => { /* VRF結果受信ログ */ },
+    });
+
+    // RaffleStateChanged イベント監視 - WINNER_SELECTED状態で自動実行
+    const unwatchStateChange = publicClient.watchContractEvent({
+      address: contractAddress as `0x${string}`,
+      abi: RaffleABI,
+      eventName: "RaffleStateChanged",
+      onLogs: (logs) => {
+        logs.forEach((log: Log & { args?: any }) => {
+          const args = log.args as { newState?: number };
+          const newState = args.newState;
+          
+          // 状態2（WINNER_SELECTED）で自動実行
+          if (newState === 2) {
+            console.log("🚨 WINNER_SELECTED状態検知 - 自動勝者処理開始");
+            setTimeout(() => autoProcessWinner(), 1000); // 1秒後に実行
+          }
+        });
+      },
+    });
+
+    // WinnerPicked イベント監視
+    const unwatchWinnerPicked = publicClient.watchContractEvent({
+      address: contractAddress as `0x${string}`,
+      abi: RaffleABI,
+      eventName: "WinnerPicked",
+      onLogs: (logs) => {
+        updateRaffleData(true); // データ更新
+      },
+    });
+
+    // クリーンアップ関数を返す
+    return () => {
+      unwatchRandomWords();
+      unwatchStateChange();
+      unwatchWinnerPicked();
+    };
+  }, [contractAddress, publicClient, autoProcessWinner, updateRaffleData]);
+}
+```
+
+#### 実装の変更点
+
+**削除されたファイル**: 
+- `frontend/hooks/use-auto-winner-processor.ts` (ポーリング方式)
+
+**修正されたファイル**:
+- `frontend/app/page.tsx`: `useRaffleEventListener`へ置き換え
+
+```typescript
+// 修正前（ポーリング方式）
+useAutoWinnerProcessor({
+  contractAddress: contractAddress || undefined,
+  isConnected, isReadyToSendTx, smartAccountAddress, sendUserOperation,
+  updateRaffleData,
+});
+
+// 修正後（イベント監視方式）
+useRaffleEventListener({
+  updateRaffleData,
+});
+```
+
+### 改善効果の比較
+
+| 項目 | 初期実装 | ポーリング方式 | **イベント監視方式** |
+|------|---------|---------------|-------------------|
+| **反応速度** | UI更新待ち | 3秒間隔 | **即座（1秒以内）** |
+| **リソース消費** | 高（UI監視） | 中（定期RPC） | **低（必要時のみ）** |
+| **信頼性** | UI状態依存 | コントラクト直接 | **ブロックチェーンイベント直接** |
+| **タブ非アクティブ** | 停止 | 停止する可能性 | **常に動作** |
+| **EOA/AA対応** | 個別実装 | 個別実装 | **統一処理** |
+| **L2ガス最適化** | なし | 一部対応 | **完全対応** |
+
+### 最終的なUX改善結果
+
+**初期実装**: ユーザーがラッフル開始 → VRF完了 → **手動でF5またはタブ切り替え** → 勝者決定
+
+**ポーリング方式**: ユーザーがラッフル開始 → VRF完了 → **最大3秒待機** → 勝者決定
+
+**イベント監視方式**: ユーザーがラッフル開始 → VRF完了 → **自動で勝者決定完了** ⚡
+
+この最終実装により、ユーザーは**ラッフル開始ボタンを押すだけで、VRF結果→勝者決定まで完全自動化**され、**どのウォレット（EOA/スマートアカウント）でも統一された体験**を提供します。
