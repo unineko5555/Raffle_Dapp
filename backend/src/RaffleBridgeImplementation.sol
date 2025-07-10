@@ -139,6 +139,9 @@ contract RaffleBridgeImplementation is UUPSUpgradeable, Initializable, IAny2EVMM
         for (uint256 i = 0; i < routerChainSelectors.length; i++) {
             s_chainRouters[routerChainSelectors[i]] = routerAddresses[i];
         }
+        
+        // 初期プール状態を設定（残高0なので全チェーンがlow状態）
+        _updatePoolStatus();
     }
 
     /**

@@ -16,6 +16,11 @@ contract RaffleBridgeProxy {
     bytes32 private constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 
     /**
+     * @dev アップグレード時に発火するイベント
+     */
+    event Upgraded(address indexed newImplementation);
+
+    /**
      * @notice プロキシコンストラクタ
      * @param implementationContract 初期実装コントラクトのアドレス
      * @param initData 初期化用のデータ
@@ -45,6 +50,7 @@ contract RaffleBridgeProxy {
     function upgradeTo(address newImplementation) external onlyAdmin {
         _authorizeUpgrade(newImplementation);
         _setImplementation(newImplementation);
+        emit Upgraded(newImplementation);
     }
 
     /**

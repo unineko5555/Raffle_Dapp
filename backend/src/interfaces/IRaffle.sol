@@ -71,6 +71,13 @@ interface IRaffle {
     function getEntranceFee() external view returns (uint256 fee);
 
     /**
+     * @dev 指定したインデックスのプレイヤーのアドレスを取得する関数
+     * @param index プレイヤーのインデックス
+     * @return player プレイヤーのアドレス
+     */
+    function getPlayer(uint256 index) external view returns (address player);
+
+    /**
      * @dev ユーザーの統計情報を取得する関数
      * @param user 統計情報を取得するユーザーのアドレス
      * @return entryCount ラッフル参加回数
