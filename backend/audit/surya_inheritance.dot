@@ -1,0 +1,350 @@
+digraph G {
+graph [ ratio = "auto", page = "100", compound =true ];
+subgraph "clusterRaffleImplementation" {
+graph [ label = "RaffleImplementation", color = "lightgray", style = "filled", bgcolor = "lightgray" ];
+"RaffleImplementation.<Constructor>" [ label = "<Constructor>", color = "green" ];
+"RaffleImplementation.initialize" [ label = "initialize", color = "blue" ];
+"RaffleImplementation.setNativePayment" [ label = "setNativePayment", color = "blue" ];
+"RaffleImplementation.setCallbackGasLimit" [ label = "setCallbackGasLimit", color = "blue" ];
+"RaffleImplementation.addMockPlayer" [ label = "addMockPlayer", color = "blue" ];
+"RaffleImplementation.resetPlayers" [ label = "resetPlayers", color = "blue" ];
+"RaffleImplementation.enterRaffle" [ label = "enterRaffle", color = "blue" ];
+"RaffleImplementation.cancelEntry" [ label = "cancelEntry", color = "blue" ];
+"RaffleImplementation.checkUpkeep" [ label = "checkUpkeep" ];
+"RaffleImplementation.checkUpkeepDebug" [ label = "checkUpkeepDebug", color = "blue" ];
+"RaffleImplementation.performUpkeep" [ label = "performUpkeep", color = "blue" ];
+"RaffleImplementation.fulfillRandomWords" [ label = "fulfillRandomWords", color = "white" ];
+"RaffleImplementation.processWinner" [ label = "processWinner", color = "blue" ];
+"RaffleImplementation.\_processMockVRFRandomWords" [ label = "_processMockVRFRandomWords" ];
+"RaffleImplementation.withdraw" [ label = "withdraw", color = "blue" ];
+"RaffleImplementation.setOwner" [ label = "setOwner", color = "blue" ];
+"RaffleImplementation.initializeOwnershipPostUpgrade" [ label = "initializeOwnershipPostUpgrade", color = "blue" ];
+"RaffleImplementation.reinitializeVRF" [ label = "reinitializeVRF", color = "blue" ];
+"RaffleImplementation.setMockVRF" [ label = "setMockVRF", color = "blue" ];
+"RaffleImplementation.upgradeTo" [ label = "upgradeTo", color = "blue" ];
+"RaffleImplementation.upgradeToAndCall" [ label = "upgradeToAndCall", color = "green" ];
+"RaffleImplementation.\_authorizeUpgrade" [ label = "_authorizeUpgrade" ];
+"RaffleImplementation.getRaffleState" [ label = "getRaffleState", color = "blue" ];
+"RaffleImplementation.getNumberOfPlayers" [ label = "getNumberOfPlayers", color = "blue" ];
+"RaffleImplementation.getJackpotAmount" [ label = "getJackpotAmount", color = "blue" ];
+"RaffleImplementation.getRecentWinner" [ label = "getRecentWinner", color = "blue" ];
+"RaffleImplementation.getEntranceFee" [ label = "getEntranceFee", color = "blue" ];
+"RaffleImplementation.getPlayer" [ label = "getPlayer", color = "blue" ];
+"RaffleImplementation.getLastRaffleTime" [ label = "getLastRaffleTime", color = "blue" ];
+"RaffleImplementation.getMinPlayersReachedTime" [ label = "getMinPlayersReachedTime", color = "blue" ];
+"RaffleImplementation.getMinimumPlayers" [ label = "getMinimumPlayers", color = "blue" ];
+"RaffleImplementation.getOwner" [ label = "getOwner", color = "blue" ];
+"RaffleImplementation.getMockVRFStatus" [ label = "getMockVRFStatus", color = "blue" ];
+"RaffleImplementation.getNativePaymentSetting" [ label = "getNativePaymentSetting", color = "blue" ];
+"RaffleImplementation.getUserStats" [ label = "getUserStats", color = "blue" ];
+"RaffleImplementation.getRaffleHistoryCount" [ label = "getRaffleHistoryCount", color = "blue" ];
+"RaffleImplementation.getRaffleHistoryAtIndex" [ label = "getRaffleHistoryAtIndex", color = "blue" ];
+"RaffleImplementation.getLatestRaffleHistory" [ label = "getLatestRaffleHistory", color = "blue" ];
+"RaffleImplementation.setRaffleState" [ label = "setRaffleState", color = "blue" ];
+"RaffleImplementation.<Receive Ether>" [ label = "<Receive Ether>", color = "blue" ];
+"RaffleImplementation.\_disableInitializers" [ label = "_disableInitializers" ];
+"RaffleImplementation.address" [ label = "address" ];
+"RaffleImplementation.OwnershipTransferred" [ label = "OwnershipTransferred" ];
+"RaffleImplementation.IVRFCoordinatorV2Plus" [ label = "IVRFCoordinatorV2Plus" ];
+"RaffleImplementation.IMockRandomProvider" [ label = "IMockRandomProvider" ];
+"RaffleImplementation.owner" [ label = "owner" ];
+"RaffleImplementation.RaffleEnter" [ label = "RaffleEnter" ];
+"RaffleImplementation.RaffleStateChanged" [ label = "RaffleStateChanged" ];
+"RaffleImplementation.IERC20" [ label = "IERC20" ];
+"RaffleImplementation.RaffleExit" [ label = "RaffleExit" ];
+"RaffleImplementation.RandomWordsReceived" [ label = "RandomWordsReceived" ];
+"RaffleImplementation.WinnerPicked" [ label = "WinnerPicked" ];
+"RaffleImplementation.transferOwnership" [ label = "transferOwnership" ];
+}
+
+subgraph "clusterconsole" {
+graph [ label = "console", color = "lightgray" ];
+"console.log" [ label = "log" ];
+}
+
+subgraph "clusterIERC20" {
+graph [ label = "IERC20", color = "lightgray" ];
+"IERC20.transferFrom" [ label = "transferFrom" ];
+"IERC20.transfer" [ label = "transfer" ];
+"IERC20.balanceOf" [ label = "balanceOf" ];
+}
+
+subgraph "clusterIMockRandomProvider" {
+graph [ label = "IMockRandomProvider", color = "lightgray" ];
+"IMockRandomProvider.requestRandomWords" [ label = "requestRandomWords" ];
+"IMockRandomProvider.randomWordsAvailable" [ label = "randomWordsAvailable" ];
+"IMockRandomProvider.getLatestRandomWords" [ label = "getLatestRandomWords" ];
+"IMockRandomProvider.resetRandomWords" [ label = "resetRandomWords" ];
+}
+
+subgraph "clusterstring" {
+graph [ label = "string", color = "lightgray" ];
+"string.concat" [ label = "concat" ];
+}
+
+subgraph "clusters_vrfCoordinator" {
+graph [ label = "s_vrfCoordinator", color = "lightgray" ];
+"s_vrfCoordinator.requestRandomWords" [ label = "requestRandomWords" ];
+}
+
+subgraph "clusterVRFV2PlusClient" {
+graph [ label = "VRFV2PlusClient", color = "lightgray" ];
+"VRFV2PlusClient.RandomWordsRequest" [ label = "RandomWordsRequest" ];
+"VRFV2PlusClient.\_argsToBytes" [ label = "_argsToBytes" ];
+"VRFV2PlusClient.ExtraArgsV1" [ label = "ExtraArgsV1" ];
+}
+
+subgraph "clusterRaffleLib" {
+graph [ label = "RaffleLib", color = "lightgray" ];
+"RaffleLib.isWinner" [ label = "isWinner" ];
+"RaffleLib.getJackpotProbability" [ label = "getJackpotProbability" ];
+}
+
+subgraph "clusternewImplementation" {
+graph [ label = "newImplementation", color = "lightgray" ];
+"newImplementation.delegatecall" [ label = "delegatecall" ];
+}
+
+"RaffleImplementation.<Constructor>";
+"RaffleImplementation.\_disableInitializers";
+"RaffleImplementation.initialize";
+"RaffleImplementation.address";
+"RaffleImplementation.OwnershipTransferred";
+"RaffleImplementation.IVRFCoordinatorV2Plus";
+"RaffleImplementation.IMockRandomProvider";
+"console.log";
+"RaffleImplementation.setNativePayment";
+"RaffleImplementation.setCallbackGasLimit";
+"RaffleImplementation.owner";
+"RaffleImplementation.addMockPlayer";
+"RaffleImplementation.RaffleEnter";
+"RaffleImplementation.resetPlayers";
+"RaffleImplementation.RaffleStateChanged";
+"RaffleImplementation.enterRaffle";
+"RaffleImplementation.IERC20";
+"IERC20.transferFrom";
+"RaffleImplementation.cancelEntry";
+"IERC20.transfer";
+"RaffleImplementation.RaffleExit";
+"RaffleImplementation.performUpkeep";
+"RaffleImplementation.checkUpkeep";
+"IMockRandomProvider.requestRandomWords";
+"IMockRandomProvider.randomWordsAvailable";
+"IMockRandomProvider.getLatestRandomWords";
+"RaffleImplementation.\_processMockVRFRandomWords";
+"IMockRandomProvider.resetRandomWords";
+"string.concat";
+"s_vrfCoordinator.requestRandomWords";
+"VRFV2PlusClient.RandomWordsRequest";
+"VRFV2PlusClient.\_argsToBytes";
+"VRFV2PlusClient.ExtraArgsV1";
+"RaffleImplementation.fulfillRandomWords";
+"RaffleImplementation.RandomWordsReceived";
+"RaffleImplementation.processWinner";
+"RaffleLib.isWinner";
+"RaffleLib.getJackpotProbability";
+"IERC20.balanceOf";
+"RaffleImplementation.WinnerPicked";
+"RaffleImplementation.withdraw";
+"RaffleImplementation.setOwner";
+"RaffleImplementation.transferOwnership";
+"RaffleImplementation.initializeOwnershipPostUpgrade";
+"RaffleImplementation.reinitializeVRF";
+"RaffleImplementation.setMockVRF";
+"RaffleImplementation.upgradeTo";
+"RaffleImplementation.\_authorizeUpgrade";
+"RaffleImplementation.upgradeToAndCall";
+"newImplementation.delegatecall";
+"RaffleImplementation.getOwner";
+"RaffleImplementation.getMockVRFStatus";
+"RaffleImplementation.setRaffleState";
+"RaffleImplementation.<Constructor>" -> "RaffleImplementation.\_disableInitializers" [ color = "green" ];
+"RaffleImplementation.initialize" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.initialize" -> "RaffleImplementation.OwnershipTransferred" [ color = "green" ];
+"RaffleImplementation.initialize" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.initialize" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.initialize" -> "RaffleImplementation.IVRFCoordinatorV2Plus" [ color = "green" ];
+"RaffleImplementation.initialize" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.initialize" -> "RaffleImplementation.IMockRandomProvider" [ color = "green" ];
+"RaffleImplementation.initialize" -> "RaffleImplementation.IMockRandomProvider" [ color = "green" ];
+"RaffleImplementation.initialize" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.initialize" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.initialize" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.setNativePayment" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.setCallbackGasLimit" -> "RaffleImplementation.owner" [ color = "green" ];
+"RaffleImplementation.setCallbackGasLimit" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.addMockPlayer" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.addMockPlayer" -> "RaffleImplementation.RaffleEnter" [ color = "green" ];
+"RaffleImplementation.addMockPlayer" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.resetPlayers" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.resetPlayers" -> "RaffleImplementation.RaffleStateChanged" [ color = "green" ];
+"RaffleImplementation.enterRaffle" -> "RaffleImplementation.IERC20" [ color = "green" ];
+"RaffleImplementation.enterRaffle" -> "IERC20.transferFrom" [ color = "orange" ];
+"RaffleImplementation.enterRaffle" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.enterRaffle" -> "RaffleImplementation.RaffleEnter" [ color = "green" ];
+"RaffleImplementation.cancelEntry" -> "RaffleImplementation.IERC20" [ color = "green" ];
+"RaffleImplementation.cancelEntry" -> "IERC20.transfer" [ color = "orange" ];
+"RaffleImplementation.cancelEntry" -> "RaffleImplementation.RaffleExit" [ color = "green" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "RaffleImplementation.checkUpkeep" [ color = "green" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "RaffleImplementation.RaffleStateChanged" [ color = "green" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.performUpkeep" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.performUpkeep" -> "IMockRandomProvider.requestRandomWords" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "IMockRandomProvider.randomWordsAvailable" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "IMockRandomProvider.getLatestRandomWords" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "RaffleImplementation.\_processMockVRFRandomWords" [ color = "green" ];
+"RaffleImplementation.performUpkeep" -> "IMockRandomProvider.resetRandomWords" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "RaffleImplementation.RaffleStateChanged" [ color = "green" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "RaffleImplementation.RaffleStateChanged" [ color = "green" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "RaffleImplementation.RaffleStateChanged" [ color = "green" ];
+"RaffleImplementation.performUpkeep" -> "string.concat" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "RaffleImplementation.RaffleStateChanged" [ color = "green" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "s_vrfCoordinator.requestRandomWords" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "VRFV2PlusClient.RandomWordsRequest" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "VRFV2PlusClient.\_argsToBytes" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "VRFV2PlusClient.ExtraArgsV1" [ color = "orange" ];
+"RaffleImplementation.performUpkeep" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.fulfillRandomWords" -> "RaffleImplementation.RandomWordsReceived" [ color = "green" ];
+"RaffleImplementation.fulfillRandomWords" -> "RaffleImplementation.RaffleStateChanged" [ color = "green" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "RaffleLib.isWinner" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "RaffleLib.getJackpotProbability" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "RaffleImplementation.IERC20" [ color = "green" ];
+"RaffleImplementation.processWinner" -> "IERC20.balanceOf" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "IERC20.transfer" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.processWinner" -> "RaffleImplementation.WinnerPicked" [ color = "green" ];
+"RaffleImplementation.processWinner" -> "RaffleImplementation.RaffleStateChanged" [ color = "green" ];
+"RaffleImplementation.processWinner" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "RaffleLib.isWinner" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "RaffleLib.getJackpotProbability" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "RaffleLib.isWinner" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "RaffleLib.getJackpotProbability" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "RaffleImplementation.IERC20" [ color = "green" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "IERC20.balanceOf" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "IERC20.transfer" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "RaffleImplementation.WinnerPicked" [ color = "green" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "RaffleImplementation.RaffleStateChanged" [ color = "green" ];
+"RaffleImplementation.\_processMockVRFRandomWords" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.withdraw" -> "RaffleImplementation.owner" [ color = "green" ];
+"RaffleImplementation.withdraw" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.withdraw" -> "RaffleImplementation.owner" [ color = "green" ];
+"RaffleImplementation.withdraw" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.withdraw" -> "RaffleImplementation.IERC20" [ color = "green" ];
+"RaffleImplementation.withdraw" -> "IERC20.balanceOf" [ color = "orange" ];
+"RaffleImplementation.withdraw" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.withdraw" -> "IERC20.transfer" [ color = "orange" ];
+"RaffleImplementation.withdraw" -> "RaffleImplementation.owner" [ color = "green" ];
+"RaffleImplementation.setOwner" -> "RaffleImplementation.owner" [ color = "green" ];
+"RaffleImplementation.setOwner" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.setOwner" -> "RaffleImplementation.transferOwnership" [ color = "green" ];
+"RaffleImplementation.initializeOwnershipPostUpgrade" -> "RaffleImplementation.owner" [ color = "green" ];
+"RaffleImplementation.initializeOwnershipPostUpgrade" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.initializeOwnershipPostUpgrade" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.initializeOwnershipPostUpgrade" -> "RaffleImplementation.OwnershipTransferred" [ color = "green" ];
+"RaffleImplementation.initializeOwnershipPostUpgrade" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.reinitializeVRF" -> "RaffleImplementation.owner" [ color = "green" ];
+"RaffleImplementation.reinitializeVRF" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.setMockVRF" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.setMockVRF" -> "RaffleImplementation.IMockRandomProvider" [ color = "green" ];
+"RaffleImplementation.setMockVRF" -> "RaffleImplementation.IMockRandomProvider" [ color = "green" ];
+"RaffleImplementation.setMockVRF" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.setMockVRF" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.setMockVRF" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.setMockVRF" -> "string.concat" [ color = "orange" ];
+"RaffleImplementation.setMockVRF" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.setMockVRF" -> "console.log" [ color = "orange" ];
+"RaffleImplementation.upgradeTo" -> "RaffleImplementation.owner" [ color = "green" ];
+"RaffleImplementation.upgradeTo" -> "RaffleImplementation.\_authorizeUpgrade" [ color = "green" ];
+"RaffleImplementation.upgradeToAndCall" -> "RaffleImplementation.owner" [ color = "green" ];
+"RaffleImplementation.upgradeToAndCall" -> "RaffleImplementation.\_authorizeUpgrade" [ color = "green" ];
+"RaffleImplementation.upgradeToAndCall" -> "newImplementation.delegatecall" [ color = "orange" ];
+"RaffleImplementation.\_authorizeUpgrade" -> "RaffleImplementation.owner" [ color = "green" ];
+"RaffleImplementation.getOwner" -> "RaffleImplementation.owner" [ color = "green" ];
+"RaffleImplementation.getMockVRFStatus" -> "RaffleImplementation.address" [ color = "green" ];
+"RaffleImplementation.setRaffleState" -> "RaffleImplementation.RaffleStateChanged" [ color = "green" ];
+
+rankdir=LR
+node [shape=plaintext]
+subgraph cluster_01 {
+label = "Legend";
+key [label=<<table border="0" cellpadding="2" cellspacing="0" cellborder="0">
+
+  <tr><td align="right" port="i1">Internal Call</td></tr>
+  <tr><td align="right" port="i2">External Call</td></tr>
+  <tr><td align="right" port="i2">Custom Error Call</td></tr>
+  <tr><td align="right" port="i3">Defined Contract</td></tr>
+  <tr><td align="right" port="i4">Undefined Contract</td></tr>
+  </table>>]
+key2 [label=<<table border="0" cellpadding="2" cellspacing="0" cellborder="0">
+  <tr><td port="i1">&nbsp;&nbsp;&nbsp;</td></tr>
+  <tr><td port="i2">&nbsp;&nbsp;&nbsp;</td></tr>
+  <tr><td port="i3" bgcolor="lightgray">&nbsp;&nbsp;&nbsp;</td></tr>
+  <tr><td port="i4">
+    <table border="1" cellborder="0" cellspacing="0" cellpadding="7" color="lightgray">
+      <tr>
+       <td></td>
+      </tr>
+     </table>
+  </td></tr>
+  </table>>]
+key:i1:e -> key2:i1:w [color="green"]
+key:i2:e -> key2:i2:w [color="orange"]
+key:i2:e -> key2:i2:w [color="red"]
+}
+}
