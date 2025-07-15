@@ -10,7 +10,11 @@
     "update-contracts": "node ../scripts/update-frontend.js",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:trace": "playwright show-trace"
   },
   "dependencies": {
     "@alchemy/aa-accounts": "latest",
@@ -87,6 +91,7 @@
     "ox": "0.6.9"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.0",
     "@tailwindcss/postcss": "^4.1.2",
     "@testing-library/jest-dom": "^6.4.0",
     "@testing-library/react": "^14.1.2",
