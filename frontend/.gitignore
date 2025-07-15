@@ -1,5 +1,3 @@
-# .gitignoreファイルを作成
-cat > .gitignore << 'EOL'
 # dependencies
 /node_modules
 /.pnp
@@ -7,6 +5,8 @@ cat > .gitignore << 'EOL'
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
 
 # next.js
 /.next/
@@ -34,5 +34,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-EOL
 
+# playwright
+playwright-report/
+test-results/
