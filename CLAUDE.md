@@ -2709,3 +2709,178 @@ UUPSUpgradeable(address(proxy)).upgradeToAndCall(newImpl, data);
 - ⚡ **効率性**: デプロイ・アップグレード操作の簡素化
 
 この移行は、Web3 dAppにおける**プロキシパターンのベストプラクティス**を示しており、セキュリティと保守性を両立した持続可能なアーキテクチャを実現しています。
+
+## プロキシコントラクト再デプロイ時の必須手順（2025-07-16）
+
+### 概要
+ERC1967Proxy移行後、プロキシコントラクトを再デプロイする際に必要な**追加設定手順**を明文化します。特に**ブリッジコントラクト**は、チェーン間の相互接続設定が必要なため、デプロイ単体では機能しません。
+
+### 🚨 **重要**: デプロイ後の必須設定
+
+#### **1. Raffle Proxy再デプロイ時**
+```bash
+# デプロイ実行
+cd backend && make deploy-raffle-proxy
+
+# フロントエンド設定更新（必須）
+make update-frontend
+
+# VRF認証設定（MockVRF使用時のみ）
+# 通常は自動実行されるが、失敗時は手動で実行
+```
+
+#### **2. Bridge Proxy再デプロイ時**
+```bash
+# デプロイ実行
+cd backend && make deploy-bridge-proxy
+
+# ⚠️ 重要: ブリッジ間相互設定（必須）
+make update-bridge-addresses
+
+# フロントエンド設定更新（必須）
+make update-bridge
+```
+
+### 🔧 **Bridge特有の問題と解決策**
+
+#### **問題**: 手数料見積もりエラー
+```javascript
+// フロントエンドで発生するエラー
+Bridge error: Error: 手数料の見積もりに失敗しました
+    at useTokenBridge.useCallback[bridgeUSDC] (use-token-bridge.ts:525:17)
+```
+
+#### **根本原因**: ブリッジ間設定の未完了
+- **デプロイ時初期化**: `destinationBridgeContracts[0] = address(0)`
+- **相互認識不足**: 各チェーンが他チェーンの新しいプロキシアドレスを認識していない
+- **CCIP通信不能**: ゼロアドレスのため手数料計算・転送が不可能
+
+#### **解決コマンド**:
+```bash
+# ブリッジ間の相互設定を実行
+cd backend && make update-bridge-addresses
+
+# 実行内容:
+# 1. 各チェーンのブリッジコントラクトに接続
+# 2. 他チェーンの新しいERC1967Proxyアドレスを設定
+# 3. CCIP通信経路を正しく構成
+```
+
+### 📋 **デプロイチェックリスト**
+
+#### **Raffle Proxy デプロイ完了確認**
+- [ ] `make deploy-raffle-proxy` 成功
+- [ ] `make update-frontend` 実行済み
+- [ ] フロントエンドでラッフル機能が正常動作
+- [ ] VRF自動化が機能（performUpkeep実行可能）
+
+#### **Bridge Proxy デプロイ完了確認**
+- [ ] `make deploy-bridge-proxy` 成功  
+- [ ] `make update-bridge-addresses` 実行済み
+- [ ] `make update-bridge` 実行済み
+- [ ] 手数料見積もりエラーが解消
+- [ ] 全チェーン間でブリッジ機能が正常動作
+
+### 🚨 **よくある失敗パターン**
+
+#### **1. Bridge設定の実行漏れ**
+```bash
+# ❌ 不完全（デプロイのみ）
+make deploy-bridge-proxy
+
+# ✅ 完全（設定込み）
+make deploy-bridge-proxy
+make update-bridge-addresses  # ← この実行が必須
+make update-bridge
+```
+
+#### **2. フロントエンド設定更新の忘れ**
+```bash
+# ❌ バックエンドのみ
+make deploy-raffle-proxy
+
+# ✅ フロントエンド含む
+make deploy-raffle-proxy
+make update-frontend  # ← この実行が必須
+```
+
+#### **3. 環境変数未設定**
+```bash
+# 必要な環境変数の確認
+# backend/.env に以下が設定されていること：
+PRIVATE_KEY=your_private_key
+SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-key
+BASE_SEPOLIA_RPC_URL=https://base-sepolia.g.alchemy.com/v2/your-key
+ARBITRUM_SEPOLIA_RPC_URL=https://arb-sepolia.g.alchemy.com/v2/your-key
+```
+
+### 🔄 **自動化のためのワンライナー**
+
+#### **完全デプロイ（推奨）**
+```bash
+# Raffle + Bridge の完全デプロイ・設定
+cd backend && \
+make deploy-raffle-proxy && \
+make deploy-bridge-proxy && \
+make update-bridge-addresses && \
+make update-frontend && \
+make update-bridge
+
+echo "✅ 全デプロイ・設定完了"
+```
+
+#### **Bridge特化の完全設定**
+```bash
+# Bridge再デプロイ時の完全手順
+cd backend && \
+make deploy-bridge-proxy && \
+make update-bridge-addresses && \
+make update-bridge
+
+echo "✅ Bridge設定完了 - 手数料見積もりエラー解消"
+```
+
+### 📚 **技術的解説**
+
+#### **デプロイ vs 設定の違い**
+- **デプロイ**: プロキシと実装コントラクトの作成・初期化
+- **設定**: デプロイ後の外部システムとの連携構築
+
+#### **Bridge固有の複雑性**
+- **マルチチェーン**: 3つのテストネット間での相互参照が必要
+- **CCIP依存**: Chainlink CCIPプロトコルの設定が必要
+- **非対称性**: 各チェーンで異なる宛先チェーン設定
+
+#### **Frontend設定の自動化**
+- **ABI同期**: 最新の実装ABIをフロントエンドに反映
+- **アドレス更新**: 新しいプロキシアドレスの設定
+- **設定検証**: TypeScript型チェックによる設定妥当性確認
+
+### 🎯 **トラブルシューティング**
+
+#### **手数料見積もりエラーが継続する場合**
+```bash
+# 1. ブリッジ設定の再実行
+cd backend && make update-bridge-addresses
+
+# 2. フロントエンド設定の再更新
+make update-bridge
+
+# 3. ブラウザキャッシュクリア
+# フロントエンドでF5またはハードリロード
+
+# 4. コントラクト設定確認
+# ブロックチェーンエクスプローラーで各プロキシアドレスを確認
+```
+
+#### **VRF自動化が動作しない場合**
+```bash
+# MockVRF認証の手動実行
+# backend/.envでMockVRFアドレスを確認し、手動で認証
+```
+
+### 📖 **参考情報**
+
+この手順は、**ERC1967Proxy移行（2025-07-16）**で得られた実際の問題解決経験に基づいています。特に**手数料見積もりエラー**は、Bridge特有の複雑な設定要件を示しており、今後のプロキシ再デプロイ時の重要な参考事例となります。
+
+**重要**: これらの手順を省略すると、**デプロイは成功してもアプリケーションが機能しない**状況が発生します。必ず完全な手順を実行してください。

@@ -95,8 +95,10 @@ function getBridgeAddresses() {
     `${COLORS.fg.yellow}No upgrade results found, falling back to deployment history...${COLORS.reset}`
   );
 
-  // Search through broadcast directories for deployed bridge contracts
-  const runDirs = fs.readdirSync(BROADCAST_PATH);
+  // Search only RaffleBridgeProxyDeployer.s.sol directory for deployed bridge contracts
+  const runDirs = fs.readdirSync(BROADCAST_PATH).filter(dir => 
+    dir.includes("RaffleBridgeProxyDeployer.s.sol")
+  );
 
   for (const runDir of runDirs) {
     // Skip non-directory entries

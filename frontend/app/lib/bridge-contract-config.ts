@@ -780,7 +780,7 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "networkId": 84532,
     "chainName": "base-sepolia",
     "ccipSelector": "10344971235874465080",
-    "bridgeAddress": "0xc7bce4fe84b588dd828390cfe044eee6121df5b0",
+    "bridgeAddress": "0xc9b3deeb47487bfd18b9feaaed8446cbd4b18db1",
     "ccipRouterAddress": "0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93",
     "implementationAddress": "0x64ad813334cddb6b2678de24561cf7b9afb203d9"
   },
@@ -788,7 +788,7 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "networkId": 421614,
     "chainName": "arbitrum-sepolia",
     "ccipSelector": "3478487238524512106",
-    "bridgeAddress": "0x0ef76e939fea466811105b167c11e953b0de01f5",
+    "bridgeAddress": "0x7810c38ac653d10e9ddef1fb36674f56a65fd1e9",
     "ccipRouterAddress": "0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165",
     "implementationAddress": "0x9da91c0a51bf7974d3786ee20b8715a47c57d7a2"
   },
@@ -796,7 +796,7 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "networkId": 11155111,
     "chainName": "sepolia",
     "ccipSelector": "16015286601757825753",
-    "bridgeAddress": "0xd4453a3e6242266b86639ad0921f7b79c2ef0a2f",
+    "bridgeAddress": "0x82271e13dd517a28625ca4c78dc64106fc5967f7",
     "ccipRouterAddress": "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59",
     "implementationAddress": "0x47e4b80bbb77533c18832223029ba4f5e3c6133a"
   }
