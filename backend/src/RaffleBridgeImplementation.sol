@@ -79,6 +79,14 @@ contract RaffleBridgeImplementation is UUPSUpgradeable, Initializable, IAny2EVMM
     
 
 
+    /**
+     * @notice コンストラクター - プロキシパターン対応
+     * @dev 直接デプロイ時の初期化を無効化し、プロキシ経由でのみ使用可能にする
+     */
+    constructor() {
+        _disableInitializers();
+    }
+
     // 修飾子
     modifier onlyOwner() {
         require(msg.sender == s_owner, "Only owner can call this function");

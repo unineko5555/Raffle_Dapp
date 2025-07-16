@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 import {Script} from "forge-std/Script.sol";
 import {RaffleBridgeImplementation} from "../src/RaffleBridgeImplementation.sol";
-import {RaffleBridgeProxy} from "../src/RaffleBridgeProxy.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {console} from "forge-std/console.sol";
 
 /**
@@ -132,12 +132,12 @@ contract RaffleBridgeProxyDeployer is Script {
             MINIMUM_POOL_THRESHOLD
         );
         
-        // 3. RaffleBridgeProxyのデプロイ
-        RaffleBridgeProxy proxy = new RaffleBridgeProxy(
+        // 3. ERC1967Proxyのデプロイ (OpenZeppelin標準使用)
+        ERC1967Proxy proxy = new ERC1967Proxy(
             address(implementation),
             initData
         );
-        console.log("RaffleBridgeProxy deployed at:", address(proxy));
+        console.log("ERC1967Proxy (Bridge) deployed at:", address(proxy));
         
         // ブロードキャストの終了
         vm.stopBroadcast();
@@ -146,7 +146,7 @@ contract RaffleBridgeProxyDeployer is Script {
         console.log("\n==== Deployment Summary ====");
         console.log("Implementation address:", address(implementation));
         console.log("Proxy address:", address(proxy));
-        console.log("Admin address:", proxy.admin());
+        console.log("Using OpenZeppelin ERC1967Proxy standard");
         console.log("============================\n");
     }
 }

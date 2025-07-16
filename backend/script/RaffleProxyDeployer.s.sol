@@ -4,7 +4,7 @@ pragma solidity ^0.8.18;
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 import {RaffleImplementation} from "../src/RaffleImplementation.sol";
-import {RaffleProxy} from "../src/RaffleProxy.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {HelperConfig} from "./HelperConfig.s.sol";
 import {IMockRandomProvider} from "../src/mocks/MockVRFProvider.sol";
 
@@ -13,7 +13,7 @@ import {IMockRandomProvider} from "../src/mocks/MockVRFProvider.sol";
  * @notice ラッフルコントラクトとプロキシをデプロイするスクリプト
  */
 contract DeployRaffle is Script {
-    function run() external returns (RaffleImplementation, RaffleProxy, HelperConfig) {
+    function run() external returns (RaffleImplementation, ERC1967Proxy, HelperConfig) {
         HelperConfig helperConfig = new HelperConfig();
         (
             address vrfCoordinatorV2,
@@ -60,12 +60,12 @@ contract DeployRaffle is Script {
             nativePayment
         );
 
-        // プロキシコントラクトのデプロイ
-        RaffleProxy proxy = new RaffleProxy(
+        // プロキシコントラクトのデプロイ (OpenZeppelin ERC1967Proxy使用)
+        ERC1967Proxy proxy = new ERC1967Proxy(
             address(implementation),
             initData
         );
-        console.log("Proxy deployed at: ", address(proxy));
+        console.log("ERC1967Proxy (Raffle) deployed at: ", address(proxy));
 
         // MockVRFを使用する場合、プロキシアドレスをMockVRFプロバイダーに認証する
         if (useMockVRF && mockVRFProvider != address(0)) {

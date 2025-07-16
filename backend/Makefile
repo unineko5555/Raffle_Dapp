@@ -121,11 +121,11 @@ deploy-raffle-proxy-sepolia: check-env
 
 deploy-raffle-proxy-base: check-env
 	@echo "Deploying Raffle Proxy to Base Sepolia testnet..."
-	forge script script/RaffleProxyDeployer.s.sol:DeployRaffle --rpc-url $(BASE_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(BASE_API_KEY)
+	forge script script/RaffleProxyDeployer.s.sol:DeployRaffle --rpc-url $(BASE_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast 
 
 deploy-raffle-proxy-arb: check-env
 	@echo "Deploying Raffle Proxy to Arbitrum Sepolia testnet..."
-	forge script script/RaffleProxyDeployer.s.sol:DeployRaffle --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ARBISCAN_API_KEY)
+	forge script script/RaffleProxyDeployer.s.sol:DeployRaffle --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast 
 
 deploy-raffle-proxy: deploy-raffle-proxy-sepolia deploy-raffle-proxy-base deploy-raffle-proxy-arb
 
@@ -234,17 +234,17 @@ upgrade-raffle-with-data: upgrade-raffle-with-data-sepolia upgrade-raffle-with-d
 verify-sepolia:
 	@echo "Verifying contracts on Ethereum Sepolia..."
 	forge verify-contract $(RAFFLE_IMPLEMENTATION_ADDRESS) src/RaffleImplementation.sol:RaffleImplementation --chain sepolia --etherscan-api-key $(ETHERSCAN_API_KEY)
-	forge verify-contract $(RAFFLE_PROXY_ADDRESS) src/RaffleProxy.sol:RaffleProxy --chain sepolia --etherscan-api-key $(ETHERSCAN_API_KEY)
+	@echo "Note: ERC1967Proxy verification is handled automatically by OpenZeppelin"
 
 verify-base-sepolia:
 	@echo "Verifying contracts on Base Sepolia..."
 	forge verify-contract $(RAFFLE_IMPLEMENTATION_ADDRESS_BASE) src/RaffleImplementation.sol:RaffleImplementation --chain base-sepolia --etherscan-api-key $(BASE_API_KEY)
-	forge verify-contract $(RAFFLE_PROXY_ADDRESS_BASE) src/RaffleProxy.sol:RaffleProxy --chain base-sepolia --etherscan-api-key $(BASE_API_KEY)
+	@echo "Note: ERC1967Proxy verification is handled automatically by OpenZeppelin"
 
 verify-arb-sepolia:
 	@echo "Verifying contracts on Arbitrum Sepolia..."
 	forge verify-contract $(RAFFLE_IMPLEMENTATION_ADDRESS_ARB) src/RaffleImplementation.sol:RaffleImplementation --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
-	forge verify-contract $(RAFFLE_PROXY_ADDRESS_ARB) src/RaffleProxy.sol:RaffleProxy --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
+	@echo "Note: ERC1967Proxy verification is handled automatically by OpenZeppelin"
 
 verify-raffle: verify-sepolia verify-base-sepolia verify-arb-sepolia
 	@echo "Verifying Raffle on all networks..."
@@ -253,17 +253,17 @@ verify-raffle: verify-sepolia verify-base-sepolia verify-arb-sepolia
 verify-bridge-proxy-sepolia:
 	@echo "Verifying Bridge Proxy on Ethereum Sepolia..."
 	forge verify-contract $(BRIDGE_IMPLEMENTATION_ADDRESS) src/RaffleBridgeImplementation.sol:RaffleBridgeImplementation --chain sepolia --etherscan-api-key $(ETHERSCAN_API_KEY)
-	forge verify-contract $(BRIDGE_PROXY_ADDRESS) src/RaffleBridgeProxy.sol:RaffleBridgeProxy --chain sepolia --etherscan-api-key $(ETHERSCAN_API_KEY)
+	@echo "Note: ERC1967Proxy verification is handled automatically by OpenZeppelin"
 
 verify-bridge-proxy-base:
 	@echo "Verifying Bridge Proxy on Base Sepolia..."
 	forge verify-contract $(BRIDGE_IMPLEMENTATION_ADDRESS_BASE) src/RaffleBridgeImplementation.sol:RaffleBridgeImplementation --chain base-sepolia --etherscan-api-key $(BASE_API_KEY)
-	forge verify-contract $(BRIDGE_PROXY_ADDRESS_BASE) src/RaffleBridgeProxy.sol:RaffleBridgeProxy --chain base-sepolia --etherscan-api-key $(BASE_API_KEY)
+	@echo "Note: ERC1967Proxy verification is handled automatically by OpenZeppelin"
 
 verify-bridge-proxy-arb:
 	@echo "Verifying Bridge Proxy on Arbitrum Sepolia..."
 	forge verify-contract $(BRIDGE_IMPLEMENTATION_ADDRESS_ARB) src/RaffleBridgeImplementation.sol:RaffleBridgeImplementation --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
-	forge verify-contract $(BRIDGE_PROXY_ADDRESS_ARB) src/RaffleBridgeProxy.sol:RaffleBridgeProxy --chain arbitrum-sepolia --etherscan-api-key $(ARBISCAN_API_KEY)
+	@echo "Note: ERC1967Proxy verification is handled automatically by OpenZeppelin"
 
 verify-bridge: verify-bridge-proxy-sepolia verify-bridge-proxy-base verify-bridge-proxy-arb
 	@echo "Verifying Bridge Proxy on all networks..."

@@ -94,7 +94,7 @@ const getDeployedAddresses = () => {
             foundDeployments = true;
           } else {
             console.warn(
-              `${networkName}のRaffleProxyアドレスが見つかりませんでした`
+              `${networkName}のERC1967Proxyアドレスが見つかりませんでした`
             );
           }
         } else {
@@ -124,14 +124,15 @@ const getDeployedAddresses = () => {
   return addresses;
 };
 
-// RaffleProxyトランザクションを探す関数
+// RaffleProxyトランザクションを探す関数（ERC1967Proxy対応）
 const findRaffleProxyTransaction = (deployData) => {
   if (!deployData.transactions) {
     return null;
   }
 
+  // ERC1967Proxyを探す（OpenZeppelinプロキシ移行後）
   return deployData.transactions.find(
-    (tx) => tx.contractName === "RaffleProxy" && tx.transactionType === "CREATE"
+    (tx) => tx.contractName === "ERC1967Proxy" && tx.transactionType === "CREATE"
   );
 };
 

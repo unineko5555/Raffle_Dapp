@@ -304,8 +304,9 @@ function findBridgeTransaction(runDir, networkId) {
       const txs = runData.transactions || [];
 
       for (const tx of txs) {
-        // Check for both RaffleBridgeProxy and RaffleBridge for backward compatibility
+        // Check for ERC1967Proxy (OpenZeppelin proxy) and legacy bridge contracts
         if (
+          tx.contractName === "ERC1967Proxy" ||
           tx.contractName === "RaffleBridgeProxy" ||
           tx.contractName === "RaffleBridge"
         ) {

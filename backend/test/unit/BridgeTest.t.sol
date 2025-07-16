@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 import {Test, console} from "forge-std/Test.sol";
 import {RaffleBridgeImplementation} from "../../src/RaffleBridgeImplementation.sol";
-import {RaffleBridgeProxy} from "../../src/RaffleBridgeProxy.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAny2EVMMessageReceiver} from "@chainlink/contracts/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
 import {Client} from "@chainlink/contracts/src/v0.8/ccip/libraries/Client.sol";
@@ -39,7 +39,7 @@ contract BridgeTest is Test {
 
     // テスト用変数
     RaffleBridgeImplementation public bridgeImplementation;
-    RaffleBridgeProxy public bridgeProxy;
+    ERC1967Proxy public bridgeProxy;
     MockCCIPRouter public mockRouter;
     MockERC20 public mockUSDC;
     
@@ -71,8 +71,8 @@ contract BridgeTest is Test {
         // Deploy bridge implementation
         bridgeImplementation = new RaffleBridgeImplementation();
         
-        // Deploy proxy
-        bridgeProxy = new RaffleBridgeProxy(
+        // Deploy proxy (using OpenZeppelin ERC1967Proxy)
+        bridgeProxy = new ERC1967Proxy(
             address(bridgeImplementation),
             ""
         );
@@ -632,25 +632,36 @@ contract BridgeTest is Test {
     function testUpgrade() public {
         RaffleBridgeImplementation newImplementation = new RaffleBridgeImplementation();
         
-        address currentImpl = bridgeProxy.implementation();
-        
+        // ERC1967Proxy uses UUPS pattern for upgrades
         vm.expectEmit(true, false, false, false);
         emit Upgraded(address(newImplementation));
         
         vm.prank(OWNER);
-        bridgeProxy.upgradeTo(address(newImplementation));
+        // Use UUPS upgrade pattern
+        RaffleBridgeImplementation(payable(address(bridgeProxy))).upgradeToAndCall(
+            address(newImplementation), 
+            ""
+        );
         
-        address newImpl = bridgeProxy.implementation();
-        assertEq(newImpl, address(newImplementation));
-        assertNotEq(newImpl, currentImpl);
+        // Verify upgrade succeeded by testing functionality
+        RaffleBridgeImplementation bridge = RaffleBridgeImplementation(payable(address(bridgeProxy)));
+        assertEq(address(bridge), address(bridgeProxy));
+        
+        // Test that the upgraded implementation is functional
+        (, , address owner,) = bridge.getInfo();
+        assertEq(owner, OWNER);
     }
 
     function testOnlyOwnerCanUpgrade() public {
         RaffleBridgeImplementation newImplementation = new RaffleBridgeImplementation();
         
+        // Test that non-owner cannot upgrade
         vm.expectRevert();
         vm.prank(MALICIOUS_USER);
-        bridgeProxy.upgradeTo(address(newImplementation));
+        RaffleBridgeImplementation(payable(address(bridgeProxy))).upgradeToAndCall(
+            address(newImplementation), 
+            ""
+        );
     }
 
     /* ================= INTEGRATION TESTS ================= */

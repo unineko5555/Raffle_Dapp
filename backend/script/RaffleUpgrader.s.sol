@@ -3,7 +3,8 @@ pragma solidity ^0.8.18;
 
 import {Script} from "forge-std/Script.sol";
 import {RaffleImplementation} from "../src/RaffleImplementation.sol";
-import {RaffleProxy} from "../src/RaffleProxy.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {HelperConfig} from "./HelperConfig.s.sol";
 import {console} from "forge-std/console.sol";
 
@@ -39,9 +40,9 @@ contract RaffleUpgrader is Script {
         RaffleImplementation newImplementation = new RaffleImplementation();
         console.log("New implementation deployed at:", address(newImplementation));
         
-        // 2. プロキシのアップグレード
-        RaffleProxy proxy = RaffleProxy(payable(proxyAddress));
-        proxy.upgradeTo(address(newImplementation));
+        // 2. プロキシのアップグレード (UUPS pattern)
+        UUPSUpgradeable proxy = UUPSUpgradeable(payable(proxyAddress));
+        proxy.upgradeToAndCall(address(newImplementation), "");
         
         console.log("Proxy upgraded successfully!");
         
@@ -52,8 +53,7 @@ contract RaffleUpgrader is Script {
         console.log("\n==== Upgrade Summary ====");
         console.log("Proxy address:", proxyAddress);
         console.log("New implementation address:", address(newImplementation));
-        console.log("Current implementation:", proxy.implementation());
-        console.log("Admin address:", proxy.admin());
+        console.log("Note: Using OpenZeppelin ERC1967Proxy with UUPS pattern");
         console.log("==========================\n");
     }
     
@@ -91,8 +91,8 @@ contract RaffleUpgrader is Script {
         // ETH支払いを使用（true）に設定（VRF 2.5のネイティブ支払い）
         bytes memory data = abi.encodeWithSignature("setNativePayment(bool)", true);
         
-        // 3. プロキシのアップグレードとデータの実行
-        RaffleProxy proxy = RaffleProxy(payable(proxyAddress));
+        // 3. プロキシのアップグレードとデータの実行 (UUPS pattern)
+        UUPSUpgradeable proxy = UUPSUpgradeable(payable(proxyAddress));
         proxy.upgradeToAndCall(address(newImplementation), data);
         
         console.log("Proxy upgraded with data successfully!");
@@ -104,8 +104,7 @@ contract RaffleUpgrader is Script {
         console.log("\n==== Upgrade Summary ====");
         console.log("Proxy address:", proxyAddress);
         console.log("New implementation address:", address(newImplementation));
-        console.log("Current implementation:", proxy.implementation());
-        console.log("Admin address:", proxy.admin());
+        console.log("Note: Using OpenZeppelin ERC1967Proxy with UUPS pattern");
         console.log("==========================\n");
     }
 }

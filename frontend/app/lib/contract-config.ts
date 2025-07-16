@@ -3,7 +3,7 @@ export const contractConfig = {
   // Ethereum Sepolia
   11155111: {
     name: "Ethereum Sepolia",
-    raffleProxy: "0xf84b248e56fcdf8fba11901cfdc14509786f3121", // Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "0xd4453a3e6242266b86639ad0921f7b79c2ef0a2f", // Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", // SepoliaのUSDC (またはモックトークン) アドレス
     mockVRFProvider: "0x32ef48c18cd50b7771d8eae34a83241058bfe354", // MockVRFProviderアドレス
     blockExplorer: "https://sepolia.etherscan.io",
@@ -12,7 +12,7 @@ export const contractConfig = {
   // Base Sepolia
   84532: {
     name: "Base Sepolia",
-    raffleProxy: "0x885c5510ecc10a89ed27d95c5074ed2d943cd134", // Base Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "0xc7bce4fe84b588dd828390cfe044eee6121df5b0", // Base Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base SepoliaのUSDC (またはモックトークン) アドレス
     mockVRFProvider: "0xdf98c3e9a2ea1250e0894d27a9cc0205df049d00", // MockVRFProviderアドレス
     blockExplorer: "https://sepolia.basescan.org",
@@ -21,7 +21,7 @@ export const contractConfig = {
   // Arbitrum Sepolia
   421614: {
     name: "Arbitrum Sepolia",
-    raffleProxy: "0xaa645f62c2bb92b69cfe7612edb0bdffb2bf6106", // Arbitrum Sepoliaにデプロイしたプロキシアドレス
+    raffleProxy: "0x0ef76e939fea466811105b167c11e953b0de01f5", // Arbitrum Sepoliaにデプロイしたプロキシアドレス
     erc20Address: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d", // Arbitrum SepoliaのUSDC (またはモックトークン) アドレス
     mockVRFProvider: "0x8b7f67245d6ef233094073ed1f9a6f40be503553", // MockVRFProviderアドレス
     blockExplorer: "https://sepolia-explorer.arbitrum.io",
