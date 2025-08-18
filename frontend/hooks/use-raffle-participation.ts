@@ -13,6 +13,7 @@ import {
 import { formatUnits } from "viem";
 import { RaffleABI, ERC20ABI } from "@/app/lib/contract-config";
 import { useSmartAccountContext } from "@/app/providers/smart-account-provider";
+import { usePermit2Raffle } from "./use-permit2-raffle";
 import { useContractConfig } from "./shared/use-contract-config";
 import { useSmartAccountTransaction } from "./shared/use-smart-account-transaction";
 import { getHookInterval } from "@/lib/polling-config";
@@ -25,8 +26,22 @@ export function useRaffleParticipation() {
   // スマートアカウント機能を使用
   const { smartAccountAddress, isReadyToSendTx, sendUserOperation } = useSmartAccountContext();
 
+  // Permit2機能を使用
+  const { 
+    enterRaffleWithPermit2, 
+    isLoading: isPermit2Loading, 
+    error: permit2Error,
+    checkPermit2Availability,
+    preparePermit2Signature,
+    clearPermit2Cache
+  } = usePermit2Raffle();
+
   // プレイヤーの参加状態を管理
   const [isPlayerEntered, setIsPlayerEntered] = useState(false);
+  
+  // Permit2使用設定
+  const [usePermit2, setUsePermit2] = useState(true);
+  const [permit2Available, setPermit2Available] = useState<boolean | null>(null);
   // 状態変更時間を追跡
   const [lastStateChange, setLastStateChange] = useState(Date.now());
   
@@ -624,6 +639,98 @@ export function useRaffleParticipation() {
     }
   };
 
+  // Permit2の利用可能性をチェック
+  useEffect(() => {
+    const checkAvailability = async () => {
+      if (checkPermit2Availability) {
+        try {
+          const available = await checkPermit2Availability();
+          setPermit2Available(available);
+          
+          // Permit2が利用できない場合は自動的に無効にする
+          if (!available && usePermit2) {
+            setUsePermit2(false);
+            console.warn('Permit2 not available, falling back to traditional flow');
+          }
+        } catch (error) {
+          console.error('Failed to check Permit2 availability:', error);
+          setPermit2Available(false);
+          setUsePermit2(false);
+        }
+      }
+    };
+
+    checkAvailability();
+  }, [checkPermit2Availability, usePermit2]);
+
+  /**
+   * 統合されたenterRaffle関数（Permit2優先、フォールバック対応）
+   */
+  const handleEnterRaffleUnified = async (usePermit2Override?: boolean, smartAccountAddress = "") => {
+    const shouldUsePermit2 = usePermit2Override !== undefined ? usePermit2Override : (usePermit2 && permit2Available);
+    
+    if (shouldUsePermit2) {
+      try {
+        console.log('Attempting to enter raffle with Permit2...');
+        const result = await enterRaffleWithPermit2();
+        
+        if (result.success) {
+          // 成功時は参加状態を更新
+          await checkPlayerEntered(smartAccountAddress);
+          return result;
+        } else {
+          throw new Error(result.error || 'Permit2 entry failed');
+        }
+      } catch (error: any) {
+        console.warn('Permit2 failed, falling back to traditional flow:', error);
+        
+        // Permit2が失敗した場合のフォールバック
+        if (!error.message?.includes('ユーザーが署名をキャンセル')) {
+          // ユーザーキャンセル以外のエラーの場合はフォールバック
+          console.log('Falling back to traditional approve+transfer flow...');
+          
+          // Permit2を一時的に無効にして従来フローを実行
+          const originalUsePermit2 = usePermit2;
+          setUsePermit2(false);
+          clearPermit2Cache();
+          
+          try {
+            const result = await handleEnterRaffle(smartAccountAddress);
+            
+            // 成功後にPermit2設定を復元
+            setUsePermit2(originalUsePermit2);
+            return result;
+          } catch (fallbackError) {
+            // フォールバックも失敗した場合
+            setUsePermit2(originalUsePermit2);
+            throw fallbackError;
+          }
+        } else {
+          // ユーザーキャンセルの場合はそのまま伝播
+          throw error;
+        }
+      }
+    } else {
+      // 従来フロー直接実行
+      console.log('Using traditional approve+transfer flow...');
+      return await handleEnterRaffle(smartAccountAddress);
+    }
+  };
+
+  /**
+   * Permit2署名を事前生成（UX改善）
+   */
+  const preparePermit2SignatureAsync = async () => {
+    if (usePermit2 && permit2Available && preparePermit2Signature) {
+      try {
+        await preparePermit2Signature();
+        console.log('Permit2 signature pre-generated successfully');
+      } catch (error) {
+        console.warn('Failed to pre-generate Permit2 signature:', error);
+      }
+    }
+  };
+
   // ページロード時に参加状態をリセット
   useEffect(() => {
     return () => {
@@ -632,14 +739,30 @@ export function useRaffleParticipation() {
   }, []);
 
   return {
-    isLoading: isLoading || isTransactionLoading,
-    error,
+    // 基本状態
+    isLoading: isLoading || isTransactionLoading || isPermit2Loading,
+    error: error || permit2Error,
     isPlayerEntered,
     contractAddress,
     erc20Address,
+    
+    // 従来機能
     handleEnterRaffle,
     checkPlayerEntered,
     tokenBalanceInfo,
     checkTokenBalanceWithInfo,
+    
+    // Permit2統合機能
+    handleEnterRaffleUnified,
+    enterRaffleWithPermit2,
+    preparePermit2SignatureAsync,
+    
+    // Permit2設定管理
+    usePermit2,
+    setUsePermit2,
+    permit2Available,
+    
+    // ユーティリティ
+    clearPermit2Cache,
   };
 }

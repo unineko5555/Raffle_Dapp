@@ -42,6 +42,19 @@ export const RaffleABI = [
   },
   {
     "type": "function",
+    "name": "PERMIT2",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IPermit2"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "UPGRADE_INTERFACE_VERSION",
     "inputs": [],
     "outputs": [
@@ -140,6 +153,63 @@ export const RaffleABI = [
     "type": "function",
     "name": "enterRaffle",
     "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "enterRaffleWithPermit2",
+    "inputs": [
+      {
+        "name": "permit",
+        "type": "tuple",
+        "internalType": "struct IPermit2.PermitSingle",
+        "components": [
+          {
+            "name": "details",
+            "type": "tuple",
+            "internalType": "struct IPermit2.PermitDetails",
+            "components": [
+              {
+                "name": "token",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "expiration",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "nonce",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "spender",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "sigDeadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "signature",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },

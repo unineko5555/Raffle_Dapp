@@ -2,6 +2,7 @@
 pragma solidity ^0.8.18;
 
 import "./interfaces/IRaffle.sol";
+import "./interfaces/IPermit2.sol";
 import "./libraries/RaffleLib.sol";
 import "./mocks/MockVRFProvider.sol";
 import "forge-std/console.sol";
@@ -80,6 +81,9 @@ contract RaffleImplementation is
     uint256 private s_pendingRandomWord; // VRFから受信した乱数
     address[] private s_pendingPlayers; // 当選者決定時のプレイヤー配列のコピー
     uint256 private s_pendingPlayerCount; // 当選者決定時のプレイヤー数
+
+    // Permit2コントラクトアドレス（全ネットワーク共通）
+    IPermit2 public constant PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
     // コンストラクタ - VRFConsumerBaseV2Plus用
     // Base Sepolia VRF Coordinator: 0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE
@@ -266,6 +270,63 @@ contract RaffleImplementation is
         IERC20 usdc = IERC20(s_usdcAddress);
         require(usdc.transferFrom(msg.sender, address(this), s_entranceFee), "USDC transfer failed");
 
+        // ジャックポットに10%を追加
+        uint256 jackpotContribution = s_entranceFee / 10;
+        s_jackpotAmount += jackpotContribution;
+
+        // プレイヤーを追加
+        s_players.push(msg.sender);
+
+        // ユーザーの参加回数を更新
+        s_userEntryCount[msg.sender] += 1;
+
+        // 最小プレイヤー数に達したかチェック
+        if (s_players.length == s_minimumPlayers) {
+            s_minPlayersReachedTime = block.timestamp;
+        }
+
+        // イベント発火
+        emit RaffleEnter(msg.sender, s_entranceFee);
+    }
+
+    /**
+     * @notice Permit2署名を使用してラッフルに参加する関数
+     * @dev 1トランザクションでUSDC承認と転送を実行
+     * @param permit Permit2許可の詳細情報
+     * @param signature EIP-712署名データ
+     */
+    function enterRaffleWithPermit2(
+        IPermit2.PermitSingle memory permit,
+        bytes memory signature
+    ) external override {
+        // ラッフルがオープン状態であることを確認
+        require(s_raffleState == RaffleState.OPEN, "Raffle is not open");
+        
+        // Permit2パラメータの検証
+        require(permit.details.token == s_usdcAddress, "Invalid token");
+        require(permit.details.amount >= s_entranceFee, "Insufficient permit amount");
+        require(permit.spender == address(this), "Invalid spender");
+        require(permit.sigDeadline >= block.timestamp, "Permit signature expired");
+        require(permit.details.expiration >= block.timestamp, "Permit expired");
+        
+        // 同じアドレスからの複数参加を防止
+        for (uint256 i = 0; i < s_players.length; i++) {
+            require(s_players[i] != msg.sender, "Player already entered");
+        }
+
+        // Permit2による転送実行
+        IPermit2.SignatureTransferDetails memory transferDetails = IPermit2.SignatureTransferDetails({
+            to: address(this),
+            requestedAmount: s_entranceFee
+        });
+        
+        PERMIT2.permitTransferFrom(
+            permit,
+            transferDetails,
+            msg.sender,
+            signature
+        );
+        
         // ジャックポットに10%を追加
         uint256 jackpotContribution = s_entranceFee / 10;
         s_jackpotAmount += jackpotContribution;

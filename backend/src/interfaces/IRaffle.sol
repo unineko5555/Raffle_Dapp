@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
+import "./IPermit2.sol";
+
 /**
  * @title IRaffle
  * @dev Raffle Dappのインターフェース
@@ -25,6 +27,17 @@ interface IRaffle {
      * ユーザーは10 USDCを支払って参加します
      */
     function enterRaffle() external;
+
+    /**
+     * @dev Permit2署名を使用してラッフルに参加する関数
+     * ユーザーはPermit2署名により1トランザクションで参加できます
+     * @param permit Permit2許可の詳細
+     * @param signature EIP-712署名データ
+     */
+    function enterRaffleWithPermit2(
+        IPermit2.PermitSingle memory permit,
+        bytes memory signature
+    ) external;
 
     /**
      * @dev Chainlink Automationで呼び出される関数

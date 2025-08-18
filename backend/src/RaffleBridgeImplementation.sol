@@ -2,6 +2,7 @@
 pragma solidity ^0.8.18;
 
 import "./interfaces/IRaffle.sol";
+import "./interfaces/IPermit2.sol";
 
 import {IAny2EVMMessageReceiver} from "@chainlink/contracts/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
 import {Client} from "@chainlink/contracts/src/v0.8/ccip/libraries/Client.sol";
@@ -53,6 +54,9 @@ contract RaffleBridgeImplementation is UUPSUpgradeable, Initializable, IAny2EVMM
     
     // 初期化フラグ
     bool private s_initialized;
+
+    // Permit2コントラクトアドレス（全ネットワーク共通）
+    IPermit2 public constant PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
     
     // イベント
     event TokensBridged(
@@ -243,6 +247,95 @@ contract RaffleBridgeImplementation is UUPSUpgradeable, Initializable, IAny2EVMM
         
         // CCIPメッセージを送信
         bytes32 messageId = IRouterClient(routerAddress).ccipSend{value: fee}(
+            destinationChainSelector,
+            message
+        );
+        
+        // イベント発行
+        emit TokensBridged(
+            msg.sender,
+            receiver,
+            destinationChainSelector,
+            amount,
+            messageId
+        );
+        
+        // 残りのETHを返金
+        if (msg.value > fee) {
+            (bool success, ) = msg.sender.call{value: msg.value - fee}("");
+            require(success, "Refund failed");
+        }
+    }
+
+    /**
+     * @notice Permit2署名を使用してUSDCをブリッジする関数
+     * @dev 1トランザクションでUSDC承認と転送を実行してブリッジ
+     * @param destinationChainSelector 宛先チェーンのセレクタ
+     * @param receiver 受取人のアドレス
+     * @param amount ブリッジするUSDCの量
+     * @param permit Permit2許可の詳細情報
+     * @param signature EIP-712署名データ
+     */
+    function bridgeTokensWithPermit2(
+        uint64 destinationChainSelector,
+        address receiver,
+        uint256 amount,
+        IPermit2.PermitSingle memory permit,
+        bytes memory signature
+    ) external payable {
+        // 基本的なチェック
+        require(amount > 0, "Amount must be greater than 0");
+        require(s_supportedChains[destinationChainSelector], "Destination chain not supported");
+        require(receiver != address(0), "Receiver cannot be zero address");
+        
+        // Permit2パラメータの検証
+        require(permit.details.token == s_usdcAddress, "Invalid token");
+        require(permit.details.amount >= amount, "Insufficient permit amount");
+        require(permit.spender == address(this), "Invalid spender");
+        require(permit.sigDeadline >= block.timestamp, "Permit signature expired");
+        require(permit.details.expiration >= block.timestamp, "Permit expired");
+        
+        // ルーターアドレスの確認
+        address routerAddress = s_defaultRouter;
+        require(routerAddress != address(0), "ERR:NO_ROUTER");
+        
+        // Permit2による転送実行
+        IPermit2.SignatureTransferDetails memory transferDetails = IPermit2.SignatureTransferDetails({
+            to: address(this),
+            requestedAmount: amount
+        });
+        
+        PERMIT2.permitTransferFrom(
+            permit,
+            transferDetails,
+            msg.sender,
+            signature
+        );
+        
+        // メッセージデータを準備
+        bytes memory messageData = abi.encode(receiver, amount);
+        
+        // CCIPメッセージを準備（トークンなし）- Pool-based Pattern
+        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
+            receiver: abi.encode(s_destinationBridgeContracts[destinationChainSelector]),
+            data: messageData,
+            tokenAmounts: new Client.EVMTokenAmount[](0), // トークンなし - プールパターンのため
+            extraArgs: Client._argsToBytes(
+                // プリミアム設定：マニュアル実行を使用（gasLimit: 200,000）
+                Client.EVMExtraArgsV1({gasLimit: 200_000})
+            ),
+            feeToken: address(0) // ETHで支払い
+        });
+        
+        // ルーターのインスタンス取得
+        IRouterClient router = IRouterClient(routerAddress);
+        
+        // 手数料計算
+        uint256 fee = router.getFee(destinationChainSelector, message);
+        require(msg.value >= fee, "Insufficient CCIP fee");
+        
+        // メッセージ送信
+        bytes32 messageId = router.ccipSend{value: fee}(
             destinationChainSelector,
             message
         );
