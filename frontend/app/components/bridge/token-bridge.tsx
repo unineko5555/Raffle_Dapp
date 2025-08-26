@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTokenBridge } from "@/hooks/use-token-bridge";
+import { usePermit2Bridge } from "@/hooks/use-permit2-bridge";
 import { useChainId } from "wagmi";
 import { formatEther } from "viem";
 import { Label } from "@/components/ui/label";
@@ -41,6 +42,13 @@ export function TokenBridge() {
     approveAndBridge, // 新しい関数を追加
     estimateBridgeFee,
   } = useTokenBridge();
+
+  // Permit2ブリッジフック
+  const {
+    bridgeWithOptimizedFlow,
+    isLoading: permit2Loading,
+    error: permit2Error
+  } = usePermit2Bridge();
 
   // 状態管理
   const [amount, setAmount] = useState<string>("0");
@@ -101,6 +109,22 @@ export function TokenBridge() {
       if (result) {
         // 成功後にフォームをリセット
         setAmount("0");
+      }
+    }
+  };
+
+  // 🚀 Permit2最適化ブリッジハンドラー（自動許可付き）
+  const handleOptimizedBridge = async () => {
+    if (destinationChainId) {
+      console.log('🌉 Starting optimized bridge with Permit2 auto-approval...')
+      const result = await bridgeWithOptimizedFlow(amount, destinationChainId);
+      
+      if (result.success) {
+        console.log('✅ Bridge successful:', result.hash)
+        // 送信後にフォームをリセット
+        setAmount("0");
+      } else {
+        console.error('❌ Bridge failed:', result.error)
       }
     }
   };
@@ -220,24 +244,31 @@ export function TokenBridge() {
           </div>
         )}
 
-        {/* 承認+ブリッジ自動実行ボタン */}
+        {/* 🚀 Permit2最適化ブリッジボタン（自動許可付き） */}
         <Button
           className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5"
-          onClick={handleApproveAndBridge}
-          disabled={!canExecute || isLoading || isApproving}
+          onClick={handleOptimizedBridge}
+          disabled={!canExecute || isLoading || isApproving || permit2Loading}
         >
-          {isLoading || isApproving ? (
+          {isLoading || isApproving || permit2Loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {isApproving ? "承認中..." : "ブリッジ中..."}
+              {permit2Loading ? "署名待機中..." : isApproving ? "承認中..." : "ブリッジ中..."}
             </>
           ) : (
             <>
-              {needsApproval(amount) ? "承認してブリッジ" : "ブリッジする"}
+              🚀 スマートブリッジ
               <ArrowRight className="ml-2 h-4 w-4" />
             </>
           )}
         </Button>
+
+        {/* エラー表示 */}
+        {permit2Error && (
+          <div className="text-sm text-red-600 dark:text-red-400 mt-2">
+            {permit2Error}
+          </div>
+        )}
       </div>
 
       {/* 最近のトランザクション */}

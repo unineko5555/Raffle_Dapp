@@ -6,6 +6,7 @@ import "./interfaces/IPermit2.sol";
 import "./libraries/RaffleLib.sol";
 import "./mocks/MockVRFProvider.sol";
 import "forge-std/console.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
@@ -314,17 +315,18 @@ contract RaffleImplementation is
             require(s_players[i] != msg.sender, "Player already entered");
         }
 
-        // Permit2による転送実行
-        IPermit2.SignatureTransferDetails memory transferDetails = IPermit2.SignatureTransferDetails({
-            to: address(this),
-            requestedAmount: s_entranceFee
-        });
-        
-        PERMIT2.permitTransferFrom(
-            permit,
-            transferDetails,
+        // Permit2による許可設定
+        PERMIT2.permit(
             msg.sender,
+            permit,
             signature
+        );
+        
+        // 標準的なERC20転送を実行
+        IERC20(s_usdcAddress).transferFrom(
+            msg.sender,
+            address(this),
+            s_entranceFee
         );
         
         // ジャックポットに10%を追加

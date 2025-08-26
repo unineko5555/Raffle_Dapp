@@ -12,6 +12,7 @@ export const SUPPORTED_CHAIN_IDS = [11155111, 84532, 421614] as const;
 export interface ContractConfigResult {
   chainId: number | null;
   contractAddress: string | null;
+  erc20Address: string | null;
   publicClient: any;
   isValidChainId: boolean;
   networkConfig: typeof contractConfig[SupportedChainId] | null;
@@ -34,6 +35,7 @@ export function useContractConfig(): ContractConfigResult {
   
   // コントラクトアドレス取得
   const contractAddress = networkConfig?.raffleProxy || null;
+  const erc20Address = networkConfig?.erc20Address || null;
   
   // パブリッククライアント取得
   const publicClient = usePublicClient({ chainId: currentChainId || undefined });
@@ -41,6 +43,7 @@ export function useContractConfig(): ContractConfigResult {
   return {
     chainId: currentChainId,
     contractAddress,
+    erc20Address,
     publicClient,
     isValidChainId: !!isValidChainId,
     networkConfig,

@@ -867,7 +867,7 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "ccipSelector": "10344971235874465080",
     "bridgeAddress": "0x8AB90AB3013Df24BdF7adCEA73706c62b311cC67",
     "ccipRouterAddress": "0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93",
-    "implementationAddress": "0xac804f1770cb0c678a0f463528e1821a1cda43ee"
+    "implementationAddress": "0x5f1a56cdf6f9ee8e29e2a53c5ffa67bc9fdd6a6f"
   },
   {
     "networkId": 421614,
@@ -875,7 +875,7 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "ccipSelector": "3478487238524512106",
     "bridgeAddress": "0xF786e2292cfc0d8dabEd7D59b636C16289753e1C",
     "ccipRouterAddress": "0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165",
-    "implementationAddress": "0x2ca8cdd063974248adb8da8b3ef5a9fda17cc5dc"
+    "implementationAddress": "0xd97caa0be168fb94b329eb2d22153e68f7572ade"
   },
   {
     "networkId": 11155111,
@@ -883,7 +883,7 @@ export const BRIDGE_CONFIGS: BridgeContractConfig[] = [
     "ccipSelector": "16015286601757825753",
     "bridgeAddress": "0x6F801df32713c7F33ACEf6318B92CD16829aD17e",
     "ccipRouterAddress": "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59",
-    "implementationAddress": "0x8a638562826a2d831bf639cac8c90ea95aaa8f52"
+    "implementationAddress": "0x030528399014a3306f8d148270ce16ed58f93630"
   }
 ];
 

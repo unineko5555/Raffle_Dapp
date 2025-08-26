@@ -299,17 +299,18 @@ contract RaffleBridgeImplementation is UUPSUpgradeable, Initializable, IAny2EVMM
         address routerAddress = s_defaultRouter;
         require(routerAddress != address(0), "ERR:NO_ROUTER");
         
-        // Permit2による転送実行
-        IPermit2.SignatureTransferDetails memory transferDetails = IPermit2.SignatureTransferDetails({
-            to: address(this),
-            requestedAmount: amount
-        });
-        
-        PERMIT2.permitTransferFrom(
-            permit,
-            transferDetails,
+        // Permit2による許可設定
+        PERMIT2.permit(
             msg.sender,
+            permit,
             signature
+        );
+        
+        // 標準的なERC20転送を実行
+        IERC20(s_usdcAddress).transferFrom(
+            msg.sender,
+            address(this),
+            amount
         );
         
         // メッセージデータを準備

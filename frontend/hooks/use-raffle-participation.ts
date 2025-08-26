@@ -32,6 +32,8 @@ export function useRaffleParticipation() {
     isLoading: isPermit2Loading, 
     error: permit2Error,
     checkPermit2Availability,
+    enterRaffleWithOptimizedFlow,
+    checkUSDCAllowanceAndBalance,
     preparePermit2Signature,
     clearPermit2Cache
   } = usePermit2Raffle();
@@ -642,21 +644,32 @@ export function useRaffleParticipation() {
   // Permit2の利用可能性をチェック
   useEffect(() => {
     const checkAvailability = async () => {
+      console.log('🔍 Checking Permit2 availability...', { 
+        checkPermit2Availability: !!checkPermit2Availability,
+        usePermit2,
+        permit2Available
+      });
+      
       if (checkPermit2Availability) {
         try {
           const available = await checkPermit2Availability();
+          console.log('📋 Permit2 availability check result:', available);
           setPermit2Available(available);
           
           // Permit2が利用できない場合は自動的に無効にする
           if (!available && usePermit2) {
             setUsePermit2(false);
-            console.warn('Permit2 not available, falling back to traditional flow');
+            console.warn('⚠️ Permit2 not available, falling back to traditional flow');
+          } else if (available && usePermit2) {
+            console.log('✅ Permit2 is available and enabled');
           }
         } catch (error) {
-          console.error('Failed to check Permit2 availability:', error);
+          console.error('❌ Failed to check Permit2 availability:', error);
           setPermit2Available(false);
           setUsePermit2(false);
         }
+      } else {
+        console.warn('⚠️ checkPermit2Availability function not available');
       }
     };
 
@@ -669,23 +682,30 @@ export function useRaffleParticipation() {
   const handleEnterRaffleUnified = async (usePermit2Override?: boolean, smartAccountAddress = "") => {
     const shouldUsePermit2 = usePermit2Override !== undefined ? usePermit2Override : (usePermit2 && permit2Available);
     
+    console.log('🎯 handleEnterRaffleUnified called:', {
+      usePermit2Override,
+      usePermit2,
+      permit2Available,
+      shouldUsePermit2
+    });
+    
     if (shouldUsePermit2) {
       try {
-        console.log('Attempting to enter raffle with Permit2...');
-        const result = await enterRaffleWithPermit2();
+        console.log('🚀 Attempting to enter raffle with optimized Permit2 flow (auto-approve if needed)...');
+        const result = await enterRaffleWithOptimizedFlow();
         
         if (result.success) {
           // 成功時は参加状態を更新
           await checkPlayerEntered(smartAccountAddress);
           return result;
         } else {
-          throw new Error(result.error || 'Permit2 entry failed');
+          throw new Error(result.error || 'Optimized Permit2 entry failed');
         }
       } catch (error: any) {
-        console.warn('Permit2 failed, falling back to traditional flow:', error);
+        console.warn('Optimized Permit2 failed, falling back to traditional flow:', error);
         
-        // Permit2が失敗した場合のフォールバック
-        if (!error.message?.includes('ユーザーが署名をキャンセル')) {
+        // 最適化されたPermit2が失敗した場合のフォールバック
+        if (!error.message?.includes('ユーザーが署名をキャンセル') && !error.message?.includes('ユーザーが承認をキャンセル')) {
           // ユーザーキャンセル以外のエラーの場合はフォールバック
           console.log('Falling back to traditional approve+transfer flow...');
           

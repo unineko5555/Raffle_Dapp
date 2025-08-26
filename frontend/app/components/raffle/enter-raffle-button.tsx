@@ -46,11 +46,13 @@ export function EnterRaffleButton({
   
   // useRaffleContractフックからは必要な関数と状態を取得
   const { 
-    handleEnterRaffle, 
+    handleEnterRaffleUnified, 
     isLoading: isContractLoading, 
     isPlayerEntered,
     checkTokenBalanceWithInfo,
-    checkPlayerEntered
+    checkPlayerEntered,
+    usePermit2,
+    permit2Available
   } = useRaffleContract();
   
   // トークン残高チェック
@@ -319,11 +321,15 @@ export function EnterRaffleButton({
       } 
       // 通常のウォレット接続の場合
       else if (address) {
-        console.log("通常ウォレットでラッフルに参加中...");
+        console.log("通常ウォレットでラッフルに参加中...", {
+          usePermit2,
+          permit2Available,
+          method: usePermit2 && permit2Available ? 'Permit2' : 'Traditional'
+        });
         
         try {
-          // handleEnterRaffle関数を使用してラッフルに参加
-          const result = await handleEnterRaffle(smartAccountAddress || undefined);
+          // handleEnterRaffleUnified関数を使用してラッフルに参加（Permit2優先）
+          const result = await handleEnterRaffleUnified(undefined, smartAccountAddress || "");
           console.log("ラッフル参加結果:", result);
           
           if (result && result.success) {

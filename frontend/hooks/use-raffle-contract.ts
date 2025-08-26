@@ -59,9 +59,13 @@ export function useRaffleContract() {
     error: participationError,
     isPlayerEntered,
     handleEnterRaffle,
+    handleEnterRaffleUnified,
     checkPlayerEntered,
     tokenBalanceInfo,
     checkTokenBalanceWithInfo,
+    usePermit2,
+    setUsePermit2,
+    permit2Available,
   } = useRaffleParticipation();
 
   const {
@@ -159,10 +163,15 @@ export function useRaffleContract() {
     // 参加関連
     isPlayerEntered,
     handleEnterRaffle,
+    handleEnterRaffleUnified,
     handleCancelEntry,
     checkPlayerEntered,
     tokenBalanceInfo,
     checkTokenBalanceWithInfo,
+    // Permit2機能
+    usePermit2,
+    setUsePermit2,
+    permit2Available,
 
     // 自動化関連
     isUpkeepNeeded,
